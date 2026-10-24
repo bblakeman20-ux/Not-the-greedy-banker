@@ -6,19 +6,21 @@
 <link rel="manifest" href="manifest.webmanifest">
 <link rel="icon" href="icon.svg">
 <link rel="apple-touch-icon" href="icon-192.png">
-<meta name="theme-color" content="#0c0d10">
+<meta name="theme-color" content="#0e0e10">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-title" content="Greedy Banker">
 <link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,700;12..96,800&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
 <style>
-  /* Neutrals carry the page; gold is the one accent (main action, your pick, live timers);
-     green only ever means good (aligned, paid, locked in) and red only bad (veto, ban, delete) */
+  /* Dark greyscale carries the page. Two pops only:
+     hot coral = act / heat (main action, your pick, the current event, timers, money owed; veto/ban/delete as a soft tint)
+     electric lime = go / good (keen, 100% aligned, lock it in, paid) */
   :root{
-    --bg:#0c0d10;--card:#15171c;--card-2:#1d2027;--line:#272b33;--line-2:#363b45;
-    --text:#f3f4f6;--text-2:#c8ccd4;--muted:#8a8f99;
-    --accent:#ffb627;--accent-ink:#1b1303;--accent-soft:rgba(255,182,39,.12);
-    --good:#3ddc97;--good-soft:rgba(61,220,151,.12);--bad:#ff6b6b;--bad-soft:rgba(255,107,107,.12);
+    --bg:#0e0e10;--card:#17171a;--card-2:#212124;--line:#2b2b2f;--line-2:#3b3b40;
+    --text:#f4f4f5;--text-2:#cfcfd4;--muted:#8d8d94;
+    --accent:#ff6b57;--accent-ink:#1a0703;--accent-soft:rgba(255,107,87,.13);
+    --good:#c6ff3d;--good-ink:#141a03;--good-soft:rgba(198,255,61,.12);
+    --bad:#ff6b57;--bad-soft:rgba(255,107,87,.13);
     --r:18px;--display:'Bricolage Grotesque',Inter,system-ui,sans-serif;
   }
   *{box-sizing:border-box;font-family:Inter,system-ui,-apple-system,sans-serif;-webkit-tap-highlight-color:transparent}
@@ -35,6 +37,7 @@
   .amber{background:var(--accent);color:var(--accent-ink);border-color:var(--accent)}
   .amber:hover{border-color:var(--accent);filter:brightness(1.05)}
   .green{background:var(--good-soft);color:var(--good);border-color:transparent}
+  .lime{background:var(--good);color:var(--good-ink);border-color:var(--good)}
   .red{background:var(--bad-soft);color:var(--bad);border-color:transparent}
   .indigo{background:var(--card-2);color:var(--text)}
   .mini{padding:3px 8px;font-size:12px;border-radius:8px}
@@ -44,7 +47,7 @@
   input[type=datetime-local]{color-scheme:dark}
   input[type=checkbox]{accent-color:var(--accent)}
   select{appearance:none;font-family:var(--display);font-weight:700;font-size:17px;padding-right:34px;margin-top:0;
-    background:var(--card-2) url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='8'%3E%3Cpath d='M1 1l5 5 5-5' fill='none' stroke='%238a8f99' stroke-width='2'/%3E%3C/svg%3E") no-repeat right 12px center}
+    background:var(--card-2) url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='8'%3E%3Cpath d='M1 1l5 5 5-5' fill='none' stroke='%238d8d94' stroke-width='2'/%3E%3C/svg%3E") no-repeat right 12px center}
   .box{display:none;background:var(--card-2);border:1px solid var(--line);border-radius:14px;padding:12px;margin-top:12px}
   .box input,.box textarea{background:var(--card)}
   .open{display:block!important}
@@ -1076,7 +1079,7 @@ function renderEvents(){
   const w=winVenue(),when=evWhen(E),bits=[E.where&&'📍 '+esc(E.where),E.vibe&&'✨ '+esc(E.vibe),when&&'🗓️ '+esc(when)].filter(Boolean).join(' • ');
   $('ev-info').innerHTML=(bits?`<div class="sub" style="color:var(--text-2)">${bits}</div>`:'')+
     (E.locked?`<div style="background:var(--good-soft);border:1px solid var(--good);border-radius:9px;padding:8px;margin-top:6px"><b style="color:var(--good)">🔒 Locked in:</b> ${esc(w?w.name:'TBC')}${when?' – '+esc(when):''}<div class="sub">Voting's closed. The kitty stays open for settling up.</div></div>`:'')+
-    `<div class="row" style="justify-content:flex-start;margin-top:6px">${E.locked?'<button class="btn" onclick="unlockEvent()">🔓 Unlock</button>':'<button class="btn green" onclick="lockEvent()">🔒 Lock it in</button>'}<button class="btn indigo" onclick="shareEvent()">💬 Share event</button><button class="btn red" onclick="delEvent()">🗑️ Delete event</button></div><div id="ev-msg" class="sub" style="color:var(--good)"></div>`;
+    `<div class="row" style="justify-content:flex-start;margin-top:6px">${E.locked?'<button class="btn" onclick="unlockEvent()">🔓 Unlock</button>':'<button class="btn lime" onclick="lockEvent()">🔒 Lock it in</button>'}<button class="btn indigo" onclick="shareEvent()">💬 Share event</button><button class="btn red" onclick="delEvent()">🗑️ Delete event</button></div><div id="ev-msg" class="sub" style="color:var(--good)"></div>`;
 }
 function render(){
   curEv();document.body.classList.toggle('locked',!!(E&&E.locked));
