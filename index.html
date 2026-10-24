@@ -10,6 +10,7 @@
   .row{display:flex;align-items:center;justify-content:space-between;gap:6px;flex-wrap:wrap}
   .grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(135px,1fr));gap:6px}
   .btn{cursor:pointer;border:1px solid #475569;background:#1e293b;color:#fff;font-weight:700;font-size:12px;padding:7px 10px;border-radius:9px}
+  a.btn{display:inline-block;text-decoration:none}
   .amber{background:#f59e0b;color:#000;border-color:#f59e0b}
   .green{background:#10b981;color:#000;border-color:#10b981}
   .red{background:#f43f5e;color:#fff;border-color:#f43f5e}
@@ -20,6 +21,8 @@
   .pill{cursor:pointer;padding:8px;border-radius:10px;border:2px solid #334155;background:#0b111e;color:#fff;text-align:left}
   .pill.on{border-color:#f59e0b;background:#291d06}
   .sub{color:#94a3b8;font-size:11px}
+  .sub a{color:#a5b4fc}
+  .cd{font-variant-numeric:tabular-nums;color:#fbbf24;font-weight:700}
 </style>
 </head>
 <body>
@@ -39,7 +42,7 @@
 
   <!-- SETUP -->
   <div id="setup-box" class="box">
-    <div style="font-size:12px;font-weight:700;color:#fbbf24">⚙️ Firebase Live Sync & Gemini 3.8 Flash</div>
+    <div style="font-size:12px;font-weight:700;color:#fbbf24">⚙️ Firebase Live Sync & Gerg Ai (powered by Gemini)</div>
     <input id="c-db" placeholder="Firebase URL (https://...-rtdb.europe-west1.firebasedatabase.app)">
     <div class="grid">
       <input id="c-room" value="medway-squad" placeholder="Room Code">
@@ -56,7 +59,7 @@
 
   <!-- SUMMARY -->
   <div id="sum-box" class="box">
-    <textarea id="sum-txt" rows="5" readonly></textarea>
+    <textarea id="sum-txt" rows="8" readonly></textarea>
     <div class="row" style="margin-top:6px">
       <button class="btn green" onclick="copyTxt('sum-txt')">Copy Text</button>
       <button class="btn" onclick="tog('sum-box')">Close</button>
@@ -66,7 +69,7 @@
   <!-- PROFILES -->
   <div style="margin-top:10px;padding-top:8px;border-top:1px solid #334155">
     <div class="row" style="margin-bottom:6px">
-      <span class="sub">TAP YOUR PROFILE:</span>
+      <span id="me-txt" class="sub">TAP YOUR PROFILE:</span>
       <div class="row">
         <button class="btn" onclick="openProf(1)">✏️ Edit Me</button>
         <button class="btn indigo" onclick="openProf(0)">+ New Profile</button>
@@ -82,9 +85,19 @@
         <input id="p-loc" placeholder="Station (e.g. Chatham)">
         <input id="p-pay" placeholder="Pay way (Monzo / Revolut)">
       </div>
+      <div class="sub" style="margin-top:8px;color:#fbbf24">💳 How to pay you (all optional)</div>
+      <input id="p-link" placeholder="Pay link (monzo.me/you, paypal.me/you, revolut.me/you)">
+      <div class="grid">
+        <input id="p-mail" type="email" placeholder="Payment email (PayPal)">
+        <input id="p-acn" placeholder="Account name">
+        <input id="p-sort" inputmode="numeric" placeholder="Sort code (12-34-56)">
+        <input id="p-acc" inputmode="numeric" placeholder="Account no. (8 digits)">
+      </div>
+      <div class="sub" style="color:#fda4af;margin-top:4px">⚠️ Anyone with the group link can see these. A pay link is safer than account numbers.</div>
+      <div id="prof-msg" class="sub" style="color:#f43f5e;margin-top:4px"></div>
       <div class="row" style="margin-top:8px">
         <button class="btn green" onclick="saveProf()">✅ Save</button>
-        <button class="btn red" onclick="delProf()">🗑️ Delete</button>
+        <button id="p-del" class="btn red" onclick="delProf()">🗑️ Delete</button>
         <button class="btn" onclick="tog('prof-box')">Cancel</button>
       </div>
     </div>
@@ -110,9 +123,27 @@
     </div>
   </div>
 
+  <!-- VETO BOUNTY (yours) -->
+  <div id="bounty-me" class="card" style="display:none;border-color:#f59e0b;background:#291d06">
+    <div class="row">
+      <div style="font-size:13px;font-weight:700;color:#fbbf24">🎯 Veto Bounty</div>
+      <span id="bx-cd" class="cd" style="font-size:18px"></span>
+    </div>
+    <div id="bx-txt" class="sub" style="margin:6px 0;color:#fde68a"></div>
+    <div class="grid" style="margin:6px 0">
+      <input id="bx-name" placeholder="Your replacement venue / activity">
+      <input id="bx-loc" placeholder="Town / Station">
+    </div>
+    <div class="row">
+      <button class="btn amber" style="flex:1" onclick="addVen('bx-name','bx-loc')">🚀 Pitch Replacement</button>
+      <button class="btn indigo" onclick="askAI()">🤖 Gerg Ai, bail me out</button>
+    </div>
+  </div>
+  <div id="bounty-list"></div>
+
   <div class="card" style="border-color:#4338ca;background:#131633">
     <div class="row">
-      <strong id="m-lbl" style="font-size:13px;color:#c7d2fe">✨ Gemini 3.8 Flash Builder</strong>
+      <strong id="m-lbl" style="font-size:13px;color:#c7d2fe">✨ Gerg Ai</strong>
       <button class="btn amber" onclick="spin()">🎲 Roulette</button>
     </div>
     <div class="grid" style="margin:6px 0">
@@ -163,10 +194,10 @@
         <div style="font-size:13px;font-weight:700;color:#fbbf24">🏦 Sherlock's Open Bank Mode</div>
         <div class="sub">"Link in bank details & expenses"</div>
       </div>
-      <button class="btn red" onclick="tog('bank-box')">🔓 Toggle Raw Bank Details</button>
+      <button class="btn red" onclick="tog('bank-box')">🔓 Show Pay Details</button>
     </div>
     <div id="bank-box" class="box" style="border-color:#f43f5e">
-      <div class="sub" style="color:#fda4af;margin-bottom:6px">⚠️ ROAST ALERT: Live sort codes & secret transactions exposed!</div>
+      <div class="sub" style="color:#fda4af;margin-bottom:6px">⚠️ ROAST ALERT: real pay details — anyone with the group link can see these!</div>
       <div id="b-list" class="grid"></div>
     </div>
   </div>
@@ -175,9 +206,14 @@
     <div id="e-list" style="margin-bottom:8px"></div>
     <div class="grid" style="margin-bottom:6px">
       <input id="e-ttl" placeholder="Item (e.g. Uber XL)">
-      <input id="e-amt" type="number" step="0.01" placeholder="£ Amount">
+      <input id="e-amt" type="number" step="0.01" min="0" placeholder="£ Amount">
     </div>
     <button class="btn green" onclick="addExp()">+ Add Expense</button>
+  </div>
+  <div class="card">
+    <div style="font-size:13px;font-weight:700;margin-bottom:6px">🤝 Settle Up</div>
+    <div id="st-list"></div>
+    <div id="kit-msg" class="sub" style="color:#10b981;margin-top:4px"></div>
   </div>
 </div>
 
@@ -186,7 +222,8 @@ const mem={};
 const get=(k,d)=>{try{return localStorage.getItem(k)||d}catch(e){return mem[k]||d}};
 const set=(k,v)=>{try{localStorage.setItem(k,v)}catch(e){mem[k]=v}};
 const P=new URLSearchParams(location.search);
-let cfg={u:get('u','u1'),db:(P.get('db')||get('db','')).replace(/\/$/,''),rm:P.get('room')||get('rm','medway-squad'),md:get('md','gemini-3.8-flash'),key:get('key',''),edit:0};
+let cfg={u:get('u',''),db:(P.get('db')||get('db','')).replace(/\/$/,''),rm:P.get('room')||get('rm','medway-squad'),md:get('md','gemini-3.8-flash'),key:get('key',''),edit:0};
+const FALLBACK='gemini-2.5-flash',AI_TIMEOUT=15000,BOUNTY_MS=60000;
 
 let S={
   win:'v1',
@@ -206,97 +243,263 @@ let S={
     {id:'s2',lbl:'Sat 2:00 PM',av:{u1:1,u2:1,u3:1}},
     {id:'s3',lbl:'Sat 7:30 PM',av:{u1:1,u3:1}}
   ],
-  exp:[{id:'e1',ttl:'Axe Throwing Deposit',amt:64,by:'Ben'}]
+  exp:[{id:'e1',ttl:'Axe Throwing Deposit',amt:64,by:'Ben',byId:'u1'}],
+  bounties:[]
 };
 
 const $=id=>document.getElementById(id);
 const tog=id=>$(id).classList.toggle('open');
+// Everything synced from the room is untrusted: escape for HTML, strip ids down to safe chars for inline handlers
+const esc=s=>String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+const sid=s=>String(s??'').replace(/[^\w-]/g,'');
+const me=()=>S.squad.find(x=>x.id===cfg.u);
+const who=id=>S.squad.find(x=>x.id===id);
+const gbp=n=>'£'+(+n||0).toFixed(2);
+function needMe(){if(me())return 1;alert('👆 Tap your profile first (or + New Profile)');return 0}
 function tab(t){['act','dat','trv','kit'].forEach(x=>{$('t-'+x).style.display=x===t?'block':'none';$('tb-'+x).className='btn'+(x===t?' amber':'')})}
+async function copyStr(s){
+  try{await navigator.clipboard.writeText(s);return 1}
+  catch(e){const t=document.createElement('textarea');t.value=s;document.body.appendChild(t);t.select();const ok=document.execCommand('copy');t.remove();return ok}
+}
 
+/* ---------- SYNC ---------- */
+let busy=0,touched=0;
+const status=ok=>$('sync-txt').innerText=ok?'🟢 Live: '+cfg.rm:'🔴 Sync failed – retrying';
 function dbUrl(){return cfg.db?`${cfg.db}/rooms/${cfg.rm.replace(/\W/g,'')}.json`:null}
 async function push(){
-  render();const u=dbUrl();if(!u)return;
-  try{await fetch(u,{method:'PUT',body:JSON.stringify(S)});$('sync-txt').innerText='🟢 Live: '+cfg.rm}catch(e){}
+  touched=Date.now();render();const u=dbUrl();if(!u)return;
+  busy++;try{const r=await fetch(u,{method:'PUT',body:JSON.stringify(S)});status(r.ok)}catch(e){status(0)}finally{busy--}
 }
+// Skip pulls while our own write is in flight or just landed, so a stale poll can't undo a tap
+const quiet=()=>busy||Date.now()-touched<3000;
 async function pull(){
-  const u=dbUrl();if(!u)return;
-  try{const r=await fetch(u),d=await r.json();if(d&&d.squad){S={...S,...d,ban:d.ban||S.ban,venues:d.venues||[],exp:d.exp||[]};render();$('sync-txt').innerText='🟢 Live: '+cfg.rm}else push()}catch(e){}
+  const u=dbUrl();if(!u||quiet())return;
+  try{
+    const r=await fetch(u);if(!r.ok)throw 0;const d=await r.json();if(quiet())return;
+    if(d&&d.squad){S={...S,...d,ban:d.ban||S.ban,venues:d.venues||[],slots:(d.slots||[]).map(s=>({...s,av:s.av||{}})),exp:d.exp||[],bounties:d.bounties||[]};render();status(1)}else push()
+  }catch(e){status(0)}
 }
 
 function saveCfg(){
   cfg.db=$('c-db').value.trim().replace(/\/$/,'');cfg.rm=$('c-room').value.trim()||'medway';
   cfg.md=$('c-model').value.trim()||'gemini-3.8-flash';cfg.key=$('c-key').value.trim();
   set('db',cfg.db);set('rm',cfg.rm);set('md',cfg.md);set('key',cfg.key);
-  $('m-lbl').innerText='✨ '+cfg.md+' Builder';$('cfg-msg').innerText='✅ Saved!';pull();
+  $('cfg-msg').innerText='✅ Saved!';pull();
 }
-function shareLink(){
+async function shareLink(){
   saveCfg();const u=`${location.origin}${location.pathname}?db=${encodeURIComponent(cfg.db)}&room=${encodeURIComponent(cfg.rm)}`;
-  navigator.clipboard?.writeText(u);$('cfg-msg').innerText='🔗 Link copied! Paste in Messenger.';
+  $('cfg-msg').innerText=await copyStr(u)?'🔗 Link copied! Paste in Messenger.':'❌ Couldn\'t copy – link: '+u;
 }
 
+/* ---------- PROFILES & PAY DETAILS ---------- */
+function pick(id){cfg.u=id;set('u',id);render()}
 function openProf(ed){
-  cfg.edit=ed;$('prof-box').classList.add('open');
-  const me=S.squad.find(x=>x.id===cfg.u);
-  $('p-name').value=ed&&me?me.name:'';$('p-emo').value=ed&&me?me.emo:'🍺';
-  $('p-loc').value=ed&&me?me.loc:'Medway';$('p-pay').value=ed&&me?me.pay:'Monzo';
+  const m=me();cfg.edit=ed&&m?1:0;$('prof-box').classList.add('open');$('prof-msg').innerText='';
+  $('prof-title').innerText=cfg.edit?'👤 Edit '+m.name:'👤 New Profile';$('p-del').style.display=cfg.edit?'':'none';
+  const f=(k,d)=>cfg.edit?m[k]||'':d;
+  $('p-name').value=f('name','');$('p-emo').value=f('emo','🍺');$('p-loc').value=f('loc','Medway');$('p-pay').value=f('pay','Monzo');
+  $('p-link').value=f('payLink','');$('p-mail').value=f('payMail','');$('p-acn').value=f('acn','');$('p-sort').value=f('sort','');$('p-acc').value=f('acc','');
 }
 function saveProf(){
-  const name=$('p-name').value.trim();if(!name)return;
-  const emo=$('p-emo').value.trim()||'🍺',loc=$('p-loc').value.trim()||'Local',pay=$('p-pay').value.trim()||'Monzo';
-  if(cfg.edit){const me=S.squad.find(x=>x.id===cfg.u);if(me)Object.assign(me,{name,emo,loc,pay})}
-  else{const id='u'+Date.now();S.squad.push({id,name,emo,loc,mode:'Train',pay,tx:'Pint (-£6.50)'});cfg.u=id;set('u',id)}
-  tog('prof-box');push();
+  const v=k=>$(k).value.trim(),dig=k=>v(k).replace(/\D/g,''),err=t=>{$('prof-msg').innerText='⚠️ '+t};
+  const name=v('p-name');if(!name)return err('Add your name');
+  const d={name,emo:v('p-emo')||'🍺',loc:v('p-loc')||'Local',pay:v('p-pay')||'Monzo',payLink:v('p-link'),payMail:v('p-mail'),acn:v('p-acn'),sort:dig('p-sort'),acc:dig('p-acc')};
+  if(d.payLink&&!payUrl(d))return err('That pay link doesn\'t look like a web link');
+  if(d.payMail&&!/^[^\s@<>"']+@[^\s@<>"']+\.[^\s@<>"']+$/.test(d.payMail))return err('That email doesn\'t look right');
+  if(d.sort&&d.sort.length!==6)return err('Sort code should be 6 digits');
+  if(d.acc&&d.acc.length!==8)return err('Account number should be 8 digits');
+  if(d.sort)d.sort=d.sort.replace(/(\d\d)(\d\d)(\d\d)/,'$1-$2-$3');
+  const m=me();
+  if(cfg.edit&&m)Object.assign(m,d);
+  else{const id='u'+Date.now();S.squad.push({id,mode:'Train',tx:'Pint (-£6.50)',...d});cfg.u=id;set('u',id)}
+  $('prof-box').classList.remove('open');push();
 }
-function delProf(){if(S.squad.length>1){S.squad=S.squad.filter(x=>x.id!==cfg.u);cfg.u=S.squad[0].id;tog('prof-box');push()}}
+function delProf(){
+  const m=me();if(!m||S.squad.length<2||!confirm(`Delete ${m.name}'s profile?`))return;
+  S.squad=S.squad.filter(x=>x.id!==m.id);cfg.u='';set('u','');$('prof-box').classList.remove('open');push();
+}
+const hasBank=u=>u.sort&&u.acc;
+const hasPay=u=>u.payLink||u.payMail||hasBank(u);
+// Normalise a pay link to https and, for Monzo/PayPal.me, prefill the amount
+function payUrl(u,amt){
+  let l=String(u.payLink||'').trim();if(!l)return '';
+  if(!/^[a-z]+:/i.test(l))l='https://'+l;
+  try{
+    const x=new URL(l);if(!/^https?:$/.test(x.protocol))return '';
+    const h=x.hostname.replace(/^www\./,''),one=x.pathname.split('/').filter(Boolean).length===1,p=x.pathname.replace(/\/$/,'');
+    if(amt&&one&&h==='monzo.me')x.pathname=p+'/'+amt.toFixed(2);
+    if(amt&&one&&h==='paypal.me')x.pathname=p+'/'+amt.toFixed(2)+'GBP';
+    return x.href;
+  }catch(e){return ''}
+}
+const mailOk=u=>/^[^\s@<>"']+@[^\s@<>"']+\.[^\s@<>"']+$/.test(u.payMail||'');
+async function copyBank(id,amt){
+  const u=who(id);if(!u)return;
+  const t=`${u.acn||u.name}\nSort code: ${u.sort}\nAccount: ${u.acc}${amt?`\nAmount: ${gbp(amt)}`:''}\nRef: Greedy Banker`;
+  $('kit-msg').innerText=await copyStr(t)?`🏦 ${u.name}'s bank details copied`:'❌ Couldn\'t copy';
+}
 
+/* ---------- GERG AI ---------- */
+// Gemini 3.x / 2.5 think by default, which is what made 3.8 slow; dial it right down for quick idea lists
+const thinkCfg=m=>/^gemini-2\.5-flash/.test(m)?{thinkingBudget:0}:/^gemini-3/.test(m)?{thinkingLevel:/flash/.test(m)?'minimal':'low'}:null;
 async function askAI(){
   saveCfg();if(!cfg.key){$('setup-box').classList.add('open');$('ai-msg').innerText='⚠️ Paste Gemini API Key in Setup first!';return}
-  $('ai-msg').innerText='🤖 Scouting anti-default ideas...';
-  const prompt=`Suggest 2 real fun group outing activities/venues in "${$('ai-loc').value}" for "${$('ai-vib').value}". Never suggest: ${S.ban.map(b=>b.name).join(',')}. Return ONLY a JSON array of 2 objects with keys: "name","loc","desc".`;
-  const call=async m=>(await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${m}:generateContent?key=${cfg.key}`,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({contents:[{parts:[{text:prompt}]}],generationConfig:{responseMimeType:'application/json'}})})).json();
+  if(!needMe())return;
+  const pend=myBounties().map(b=>b.id),t0=Date.now();
+  $('ai-msg').innerText='🤖 Gerg Ai is scouting anti-default ideas...';
+  const prompt=`Suggest 2 real fun group outing activities/venues in "${$('ai-loc').value}" for "${$('ai-vib').value}". Never suggest: ${S.ban.map(b=>b.name).join(',')}. Keep each "desc" under 15 words. Return ONLY a JSON array of 2 objects with keys: "name","loc","desc".`;
+  const schema={type:'ARRAY',items:{type:'OBJECT',properties:{name:{type:'STRING'},loc:{type:'STRING'},desc:{type:'STRING'}},required:['name','loc','desc']}};
+  const call=async(m,think)=>{
+    const ac=new AbortController(),tm=setTimeout(()=>ac.abort(),AI_TIMEOUT),gen={responseMimeType:'application/json',responseSchema:schema};
+    if(think)gen.thinkingConfig=think;
+    try{return await(await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${encodeURIComponent(m)}:generateContent`,{method:'POST',signal:ac.signal,headers:{'Content-Type':'application/json','x-goog-api-key':cfg.key},body:JSON.stringify({contents:[{parts:[{text:prompt}]}],generationConfig:gen})})).json()}
+    catch(e){return{error:{message:e.name==='AbortError'?`${m} took over ${AI_TIMEOUT/1000}s`:e.message}}}
+    finally{clearTimeout(tm)}
+  };
   try{
-    let d=await call(cfg.md);if(d.error&&cfg.md!=='gemini-2.5-flash')d=await call('gemini-2.5-flash');
+    let used=cfg.md,d=await call(used,thinkCfg(used));
+    if(d.error&&d.error.code===400&&thinkCfg(used))d=await call(used);
+    if(d.error&&used!==FALLBACK){used=FALLBACK;$('ai-msg').innerText='🤖 Gerg Ai is trying the backup brain...';d=await call(used,thinkCfg(used))}
     if(d.error)throw new Error(d.error.message);
-    JSON.parse(d.candidates[0].content.parts[0].text).forEach((x,i)=>S.venues.unshift({id:'v'+Date.now()+i,name:x.name,loc:x.loc,desc:x.desc,votes:{[cfg.u]:'k'}}));
-    $('ai-msg').innerText='✅ Added 2 new ideas!';push();
+    const txt=d.candidates?.[0]?.content?.parts?.find(p=>p.text&&!p.thought)?.text;
+    if(!txt)throw new Error(d.promptFeedback?.blockReason||'Gerg Ai came back empty');
+    let ideas=JSON.parse(txt);if(!Array.isArray(ideas))ideas=Object.values(ideas).find(Array.isArray)||[];
+    ideas=ideas.filter(x=>x&&x.name&&!banned(x.name)).slice(0,2);
+    if(!ideas.length)throw new Error('Gerg Ai only came up with banned spots');
+    ideas.forEach((x,i)=>S.venues.unshift({id:'v'+Date.now()+i,name:String(x.name),loc:String(x.loc||'Local'),desc:String(x.desc||''),votes:{[cfg.u]:'k'}}));
+    const won=redeem(pend);
+    $('ai-msg').innerText=`✅ Gerg Ai added ${ideas.length} idea${ideas.length>1?'s':''} in ${((Date.now()-t0)/1000).toFixed(1)}s${used!==cfg.md?` (via ${used} – ${cfg.md} failed)`:''}${won?' • 🎯 Veto Bounty redeemed!':''}`;push();
   }catch(e){$('ai-msg').innerText='❌ '+e.message}
 }
 
+/* ---------- VETO BOUNTY ---------- */
+const live=b=>Date.now()<b.until;
+const myBounties=()=>(S.bounties||[]).filter(b=>b.uid===cfg.u&&live(b));
+const clock=ms=>{const s=Math.max(0,Math.ceil(ms/1000));return Math.floor(s/60)+':'+String(s%60).padStart(2,'0')};
+// Pitching anything clears the bounties that were live when the pitch started
+function redeem(ids){const n=(S.bounties||[]).length;S.bounties=(S.bounties||[]).filter(b=>!ids.includes(b.id));return n-S.bounties.length}
+let liveKey='';const liveIds=()=>(S.bounties||[]).filter(live).map(b=>b.id).join();
+function dropBounty(id){S.bounties=(S.bounties||[]).filter(b=>b.id!==id);push()}
+
+/* ---------- ACTIONS ---------- */
+// Loose match so "Greedy Banker 2" or "the greedy-banker" still count as banned
+const norm=n=>String(n).toLowerCase().replace(/\bthe\b/g,'').replace(/[^a-z0-9]/g,'');
+const banned=n=>S.ban.some(b=>norm(b.name)&&norm(n).includes(norm(b.name)));
 function addBan(){const v=$('ban-in').value.trim();if(v){S.ban.push({id:'b'+Date.now(),name:v});$('ban-in').value='';push()}}
-function vote(id,v){const x=S.venues.find(a=>a.id===id);if(x){x.votes=x.votes||{};x.votes[cfg.u]=x.votes[cfg.u]===v?null:v;push()}}
+function unban(id){S.ban=S.ban.filter(x=>x.id!==id||x.lock);push()}
+function vote(id,v){
+  if(!needMe())return;const x=S.venues.find(a=>a.id===id);if(!x)return;
+  x.votes=x.votes||{};x.votes[cfg.u]=x.votes[cfg.u]===v?null:v;
+  // Changing your mind cancels a live bounty; a fresh veto starts the 60s clock
+  S.bounties=(S.bounties||[]).filter(b=>!(b.uid===cfg.u&&b.vid===id&&live(b)));
+  if(x.votes[cfg.u]==='v'){S.bounties.push({id:'x'+Date.now(),uid:cfg.u,vid:id,vname:x.name,until:Date.now()+BOUNTY_MS});setTimeout(()=>$('bx-name').focus(),0)}
+  push();
+}
+function lockIn(id){S.win=id;push()}
 function spin(){const ok=S.venues.filter(v=>!Object.values(v.votes||{}).includes('v'));if(ok.length){S.win=ok[Math.floor(Math.random()*ok.length)].id;push()}}
-function addVen(){const n=$('v-name').value.trim(),l=$('v-loc').value.trim();if(n){S.venues.unshift({id:'v'+Date.now(),name:n,loc:l||'Local',desc:'Squad pitch',votes:{[cfg.u]:'k'}});$('v-name').value='';push()}}
-function addSlot(){const l=$('d-in').value.trim();if(l){S.slots.push({id:'s'+Date.now(),lbl:l,av:{[cfg.u]:1}});$('d-in').value='';push()}}
-function addExp(){const t=$('e-ttl').value.trim(),a=parseFloat($('e-amt').value);if(t&&a){const me=S.squad.find(x=>x.id===cfg.u);S.exp.push({id:'e'+Date.now(),ttl:t,amt:a,by:me?me.name:'Squad'});$('e-ttl').value='';$('e-amt').value='';push()}}
+function addVen(nId='v-name',lId='v-loc'){
+  const n=$(nId).value.trim(),l=$(lId).value.trim();if(!n||!needMe())return;
+  if(banned(n)){$(nId).value='';alert('🚫 Nice try – that\'s on the Ban List');return}
+  const pend=myBounties(),won=redeem(pend.map(b=>b.id));
+  S.venues.unshift({id:'v'+Date.now(),name:n,loc:l||'Local',desc:won?`🎯 Veto Bounty replacement for ${pend[0].vname}`:'Squad pitch',votes:{[cfg.u]:'k'}});
+  $(nId).value='';$(lId).value='';push();
+}
+function addSlot(){const l=$('d-in').value.trim();if(l&&needMe()){S.slots.push({id:'s'+Date.now(),lbl:l,av:{[cfg.u]:1}});$('d-in').value='';push()}}
+function togSlot(id,uid){const s=S.slots.find(x=>x.id===id);if(s){s.av=s.av||{};s.av[uid]=s.av[uid]?null:1;push()}}
+function cycleMode(uid){const m=['Train','Uber Split','Driver','Walk'],u=who(uid);if(u){u.mode=m[(m.indexOf(u.mode)+1)%m.length];push()}}
+function addExp(){
+  const t=$('e-ttl').value.trim(),a=Math.round(parseFloat($('e-amt').value)*100)/100;
+  if(t&&a>0&&needMe()){const m=me();S.exp.push({id:'e'+Date.now(),ttl:t,amt:a,by:m.name,byId:m.id});$('e-ttl').value='';$('e-amt').value='';push()}
+}
+function delExp(id){const e=S.exp.find(x=>x.id===id);if(e&&confirm(`Remove "${e.ttl}"?`)){S.exp=S.exp.filter(x=>x.id!==id);push()}}
+
+/* ---------- SETTLE UP ---------- */
+const payerOf=e=>(who(e.byId)||S.squad.find(u=>u.name===e.by)||{}).id;
+// Even split between everyone in the squad, then greedily match debtors to creditors
+function settle(){
+  const bal={},ex=S.exp.filter(e=>payerOf(e)),tot=ex.reduce((a,e)=>a+(+e.amt||0),0),share=tot/S.squad.length;
+  S.squad.forEach(u=>bal[u.id]=-share);ex.forEach(e=>bal[payerOf(e)]+=+e.amt||0);
+  const cr=S.squad.filter(u=>bal[u.id]>0.005).map(u=>({id:u.id,a:bal[u.id]})),db=S.squad.filter(u=>bal[u.id]<-0.005).map(u=>({id:u.id,a:-bal[u.id]})),out=[];
+  while(cr.length&&db.length){
+    const c=cr[0],d=db[0],a=Math.min(c.a,d.a);if(a>=0.01)out.push({from:d.id,to:c.id,amt:Math.round(a*100)/100});
+    c.a-=a;d.a-=a;if(c.a<0.005)cr.shift();if(d.a<0.005)db.shift();
+  }
+  return out;
+}
 
 function openSum(){
   const w=S.venues.find(v=>v.id===S.win)||S.venues[0];
   const al=S.slots.filter(s=>S.squad.every(u=>s.av&&s.av[u.id])).map(s=>s.lbl);
-  const tot=S.exp.reduce((a,b)=>a+b.amt,0);
-  $('sum-txt').value=`🍻 SQUAD PLAN\n🎯 LOCKED IN: ${w?w.name+' ('+w.loc+')':'TBD'}\n📅 ALIGNED: ${al.join(' OR ')||'Voting'}\n💷 KITTY: £${tot.toFixed(2)} (£${(tot/S.squad.length).toFixed(2)} each)`;
+  const tot=S.exp.reduce((a,b)=>a+(+b.amt||0),0);
+  const owes=settle().map(t=>{const c=who(t.to),l=payUrl(c,t.amt);return `   ${who(t.from).name} → ${c.name} ${gbp(t.amt)}${l?' '+l:''}`});
+  const shame=[...new Set((S.bounties||[]).filter(b=>!live(b)).map(b=>(who(b.uid)||{}).name).filter(Boolean))];
+  $('sum-txt').value=`🍻 SQUAD PLAN\n🎯 LOCKED IN: ${w?w.name+' ('+w.loc+')':'TBD'}\n📅 ALIGNED: ${al.join(' OR ')||'Voting'}\n💷 KITTY: ${gbp(tot)} (${gbp(tot/S.squad.length)} each)`+(owes.length?`\n💸 SETTLE UP:\n${owes.join('\n')}`:'')+(shame.length?`\n🍺 FIRST ROUND: ${shame.join(', ')} (missed the Veto Bounty)`:'');
   tog('sum-box');
 }
-function copyTxt(id){$(id).select();document.execCommand('copy')}
+async function copyTxt(id){await copyStr($(id).value)}
 
+/* ---------- RENDER ---------- */
 function render(){
-  $('u-list').innerHTML=S.squad.map(u=>`<button class="pill ${cfg.u===u.id?'on':''}" onclick="cfg.u='${u.id}';set('u','${u.id}');render()"><b>${u.emo} ${u.name}</b><div class="sub">📍 ${u.loc} • ${u.pay}</div></button>`).join('');
-  $('ban-list').innerHTML=S.ban.map(b=>`<div class="row sub" style="background:#090d16;padding:5px 8px;border-radius:6px;margin-top:4px"><span>🔒 <b>${b.name}</b></span>${b.lock?'<span>Eternal</span>':`<button class="btn" style="padding:1px 5px" onclick="S.ban=S.ban.filter(x=>x.id!=='${b.id}');push()">✕</button>`}</div>`).join('');
+  const m=me();
+  $('me-txt').innerText=m?`YOU ARE: ${m.emo} ${m.name}`:'👆 TAP YOUR PROFILE:';
+  $('u-list').innerHTML=S.squad.map(u=>`<button class="pill ${cfg.u===u.id?'on':''}" onclick="pick('${sid(u.id)}')"><b>${esc(u.emo)} ${esc(u.name)}</b><div class="sub">📍 ${esc(u.loc)} • ${esc(u.pay)}${hasPay(u)?' 💳':''}</div></button>`).join('');
+  $('ban-list').innerHTML=S.ban.map(b=>`<div class="row sub" style="background:#090d16;padding:5px 8px;border-radius:6px;margin-top:4px"><span>🔒 <b>${esc(b.name)}</b></span>${b.lock?'<span>Eternal</span>':`<button class="btn" style="padding:1px 5px" onclick="unban('${sid(b.id)}')">✕</button>`}</div>`).join('');
+
+  const mine=myBounties()[0];liveKey=liveIds();
+  $('bounty-me').style.display=mine?'block':'none';
+  if(mine){$('bx-cd').dataset.until=mine.until;$('bx-cd').innerText=clock(mine.until-Date.now());$('bx-txt').innerHTML=`You vetoed <b>${esc(mine.vname)}</b>. Pitch a replacement before the clock hits zero or it's default-planning inertia — and you owe the first round 🍺`}
+  else delete $('bx-cd').dataset.until;
+  $('bounty-list').innerHTML=(S.bounties||[]).filter(b=>b.uid!==cfg.u||!live(b)).map(b=>{
+    const n=esc((who(b.uid)||{}).name||'Someone');
+    return live(b)
+      ?`<div class="card row" style="border-color:#f59e0b;padding:8px 12px"><span class="sub">⏱️ <b>${n}</b> vetoed <b>${esc(b.vname)}</b> – must pitch a replacement</span><span class="cd" data-until="${+b.until}">${clock(b.until-Date.now())}</span></div>`
+      :`<div class="card row" style="border-color:#9f1239;background:#1f0913;padding:8px 12px"><span class="sub" style="color:#fda4af">💀 <b>${n}</b> vetoed <b>${esc(b.vname)}</b> and pitched nothing – owes the first round 🍺</span><button class="btn" style="padding:1px 5px" onclick="dropBounty('${sid(b.id)}')">✕</button></div>`;
+  }).join('');
+
   $('v-list').innerHTML=S.venues.map(v=>{
-    const vt=v.votes||{},kn=S.squad.filter(u=>vt[u.id]==='k').map(u=>u.name),vo=S.squad.filter(u=>vt[u.id]==='v').map(u=>u.name),w=S.win===v.id;
-    return `<div class="card" style="border-color:${w?'#f59e0b':'#334155'}"><div class="row"><div><b>${w?'⭐ ':''}${v.name}</b><div class="sub" style="color:#fbbf24">📍 ${v.loc}</div></div><button class="btn ${w?'amber':''}" onclick="S.win='${v.id}';push()">${w?'Locked':'Select'}</button></div><div class="sub" style="margin:6px 0">${v.desc}</div><div class="row"><span class="sub" style="color:${vo.length?'#f43f5e':'#10b981'}">${vo.length?'⚠️ Veto: '+vo.join(','):'👍 Keen: '+(kn.join(', ')||'0')}</span><div class="row"><button class="btn ${vt[cfg.u]==='k'?'green':''}" onclick="vote('${v.id}','k')">👍 Keen</button><button class="btn ${vt[cfg.u]==='v'?'red':''}" onclick="vote('${v.id}','v')">👎 Veto</button></div></div></div>`;
+    const vt=v.votes||{},kn=S.squad.filter(u=>vt[u.id]==='k').map(u=>esc(u.name)),vo=S.squad.filter(u=>vt[u.id]==='v').map(u=>esc(u.name)),w=S.win===v.id,id=sid(v.id);
+    return `<div class="card" style="border-color:${w?'#f59e0b':'#334155'}"><div class="row"><div><b>${w?'⭐ ':''}${esc(v.name)}</b><div class="sub" style="color:#fbbf24">📍 ${esc(v.loc)}</div></div><button class="btn ${w?'amber':''}" onclick="lockIn('${id}')">${w?'Locked':'Select'}</button></div><div class="sub" style="margin:6px 0">${esc(v.desc)}</div><div class="row"><span class="sub" style="color:${vo.length?'#f43f5e':'#10b981'}">${vo.length?'⚠️ Veto: '+vo.join(', '):'👍 Keen: '+(kn.join(', ')||'0')}</span><div class="row"><button class="btn ${vt[cfg.u]==='k'?'green':''}" onclick="vote('${id}','k')">👍 Keen</button><button class="btn ${vt[cfg.u]==='v'?'red':''}" onclick="vote('${id}','v')">👎 Veto</button></div></div></div>`;
   }).join('');
   $('d-list').innerHTML=S.slots.map(s=>{
     const av=s.av||{},all=S.squad.every(u=>av[u.id]);
-    return `<div style="background:#0b111e;border:1px solid ${all?'#10b981':'#334155'};padding:8px;border-radius:10px;margin-bottom:6px"><div class="row" style="margin-bottom:6px"><b>${s.lbl}</b><span class="sub" style="color:${all?'#10b981':'#94a3b8'}">${all?'🎉 100% ALIGNED!':'Tap to toggle'}</span></div><div class="grid">${S.squad.map(u=>`<button class="btn ${av[u.id]?'green':''}" onclick="S.slots.find(x=>x.id==='${s.id}').av['${u.id}']=!${!!av[u.id]};push()">${u.emo} ${u.name}: ${av[u.id]?'✅':'❌'}</button>`).join('')}</div></div>`;
+    return `<div style="background:#0b111e;border:1px solid ${all?'#10b981':'#334155'};padding:8px;border-radius:10px;margin-bottom:6px"><div class="row" style="margin-bottom:6px"><b>${esc(s.lbl)}</b><span class="sub" style="color:${all?'#10b981':'#94a3b8'}">${all?'🎉 100% ALIGNED!':'Tap to toggle'}</span></div><div class="grid">${S.squad.map(u=>`<button class="btn ${av[u.id]?'green':''}" onclick="togSlot('${sid(s.id)}','${sid(u.id)}')">${esc(u.emo)} ${esc(u.name)}: ${av[u.id]?'✅':'❌'}</button>`).join('')}</div></div>`;
   }).join('');
-  $('trv-list').innerHTML=S.squad.map(u=>`<div class="row" style="background:#0b111e;padding:8px;border-radius:8px;margin-bottom:6px"><span><b>${u.emo} ${u.name}</b> (${u.loc})</span><button class="btn" onclick="const m=['Train','Uber Split','Driver','Walk'],u=S.squad.find(x=>x.id==='${u.id}');u.mode=m[(m.indexOf(u.mode)+1)%4];push()">🚆 ${u.mode}</button></div>`).join('');
-  $('b-list').innerHTML=S.squad.map(u=>`<div style="background:#090d16;border:1px solid #f43f5e;padding:8px;border-radius:8px;font-size:11px"><b>${u.emo} ${u.name}</b> (${u.pay})<div class="sub">Sort: 04-00-04 • Latest: ${u.tx}</div></div>`).join('');
-  const tot=S.exp.reduce((a,b)=>a+b.amt,0);
-  $('e-list').innerHTML=S.exp.map(e=>`<div class="row sub" style="padding:4px 0"><span><b>${e.ttl}</b> (${e.by})</span><b style="color:#10b981">£${e.amt.toFixed(2)}</b></div>`).join('')+`<div class="row" style="border-top:1px solid #334155;padding-top:6px;margin-top:4px;font-size:12px;color:#fbbf24"><b>Total Split (${S.squad.length} ways)</b><b>£${tot.toFixed(2)} (£${(tot/S.squad.length).toFixed(2)} ea)</b></div>`;
+  $('trv-list').innerHTML=S.squad.map(u=>`<div class="row" style="background:#0b111e;padding:8px;border-radius:8px;margin-bottom:6px"><span><b>${esc(u.emo)} ${esc(u.name)}</b> (${esc(u.loc)})</span><button class="btn" onclick="cycleMode('${sid(u.id)}')">🚆 ${esc(u.mode)}</button></div>`).join('');
+
+  $('b-list').innerHTML=S.squad.map(u=>{
+    const l=payUrl(u),lines=[];
+    if(l)lines.push(`🔗 <a href="${esc(l)}" target="_blank" rel="noopener">${esc(l.replace(/^https?:\/\/(www\.)?/,''))}</a>`);
+    if(mailOk(u))lines.push(`📧 <a href="mailto:${esc(u.payMail)}">${esc(u.payMail)}</a>`);
+    if(hasBank(u))lines.push(`🏦 ${esc(u.acn||u.name)} • ${esc(u.sort)} • ${esc(u.acc)} <button class="btn" style="padding:1px 5px" onclick="copyBank('${sid(u.id)}')">Copy</button>`);
+    if(!lines.length)lines.push('No pay details yet');
+    if(u.tx)lines.push('Latest: '+esc(u.tx));
+    return `<div style="background:#090d16;border:1px solid #f43f5e;padding:8px;border-radius:8px;font-size:11px"><b>${esc(u.emo)} ${esc(u.name)}</b> (${esc(u.pay)})${lines.map(x=>`<div class="sub" style="margin-top:3px">${x}</div>`).join('')}</div>`;
+  }).join('');
+
+  const tot=S.exp.reduce((a,b)=>a+(+b.amt||0),0);
+  $('e-list').innerHTML=S.exp.map(e=>`<div class="row sub" style="padding:4px 0"><span><b>${esc(e.ttl)}</b> (${esc((who(e.byId)||{}).name||e.by)})</span><span><b style="color:#10b981">${gbp(e.amt)}</b> <button class="btn" style="padding:1px 5px" onclick="delExp('${sid(e.id)}')">✕</button></span></div>`).join('')+`<div class="row" style="border-top:1px solid #334155;padding-top:6px;margin-top:4px;font-size:12px;color:#fbbf24"><b>Total Split (${S.squad.length} ways)</b><b>${gbp(tot)} (${gbp(tot/S.squad.length)} ea)</b></div>`;
+
+  const st=settle();
+  $('st-list').innerHTML=st.length?st.map(t=>{
+    const f=who(t.from),c=who(t.to),l=payUrl(c,t.amt),btns=[];
+    if(l)btns.push(`<a class="btn green" href="${esc(l)}" target="_blank" rel="noopener">💸 Pay ${gbp(t.amt)}</a>`);
+    if(mailOk(c))btns.push(`<a class="btn" href="mailto:${esc(c.payMail)}?subject=${encodeURIComponent('Not The Greedy Banker – '+gbp(t.amt))}">📧 Email</a>`);
+    if(hasBank(c))btns.push(`<button class="btn" onclick="copyBank('${sid(c.id)}',${t.amt})">🏦 Copy bank details</button>`);
+    if(!btns.length)btns.push(`<span class="sub">${esc(c.name)} hasn't added pay details – nudge them to ✏️ Edit Me</span>`);
+    return `<div style="background:#0b111e;border:1px solid ${t.from===cfg.u?'#f59e0b':'#334155'};padding:8px;border-radius:8px;margin-bottom:6px"><div class="row"><span><b>${esc(f.emo)} ${esc(f.name)}</b>${t.from===cfg.u?' (you)':''} → <b>${esc(c.emo)} ${esc(c.name)}</b></span><b style="color:#fbbf24">${gbp(t.amt)}</b></div><div class="row" style="justify-content:flex-start;margin-top:6px">${btns.join('')}</div></div>`;
+  }).join(''):'<div class="sub">✅ All square!</div>';
 }
 
+// Bounty countdowns tick every second without a full re-render (which would wipe what you're typing)
+setInterval(()=>{
+  if(liveIds()!==liveKey)render();
+  document.querySelectorAll('.cd[data-until]').forEach(e=>e.innerText=clock(+e.dataset.until-Date.now()));
+},1000);
+
 $('c-db').value=cfg.db;$('c-room').value=cfg.rm;$('c-model').value=cfg.md;$('c-key').value=cfg.key;
-render();if(cfg.db)pull();setInterval(()=>{if(cfg.db)pull()},4000);
+render();if(cfg.db)pull();
+setInterval(()=>{if(cfg.db&&!document.hidden)pull()},4000);
+document.addEventListener('visibilitychange',()=>{if(!document.hidden&&cfg.db)pull()});
 </script>
 </body>
 </html>
