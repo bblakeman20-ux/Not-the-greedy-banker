@@ -766,17 +766,32 @@ const CATS=[
   {k:'brew',t:'drink',e:'🍺',l:'Taproom / brewery',w:/tap|brew|craft|beer|ale/,q:['"craft"="brewery"','"microbrewery"="yes"'],m:t=>t.craft==='brewery'||t.microbrewery==='yes'},
   {k:'bar',t:'drink',e:'🍸',l:'Bar',w:/cocktail|bar|gin|rum|wine/,q:['"amenity"="bar"'],m:t=>t.amenity==='bar'}
 ];
-const OVERPASS=['https://overpass-api.de/api/interpreter','https://overpass.kumi.systems/api/interpreter'];
+// Public Overpass servers are free but often busy: start the next one if the first is slow, keep whichever answers first
+const OVERPASS=['https://overpass-api.de/api/interpreter','https://overpass.private.coffee/api/interpreter','https://overpass.kumi.systems/api/interpreter'];
 const freePool={},seenFree={};
 const freeMsg=t=>$('free-msg').innerText=t;
-async function overpass(q){
-  let last;
-  for(const u of OVERPASS){
-    const ac=new AbortController(),tm=setTimeout(()=>ac.abort(),30000);
-    try{const r=await fetch(u,{method:'POST',signal:ac.signal,headers:{'Content-Type':'application/x-www-form-urlencoded'},body:'data='+encodeURIComponent(q)});if(r.ok)return(await r.json()).elements||[];last='map server busy ('+r.status+')'}
-    catch(e){last=e.name==='AbortError'?'map server timed out':e.message}finally{clearTimeout(tm)}
-  }
-  throw new Error(last);
+function overpass(q){
+  return new Promise((resolve,reject)=>{
+    let next=0,done=0,failed=0;const errs=[],ctrls=[];
+    // Start the next server after 6s of silence, or straight away when one fails
+    const launch=()=>{
+      if(done||next>=OVERPASS.length)return;const u=OVERPASS[next++],ac=new AbortController(),tm=setTimeout(()=>ac.abort(),25000),slow=setTimeout(launch,6000);ctrls.push(ac);
+      (async()=>{
+        try{
+          const r=await fetch(u,{method:'POST',signal:ac.signal,headers:{'Content-Type':'application/x-www-form-urlencoded'},body:'data='+encodeURIComponent(q)});
+          if(!r.ok)throw new Error('busy ('+r.status+')');
+          const j=await r.json();
+          // An overloaded server can answer 200 with no data and a "timed out" remark
+          if(!j.elements||(!j.elements.length&&/error|timed out|memory/i.test(j.remark||'')))throw new Error('overloaded');
+          if(!done){done=1;ctrls.forEach(c=>c!==ac&&c.abort());resolve(j.elements)}
+        }catch(e){
+          if(done)return;errs.push(e.name==='AbortError'?'timed out':e.message);clearTimeout(slow);
+          if(++failed===OVERPASS.length)reject(new Error('the free map servers are busy ('+[...new Set(errs)].join(', ')+')'));else launch();
+        }finally{clearTimeout(tm)}
+      })();
+    };
+    launch();
+  });
 }
 // "Rochester, Chatham or Maidstone" -> up to 3 map centres
 async function centresFor(where){
@@ -785,15 +800,26 @@ async function centresFor(where){
   if(!out.length){const g=await geocode(where);if(g)out.push({...g,name:where})}
   return out;
 }
+// Group simple key=value filters into one regex per key ("leisure"~"^(bowling_alley|escape_game)$") so the query stays light
+function osmFilters(cats){
+  const byKey={},out=[];
+  cats.flatMap(c=>c.q).forEach(f=>{const m=f.match(/^"([^"]+)"="([^"]+)"$/);if(m)(byKey[m[1]]=byKey[m[1]]||[]).push(m[2]);else out.push(f)});
+  return[...Object.entries(byKey).map(([k,v])=>`"${k}"~"^(${[...new Set(v)].join('|')})$"`),...out];
+}
+// A box round the centres (index-friendly, far cheaper for the server than dozens of radius searches)
+function bbox(cs,km){
+  const b=[90,180,-90,-180];
+  cs.forEach(p=>{const dl=km/111,dn=km/(111*Math.cos(p.lat*Math.PI/180));b[0]=Math.min(b[0],p.lat-dl);b[1]=Math.min(b[1],p.lon-dn);b[2]=Math.max(b[2],p.lat+dl);b[3]=Math.max(b[3],p.lon+dn)});
+  return b.map(x=>x.toFixed(4)).join(',');
+}
 async function fetchPlaces(where,vibe){
   const cs=await centresFor(where);if(!cs.length)throw new Error(`Couldn't find "${where}" on the map`);
   const hit=c=>c.w.test(vibe.toLowerCase()),pickC=t=>{const all=CATS.filter(c=>c.t===t),m=all.filter(hit);return m.length?m:all};
-  let acts=CATS.filter(c=>c.t==='act'&&hit(c));if(acts.length<3)acts=CATS.filter(c=>c.t==='act');
-  const eats=[...pickC('food'),...CATS.filter(c=>c.t==='drink')];
-  const q=(cats,r)=>cats.flatMap(c=>c.q).flatMap(f=>cs.map(p=>`nwr[${f}]["name"](around:${r},${p.lat},${p.lon});`)).join('');
+  const acts=CATS.filter(c=>c.t==='act'),eats=[...pickC('food'),...CATS.filter(c=>c.t==='drink')];
+  const st=cats=>osmFilters(cats).map(f=>`nwr[${f}]["name"];`).join('');
   let places=[];
-  for(const r of cs.length>1?[4000,9000]:[6000,14000]){
-    const els=await overpass(`[out:json][timeout:25];(${q(acts,r)})->.a;.a out center tags 250;(${q(eats,Math.min(r,6000))})->.f;.f out center tags 250;`);
+  for(const km of [5,12]){
+    const els=await overpass(`[out:json][timeout:20][bbox:${bbox(cs,km)}];(${st(acts)})->.a;.a out center tags 300;(${st(eats)})->.f;.f out center tags 300;`);
     const seen=new Set();places=[];
     els.forEach(e=>{const t=e.tags||{},c=CATS.find(c=>c.m(t)),lat=e.lat??e.center?.lat,lon=e.lon??e.center?.lon;
       // Chains (OSM "brand") are exactly the default we're avoiding, at least for food and drink
@@ -802,6 +828,16 @@ async function fetchPlaces(where,vibe){
     if(places.filter(p=>p.c.t==='act').length>=4)break;
   }
   return{places,cs};
+}
+// Keep a day's results on this phone so re-rolls and reloads don't hit the busy servers again
+function cachedPool(key,vibe){
+  try{const x=JSON.parse(get('osm:'+key,'null'));if(!x||Date.now()-x.at>864e5)return null;
+    const hit=c=>c.w.test(vibe.toLowerCase());
+    return{cs:x.cs,places:x.places.map(p=>{const c=CATS.find(c=>c.k===p.k);return c&&{...p,c,hit:hit(c)}}).filter(Boolean)};
+  }catch(e){return null}
+}
+function savePool(key,pool){
+  try{set('osm:'+key,JSON.stringify({at:Date.now(),cs:pool.cs,places:pool.places.map(({c,hit,...p})=>({...p,k:c.k,t:{website:p.t.website,'contact:website':p.t['contact:website'],'addr:street':p.t['addr:street'],'addr:town':p.t['addr:town'],'addr:city':p.t['addr:city'],'addr:suburb':p.t['addr:suburb']}}))}))}catch(e){}
 }
 const shuffle=a=>{a=[...a];for(let i=a.length-1;i>0;i--){const j=Math.floor(Math.random()*(i+1));[a[i],a[j]]=[a[j],a[i]]}return a};
 const THEMES=['The {a} Gauntlet','Operation Not-The-Pub','The {a} Grand Tour','Triple Threat','The Anti-Default Triathlon','Mission: {a}','The Long Way Round','Default Destroyer','The {a} Crawl (No Banker)','Side Quest Saturday'];
@@ -833,14 +869,19 @@ async function rollFree(){
   if(!where)return freeMsg('📍 Add a "where" first (town or area)');
   const key=(where+'|'+vibe).toLowerCase(),pend=myBounties().map(b=>b.id);
   try{
-    freeMsg(`🗺️ Searching the map around ${where}...`);
-    if(!freePool[key])freePool[key]=await fetchPlaces(where,vibe);
+    if(!freePool[key])freePool[key]=cachedPool(key,vibe);
+    if(!freePool[key]){
+      const t0=Date.now(),tick=setInterval(()=>freeMsg(`🗺️ Searching the map around ${where}... ${Math.round((Date.now()-t0)/1000)}s`),1000);
+      freeMsg(`🗺️ Searching the map around ${where}...`);
+      try{freePool[key]=await fetchPlaces(where,vibe)}finally{clearInterval(tick)}
+      savePool(key,freePool[key]);
+    }
     const area=where.split(/\s*(?:,|\bor\b|&)\s*/i)[0].replace(/\b\w/g,c=>c.toUpperCase()),ideas=makeIdeas(freePool[key],area);
     if(!ideas.length)return freeMsg(`🤷 That's everything nearby for "${vibe||'any vibe'}" – try another vibe or a wider area`);
     ideas.reverse().forEach((x,i)=>E.venues.unshift({id:'v'+Date.now()+i,src:'osm',votes:{},...x}));
     const won=ideas.length?redeem(pend,ideas[ideas.length-1].name):0;
     freeMsg(`✅ Rolled ${ideas.length} real places near ${where}${won?' • 🎯 Veto Bounty redeemed!':''} • 🎲 roll again for more • Map data © OpenStreetMap contributors`);push();
-  }catch(e){freeMsg('❌ '+e.message+' – try again in a moment')}
+  }catch(e){freeMsg('❌ Couldn\'t reach the map: '+e.message+'. Try again in a minute, or use Gerg AI below.')}
 }
 
 /* ---------- DATES & CALENDAR ---------- */
