@@ -6,35 +6,62 @@
 <link rel="manifest" href="manifest.webmanifest">
 <link rel="icon" href="icon.svg">
 <link rel="apple-touch-icon" href="icon-192.png">
-<meta name="theme-color" content="#090d16">
+<meta name="theme-color" content="#0c0d10">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-title" content="Greedy Banker">
+<link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,700;12..96,800&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
 <style>
-  *{box-sizing:border-box;font-family:system-ui,sans-serif}
-  body{background:#090d16;color:#f8fafc;margin:0;padding:10px;max-width:640px;margin-inline:auto}
-  .card{background:#111827;border:1px solid #334155;border-radius:14px;padding:12px;margin-bottom:10px}
-  .row{display:flex;align-items:center;justify-content:space-between;gap:6px;flex-wrap:wrap}
-  .grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(135px,1fr));gap:6px}
-  .btn{cursor:pointer;border:1px solid #475569;background:#1e293b;color:#fff;font-weight:700;font-size:12px;padding:7px 10px;border-radius:9px}
+  /* Neutrals carry the page; gold is the one accent (main action, your pick, live timers);
+     green only ever means good (aligned, paid, locked in) and red only bad (veto, ban, delete) */
+  :root{
+    --bg:#0c0d10;--card:#15171c;--card-2:#1d2027;--line:#272b33;--line-2:#363b45;
+    --text:#f3f4f6;--text-2:#c8ccd4;--muted:#8a8f99;
+    --accent:#ffb627;--accent-ink:#1b1303;--accent-soft:rgba(255,182,39,.12);
+    --good:#3ddc97;--good-soft:rgba(61,220,151,.12);--bad:#ff6b6b;--bad-soft:rgba(255,107,107,.12);
+    --r:18px;--display:'Bricolage Grotesque',Inter,system-ui,sans-serif;
+  }
+  *{box-sizing:border-box;font-family:Inter,system-ui,-apple-system,sans-serif;-webkit-tap-highlight-color:transparent}
+  body{background:var(--bg);color:var(--text);margin:0 auto;padding:14px 12px 48px;max-width:640px;font-size:14px;line-height:1.45}
+  h2{font-family:var(--display);font-weight:800;letter-spacing:-.02em}
+  .card{background:var(--card);border:1px solid var(--line);border-radius:var(--r);padding:14px;margin-bottom:12px}
+  .card>div[style*="font-weight:700"]:first-child,.card>strong:first-child{font-family:var(--display);font-size:16px!important;letter-spacing:-.01em}
+  .row{display:flex;align-items:center;justify-content:space-between;gap:8px;flex-wrap:wrap}
+  .grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(140px,1fr));gap:8px}
+  .btn{cursor:pointer;border:1px solid var(--line);background:var(--card-2);color:var(--text);font-weight:600;font-size:13px;padding:9px 13px;border-radius:12px;transition:background .15s,border-color .15s,transform .06s}
+  .btn:hover{border-color:var(--line-2)}
+  .btn:active{transform:scale(.97)}
   a.btn{display:inline-block;text-decoration:none}
-  .amber{background:#f59e0b;color:#000;border-color:#f59e0b}
-  .green{background:#10b981;color:#000;border-color:#10b981}
-  .red{background:#f43f5e;color:#fff;border-color:#f43f5e}
-  .indigo{background:#6366f1;color:#fff;border-color:#6366f1}
-  .mini{padding:2px 7px;font-size:11px}
-  input,textarea{width:100%;background:#050811;border:1px solid #475569;color:#fff;padding:7px;border-radius:8px;font-size:12px;margin-top:4px}
+  .amber{background:var(--accent);color:var(--accent-ink);border-color:var(--accent)}
+  .amber:hover{border-color:var(--accent);filter:brightness(1.05)}
+  .green{background:var(--good-soft);color:var(--good);border-color:transparent}
+  .red{background:var(--bad-soft);color:var(--bad);border-color:transparent}
+  .indigo{background:var(--card-2);color:var(--text)}
+  .mini{padding:3px 8px;font-size:12px;border-radius:8px}
+  input,textarea,select{width:100%;background:var(--card-2);border:1px solid transparent;color:var(--text);padding:10px 12px;border-radius:12px;font-size:14px;margin-top:6px;outline:none;transition:border-color .15s}
+  input:focus,textarea:focus,select:focus{border-color:var(--accent)}
+  input::placeholder,textarea::placeholder{color:var(--muted)}
   input[type=datetime-local]{color-scheme:dark}
-  .box{display:none;background:#050811;border:1px solid #f59e0b;border-radius:10px;padding:10px;margin-top:10px}
+  input[type=checkbox]{accent-color:var(--accent)}
+  select{appearance:none;font-family:var(--display);font-weight:700;font-size:17px;padding-right:34px;margin-top:0;
+    background:var(--card-2) url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='8'%3E%3Cpath d='M1 1l5 5 5-5' fill='none' stroke='%238a8f99' stroke-width='2'/%3E%3C/svg%3E") no-repeat right 12px center}
+  .box{display:none;background:var(--card-2);border:1px solid var(--line);border-radius:14px;padding:12px;margin-top:12px}
+  .box input,.box textarea{background:var(--card)}
   .open{display:block!important}
-  .pill{cursor:pointer;padding:8px;border-radius:10px;border:2px solid #334155;background:#0b111e;color:#fff;text-align:left}
-  .pill.on{border-color:#f59e0b;background:#291d06}
-  .sub{color:#94a3b8;font-size:11px}
-  .sub a{color:#a5b4fc}
-  .cd{font-variant-numeric:tabular-nums;color:#fbbf24;font-weight:700}
-  select{width:100%;background:#050811;border:1px solid #f59e0b;color:#fff;padding:8px;border-radius:9px;font-size:14px;font-weight:700}
-  .spin{outline:3px solid #f59e0b;transform:scale(1.02);transition:transform .08s}
+  .pill{cursor:pointer;padding:10px 12px;border-radius:14px;border:1px solid var(--line);background:var(--card-2);color:var(--text);text-align:left;transition:border-color .15s}
+  .pill.on{border-color:var(--accent);background:var(--accent-soft)}
+  .sub{color:var(--muted);font-size:12px}
+  .sub a{color:var(--text-2)}
+  .cd{font-variant-numeric:tabular-nums;color:var(--accent);font-weight:700}
+  #sync-txt{display:inline-block;background:var(--card-2);border-radius:999px;padding:3px 9px;color:var(--muted)!important}
+  .tabs{display:grid;grid-template-columns:repeat(4,1fr);gap:4px;background:var(--card);border:1px solid var(--line);padding:4px;border-radius:15px;margin-bottom:12px;position:sticky;top:8px;z-index:5}
+  .tab{border:0;background:transparent;color:var(--muted);font-weight:600;font-size:13px;padding:9px 2px;border-radius:11px;cursor:pointer;transition:color .15s,background .15s}
+  .tab.on{background:var(--card-2);color:var(--text);box-shadow:inset 0 0 0 1px var(--line-2)}
+  .spin{outline:2px solid var(--accent);transform:scale(1.02);transition:transform .08s}
   .locked .plan-only{display:none!important}
-  .chip{cursor:pointer;border:1px solid #475569;background:#0b111e;color:#e2e8f0;font-size:11px;padding:4px 8px;border-radius:999px}
+  .chip{cursor:pointer;border:1px solid var(--line);background:var(--card);color:var(--text-2);font-size:12px;padding:5px 10px;border-radius:999px}
+  .chip:hover{border-color:var(--line-2)}
+  ol.sub li{margin:2px 0}
 </style>
 </head>
 <body>
@@ -42,20 +69,20 @@
 <div class="card">
   <div class="row">
     <div>
-      <span id="sync-txt" style="font-size:11px;color:#fbbf24;font-weight:700">⚪ Local Mode (demo data)</span>
+      <span id="sync-txt" style="font-size:11px;color:var(--accent);font-weight:700">⚪ Local Mode (demo data)</span>
       <h2 style="margin:2px 0;font-size:18px">🍻 Not The Greedy Banker</h2>
       <div class="sub">Anti-Default Outing Engine • Deffo Not Outlook</div>
     </div>
     <div class="row">
       <button id="inst" class="btn indigo" style="display:none" onclick="install()">📲 Install</button>
-      <button class="btn amber" onclick="tog('setup-box')">⚙️ Setup</button>
+      <button class="btn" onclick="tog('setup-box')">⚙️ Setup</button>
       <button class="btn green" onclick="openSum()">📋 Summary</button>
     </div>
   </div>
 
   <!-- SETUP -->
   <div id="setup-box" class="box">
-    <div style="font-size:12px;font-weight:700;color:#fbbf24">⚙️ Firebase Live Sync & Gerg AI (powered by Gemini)</div>
+    <div style="font-size:12px;font-weight:700;color:var(--accent)">⚙️ Firebase Live Sync & Gerg AI (powered by Gemini)</div>
     <input id="c-db" placeholder="Firebase URL (https://...-rtdb.europe-west1.firebasedatabase.app)">
     <div class="grid">
       <div class="row" style="flex-wrap:nowrap"><input id="c-room" value="medway-squad" placeholder="Room Code"><button class="btn" style="margin-top:4px" title="Make a secret room code" onclick="newRoomCode()">🎲</button></div>
@@ -67,7 +94,7 @@
       <button class="btn indigo" onclick="shareLink()">💬 Share Group Link</button>
       <button class="btn" onclick="tog('setup-box')">Close</button>
     </div>
-    <div id="cfg-msg" class="sub" style="color:#10b981;margin-top:4px"></div>
+    <div id="cfg-msg" class="sub" style="color:var(--good);margin-top:4px"></div>
     <div class="sub" style="margin-top:4px">📲 iPhone: Share ⬆️ → Add to Home Screen to install.</div>
   </div>
 
@@ -80,11 +107,11 @@
       <button id="sum-cal" class="btn amber" style="display:none">📅 Add to Calendar</button>
       <button class="btn" onclick="tog('sum-box')">Close</button>
     </div>
-    <div id="sum-msg" class="sub" style="color:#10b981;margin-top:4px"></div>
+    <div id="sum-msg" class="sub" style="color:var(--good);margin-top:4px"></div>
   </div>
 
   <!-- PROFILES -->
-  <div style="margin-top:10px;padding-top:8px;border-top:1px solid #334155">
+  <div style="margin-top:10px;padding-top:8px;border-top:1px solid var(--line)">
     <div class="row" style="margin-bottom:6px">
       <span id="me-txt" class="sub">TAP YOUR PROFILE:</span>
       <div class="row">
@@ -95,14 +122,14 @@
     <div id="u-list" class="grid"></div>
 
     <div id="prof-box" class="box">
-      <div id="prof-title" style="font-size:12px;font-weight:700;color:#fbbf24">👤 Profile</div>
+      <div id="prof-title" style="font-size:12px;font-weight:700;color:var(--accent)">👤 Profile</div>
       <div class="grid">
         <input id="p-name" placeholder="Your Name">
         <input id="p-emo" value="🍺" placeholder="Emoji (🍺 🕵️‍♂️ 🧬)">
         <input id="p-loc" placeholder="Station (e.g. Chatham)">
         <input id="p-pay" placeholder="Pay way (Monzo / Revolut)">
       </div>
-      <div class="sub" style="margin-top:8px;color:#fbbf24">💳 How to pay you (all optional)</div>
+      <div class="sub" style="margin-top:8px;color:var(--accent)">💳 How to pay you (all optional)</div>
       <input id="p-link" placeholder="Pay link (monzo.me/you, paypal.me/you, revolut.me/you)">
       <div class="grid">
         <input id="p-mail" type="email" placeholder="Payment email (PayPal)">
@@ -111,8 +138,8 @@
         <input id="p-acc" inputmode="numeric" placeholder="Account no. (8 digits)">
       </div>
       <input id="p-tx" placeholder="😈 Roast line for your pay card (optional, e.g. Still owes for 2019 Uber)">
-      <div class="sub" style="color:#fda4af;margin-top:4px">⚠️ Anyone with the group link can see these. A pay link is safer than account numbers.</div>
-      <div id="prof-msg" class="sub" style="color:#f43f5e;margin-top:4px"></div>
+      <div class="sub" style="color:var(--bad);margin-top:4px">⚠️ Anyone with the group link can see these. A pay link is safer than account numbers.</div>
+      <div id="prof-msg" class="sub" style="color:var(--bad);margin-top:4px"></div>
       <div class="row" style="margin-top:8px">
         <button class="btn green" onclick="saveProf()">✅ Save</button>
         <button id="p-del" class="btn red" onclick="delProf()">🗑️ Delete</button>
@@ -123,14 +150,14 @@
 </div>
 
 <!-- EVENTS: a room holds many events; each has its own ideas, dates, kitty and bounties -->
-<div class="card" style="border-color:#f59e0b">
+<div class="card" style="border-color:var(--accent)">
   <div class="row" style="flex-wrap:nowrap">
     <select id="ev-sel" onchange="pickEvent(this.value)"></select>
     <button class="btn amber" style="white-space:nowrap" onclick="openNewEv()">➕ New event</button>
   </div>
   <div id="ev-info" style="margin-top:6px"></div>
   <div id="ev-new" class="box">
-    <div style="font-size:12px;font-weight:700;color:#fbbf24">➕ New event</div>
+    <div style="font-size:12px;font-weight:700;color:var(--accent)">➕ New event</div>
     <input id="n-name" placeholder="What's the occasion? (e.g. Ben's birthday, Payday bash)">
     <div class="grid">
       <input id="n-where" placeholder="Where (e.g. Rochester, Chatham)">
@@ -143,7 +170,7 @@
       <button class="btn green" onclick="startEvent()">🚀 Create event</button>
       <button class="btn" onclick="tog('ev-new')">Cancel</button>
     </div>
-    <div id="n-msg" class="sub" style="color:#f43f5e;margin-top:4px"></div>
+    <div id="n-msg" class="sub" style="color:var(--bad);margin-top:4px"></div>
   </div>
 </div>
 
@@ -155,17 +182,17 @@
 
 <div id="ev-body">
 <!-- TABS -->
-<div class="grid" style="grid-template-columns:repeat(4,1fr);margin-bottom:10px">
-  <button id="tb-act" class="btn amber" onclick="tab('act')">🎯 Activities</button>
-  <button id="tb-dat" class="btn" onclick="tab('dat')">📅 Dates</button>
-  <button id="tb-trv" class="btn" onclick="tab('trv')">🚆 Travel</button>
-  <button id="tb-kit" class="btn" onclick="tab('kit')">💷 Kitty</button>
+<div class="tabs">
+  <button id="tb-act" class="tab on" onclick="tab('act')">🎯 Activities</button>
+  <button id="tb-dat" class="tab" onclick="tab('dat')">📅 Dates</button>
+  <button id="tb-trv" class="tab" onclick="tab('trv')">🚆 Travel</button>
+  <button id="tb-kit" class="tab" onclick="tab('kit')">💷 Kitty</button>
 </div>
 
 <!-- TAB 1: ACTIVITIES -->
 <div id="t-act">
-  <div class="card" style="border-color:#9f1239;background:#1f0913">
-    <div style="font-size:13px;font-weight:700;color:#fda4af">🚫 The Ban List (No Default Planning)</div>
+  <div class="card" style="border-color:var(--line);background:var(--card)">
+    <div style="font-size:13px;font-weight:700;color:var(--bad)">🚫 The Ban List (No Default Planning)</div>
     <div id="ban-list" style="margin:6px 0"></div>
     <div class="row">
       <input id="ban-in" placeholder="Ban another pub..." style="flex:1;margin:0">
@@ -176,12 +203,12 @@
   <div id="lock-card"></div>
 
   <!-- VETO BOUNTY (yours) -->
-  <div id="bounty-me" class="card plan-only" style="display:none;border-color:#f59e0b;background:#291d06">
+  <div id="bounty-me" class="card plan-only" style="display:none;border-color:var(--accent);background:var(--accent-soft)">
     <div class="row">
-      <div style="font-size:13px;font-weight:700;color:#fbbf24">🎯 Veto Bounty</div>
+      <div style="font-size:13px;font-weight:700;color:var(--accent)">🎯 Veto Bounty</div>
       <span id="bx-cd" class="cd" style="font-size:18px"></span>
     </div>
-    <div id="bx-txt" class="sub" style="margin:6px 0;color:#fde68a"></div>
+    <div id="bx-txt" class="sub" style="margin:6px 0;color:var(--text-2)"></div>
     <div class="grid" style="margin:6px 0">
       <input id="bx-name" placeholder="Your replacement venue / activity">
       <input id="bx-loc" placeholder="Town / Station">
@@ -194,8 +221,8 @@
   <div id="bounty-list" class="plan-only"></div>
   <div id="bounty-board" class="sub" style="margin:-4px 2px 10px"></div>
 
-  <div class="card plan-only" style="border-color:#4338ca;background:#131633">
-    <strong style="font-size:13px;color:#c7d2fe">💡 Find ideas</strong>
+  <div class="card plan-only" style="border-color:var(--line);background:var(--card)">
+    <strong style="font-size:13px;color:var(--text-2)">💡 Find ideas</strong>
     <div class="sub">Where & vibe come from the event – tweak them here</div>
     <div class="grid" style="margin:6px 0">
       <input id="ai-loc" placeholder="Where (town, area or midpoint)">
@@ -204,21 +231,21 @@
       <input id="ai-bud" inputmode="numeric" placeholder="Budget £ per head (optional)">
     </div>
     <button class="btn amber" style="width:100%" onclick="rollFree()">🎲 Roll free ideas (real places from the map)</button>
-    <div id="free-msg" class="sub" style="margin-top:4px;color:#fde68a"></div>
-    <div style="border-top:1px solid #4338ca;margin:10px 0 8px"></div>
-    <strong id="m-lbl" style="font-size:13px;color:#c7d2fe">🤖 Gerg AI</strong>
+    <div id="free-msg" class="sub" style="margin-top:4px;color:var(--text-2)"></div>
+    <div style="border-top:1px solid var(--line);margin:10px 0 8px"></div>
+    <strong id="m-lbl" style="font-size:13px;color:var(--text-2)">🤖 Gerg AI</strong>
     <div class="sub">Smarter ideas, live events and combos (needs a Gemini key in ⚙️ Setup)</div>
     <div id="ai-modes" class="grid" style="grid-template-columns:repeat(2,1fr);margin:8px 0"></div>
-    <div id="ai-mode-sub" class="sub" style="margin-bottom:6px;color:#a5b4fc"></div>
+    <div id="ai-mode-sub" class="sub" style="margin-bottom:6px;color:var(--text-2)"></div>
     <button id="ai-go" class="btn indigo" style="width:100%" onclick="askAI()">✨ Ask Gerg AI</button>
-    <div id="ai-msg" class="sub" style="margin-top:4px;color:#a5b4fc"></div>
+    <div id="ai-msg" class="sub" style="margin-top:4px;color:var(--text-2)"></div>
   </div>
 
   <div class="row plan-only" style="margin:0 2px 8px">
     <span id="v-count" class="sub"></span>
     <button class="btn amber" onclick="spin()">🎲 Roulette – let fate pick</button>
   </div>
-  <div id="spin-msg" class="plan-only" style="font-size:13px;font-weight:700;color:#fbbf24;margin:0 2px 8px"></div>
+  <div id="spin-msg" class="plan-only" style="font-size:13px;font-weight:700;color:var(--accent);margin:0 2px 8px"></div>
   <div id="v-list"></div>
 
   <div class="card plan-only">
@@ -253,7 +280,7 @@
       <button class="btn amber" onclick="findMid()">📍 Find Midpoint</button>
     </div>
     <div id="mid-box"></div>
-    <div id="mid-msg" class="sub" style="margin-bottom:6px;color:#a5b4fc"></div>
+    <div id="mid-msg" class="sub" style="margin-bottom:6px;color:var(--text-2)"></div>
     <div id="trv-list"></div>
   </div>
 </div>
@@ -263,13 +290,13 @@
   <div class="card">
     <div class="row">
       <div>
-        <div style="font-size:13px;font-weight:700;color:#fbbf24">🏦 Sherlock's Open Bank Mode</div>
+        <div style="font-size:16px;font-weight:700;font-family:var(--display)">🏦 Sherlock's Open Bank Mode</div>
         <div class="sub">"Link in bank details & expenses"</div>
       </div>
       <button class="btn red" onclick="tog('bank-box')">🔓 Show Pay Details</button>
     </div>
-    <div id="bank-box" class="box" style="border-color:#f43f5e">
-      <div class="sub" style="color:#fda4af;margin-bottom:6px">⚠️ ROAST ALERT: real pay details — anyone with the group link can see these!</div>
+    <div id="bank-box" class="box" style="border-color:var(--line)">
+      <div class="sub" style="color:var(--bad);margin-bottom:6px">⚠️ ROAST ALERT: real pay details — anyone with the group link can see these!</div>
       <div id="b-list" class="grid"></div>
     </div>
   </div>
@@ -288,7 +315,7 @@
     <div style="font-size:13px;font-weight:700;margin-bottom:6px">🤝 Settle Up</div>
     <div id="st-list"></div>
     <div id="paid-list"></div>
-    <div id="kit-msg" class="sub" style="color:#10b981;margin-top:4px"></div>
+    <div id="kit-msg" class="sub" style="color:var(--good);margin-top:4px"></div>
   </div>
 </div>
 </div>
@@ -350,7 +377,7 @@ function planOpen(){if(!E)return 0;if(E.locked){alert('🔒 This event is locked
 const allIn=av=>S.squad.length>0&&S.squad.every(u=>av&&av[u.id]);
 const mapsUrl=q=>'https://www.google.com/maps/search/?api=1&query='+encodeURIComponent(q);
 function needMe(){if(me())return 1;alert('👆 Tap your profile first (or + New Profile)');return 0}
-function tab(t){['act','dat','trv','kit'].forEach(x=>{$('t-'+x).style.display=x===t?'block':'none';$('tb-'+x).className='btn'+(x===t?' amber':'')})}
+function tab(t){['act','dat','trv','kit'].forEach(x=>{$('t-'+x).style.display=x===t?'block':'none';$('tb-'+x).className='tab'+(x===t?' on':'')})}
 async function copyStr(s){
   try{await navigator.clipboard.writeText(s);return 1}
   catch(e){const t=document.createElement('textarea');t.value=s;document.body.appendChild(t);t.select();const ok=document.execCommand('copy');t.remove();return ok}
@@ -1047,9 +1074,9 @@ function renderEvents(){
   $('ev-sel').disabled=!S.events.length;
   if(!E){$('ev-info').innerHTML='';return}
   const w=winVenue(),when=evWhen(E),bits=[E.where&&'📍 '+esc(E.where),E.vibe&&'✨ '+esc(E.vibe),when&&'🗓️ '+esc(when)].filter(Boolean).join(' • ');
-  $('ev-info').innerHTML=(bits?`<div class="sub" style="color:#fde68a">${bits}</div>`:'')+
-    (E.locked?`<div style="background:#052e1f;border:1px solid #10b981;border-radius:9px;padding:8px;margin-top:6px"><b style="color:#10b981">🔒 Locked in:</b> ${esc(w?w.name:'TBC')}${when?' – '+esc(when):''}<div class="sub">Voting's closed. The kitty stays open for settling up.</div></div>`:'')+
-    `<div class="row" style="justify-content:flex-start;margin-top:6px">${E.locked?'<button class="btn" onclick="unlockEvent()">🔓 Unlock</button>':'<button class="btn green" onclick="lockEvent()">🔒 Lock it in</button>'}<button class="btn indigo" onclick="shareEvent()">💬 Share event</button><button class="btn red" onclick="delEvent()">🗑️ Delete event</button></div><div id="ev-msg" class="sub" style="color:#10b981"></div>`;
+  $('ev-info').innerHTML=(bits?`<div class="sub" style="color:var(--text-2)">${bits}</div>`:'')+
+    (E.locked?`<div style="background:var(--good-soft);border:1px solid var(--good);border-radius:9px;padding:8px;margin-top:6px"><b style="color:var(--good)">🔒 Locked in:</b> ${esc(w?w.name:'TBC')}${when?' – '+esc(when):''}<div class="sub">Voting's closed. The kitty stays open for settling up.</div></div>`:'')+
+    `<div class="row" style="justify-content:flex-start;margin-top:6px">${E.locked?'<button class="btn" onclick="unlockEvent()">🔓 Unlock</button>':'<button class="btn green" onclick="lockEvent()">🔒 Lock it in</button>'}<button class="btn indigo" onclick="shareEvent()">💬 Share event</button><button class="btn red" onclick="delEvent()">🗑️ Delete event</button></div><div id="ev-msg" class="sub" style="color:var(--good)"></div>`;
 }
 function render(){
   curEv();document.body.classList.toggle('locked',!!(E&&E.locked));
@@ -1062,7 +1089,7 @@ function render(){
   const m=me(),left=m&&E?Math.max(0,MAX_VETOES-vetoesUsed(m.id)):0;
   $('me-txt').innerText=m?`YOU ARE: ${m.emo} ${m.name}${E&&!E.locked?` • 👎 ${left} veto${left===1?'':'es'} left`:''}`:'👆 TAP YOUR PROFILE:';
   $('u-list').innerHTML=S.squad.map(u=>`<button class="pill ${cfg.u===u.id?'on':''}" onclick="pick('${sid(u.id)}')"><b>${esc(u.emo)} ${esc(u.name)}</b><div class="sub">📍 ${esc(u.loc)} • ${esc(u.pay)}${hasPay(u)?' 💳':''}</div></button>`).join('');
-  $('ban-list').innerHTML=S.ban.map(b=>`<div class="row sub" style="background:#090d16;padding:5px 8px;border-radius:6px;margin-top:4px"><span>🔒 <b>${esc(b.name)}</b></span>${b.lock?'<span>Eternal</span>':`<button class="btn mini" onclick="unban('${sid(b.id)}')">✕</button>`}</div>`).join('');
+  $('ban-list').innerHTML=S.ban.map(b=>`<div class="row sub" style="background:var(--card-2);padding:5px 8px;border-radius:6px;margin-top:4px"><span>🔒 <b>${esc(b.name)}</b></span>${b.lock?'<span>Eternal</span>':`<button class="btn mini" onclick="unban('${sid(b.id)}')">✕</button>`}</div>`).join('');
 
   if(!E)return;
   const mine=myBounties()[0];liveKey=liveIds();
@@ -1072,8 +1099,8 @@ function render(){
   $('bounty-list').innerHTML=(E.bounties||[]).filter(b=>(live(b)&&b.uid!==cfg.u)||(missed(b)&&!b.hide)).map(b=>{
     const n=esc((who(b.uid)||{}).name||'Someone');
     return live(b)
-      ?`<div class="card row" style="border-color:#f59e0b;padding:8px 12px"><span class="sub">⏱️ <b>${n}</b> vetoed <b>${esc(b.vname)}</b> – must pitch a replacement</span><span class="cd" data-until="${+b.until}">${clock(b.until-now())}</span></div>`
-      :`<div class="card row" style="border-color:#9f1239;background:#1f0913;padding:8px 12px"><span class="sub" style="color:#fda4af">💀 <b>${n}</b> vetoed <b>${esc(b.vname)}</b> and pitched nothing – owes the first round 🍺</span><button class="btn mini" onclick="hideBounty('${sid(b.id)}')">🍺 Bought it</button></div>`;
+      ?`<div class="card row" style="border-color:var(--accent);padding:8px 12px"><span class="sub">⏱️ <b>${n}</b> vetoed <b>${esc(b.vname)}</b> – must pitch a replacement</span><span class="cd" data-until="${+b.until}">${clock(b.until-now())}</span></div>`
+      :`<div class="card row" style="border-color:var(--line);background:var(--card);padding:8px 12px"><span class="sub" style="color:var(--bad)">💀 <b>${n}</b> vetoed <b>${esc(b.vname)}</b> and pitched nothing – owes the first round 🍺</span><button class="btn mini" onclick="hideBounty('${sid(b.id)}')">🍺 Bought it</button></div>`;
   }).join('');
   const board=Object.entries(boardTally()).filter(([id,t])=>who(id)&&(t.r||t.m)).sort((a,b)=>b[1].m-a[1].m||b[1].r-a[1].r);
   $('bounty-board').innerHTML=board.length?'🏆 Bounty Board: '+board.map(([id,t])=>`${esc(who(id).emo)} ${esc(who(id).name)} ${t.r?'✅'+t.r:''}${t.m?' 💀'+t.m:''}`).join(' • '):'';
@@ -1083,22 +1110,22 @@ function render(){
   $('v-list').innerHTML=(E.locked?E.venues.filter(v=>W&&v.id===W.id):E.venues).map(v=>{
     const vt=v.votes||{},kn=S.squad.filter(u=>vt[u.id]==='k').map(u=>esc(u.name)),vo=S.squad.filter(u=>vt[u.id]==='v').map(u=>esc(u.name)),w=E.win===v.id,id=sid(v.id);
     const meta=[v.when?'🗓️ '+esc(v.when):'',v.cost?'💷 '+esc(v.cost)+' pp':''].filter(Boolean).join(' • '),u=safeUrl(v.url);
-    const extra=(meta||v.src?`<div class="sub" style="color:#c7d2fe;margin-top:2px">${meta}${v.live?' • 🔎 checked live':''}${v.src==='osm'?(meta?' • ':'')+'🗺️ from the map':''}</div>`:'')+(v.steps&&v.steps.length?`<ol class="sub" style="margin:6px 0 0;padding-left:18px;color:#e2e8f0">${v.steps.map(x=>`<li>${esc(x)}</li>`).join('')}</ol>`:'');
-    return `<div class="card" data-vid="${id}" style="border-color:${w?'#f59e0b':'#334155'}"><div class="row"><div><b>${w?'⭐ ':''}${KIND[v.kind]||''}${esc(v.name)}</b><div class="sub" style="color:#fbbf24">📍 ${esc(v.loc)}</div>${extra}</div><div class="row">${u?`<a class="btn" href="${esc(u)}" target="_blank" rel="noopener">🔗 Info</a>`:''}<a class="btn" href="${esc(mapsUrl((v.kind==='combo'?'':v.name+', ')+v.loc))}" target="_blank" rel="noopener">🗺️ Map</a><button class="btn plan-only ${w?'amber':''}" onclick="lockIn('${id}')">${w?'⭐ Picked':'⭐ Pick'}</button><button class="btn mini plan-only" title="Remove" onclick="delVen('${id}')">🗑️</button></div></div><div class="sub" style="margin:6px 0">${esc(v.desc)}</div><div class="row"><span class="sub" style="color:${vo.length?'#f43f5e':'#10b981'}">${vo.length?'⚠️ Veto: '+vo.join(', '):'👍 Keen: '+(kn.join(', ')||'0')}</span><div class="row plan-only"><button class="btn ${vt[cfg.u]==='k'?'green':''}" onclick="vote('${id}','k')">👍 Keen</button><button class="btn ${vt[cfg.u]==='v'?'red':''}" onclick="vote('${id}','v')">👎 Veto</button></div></div></div>`;
+    const extra=(meta||v.src?`<div class="sub" style="color:var(--text-2);margin-top:2px">${meta}${v.live?' • 🔎 checked live':''}${v.src==='osm'?(meta?' • ':'')+'🗺️ from the map':''}</div>`:'')+(v.steps&&v.steps.length?`<ol class="sub" style="margin:6px 0 0;padding-left:18px;color:var(--text)">${v.steps.map(x=>`<li>${esc(x)}</li>`).join('')}</ol>`:'');
+    return `<div class="card" data-vid="${id}" style="border-color:${w?'var(--accent)':'var(--line)'}"><div class="row"><div><b>${w?'⭐ ':''}${KIND[v.kind]||''}${esc(v.name)}</b><div class="sub" style="color:var(--text-2)">📍 ${esc(v.loc)}</div>${extra}</div><div class="row">${u?`<a class="btn" href="${esc(u)}" target="_blank" rel="noopener">🔗 Info</a>`:''}<a class="btn" href="${esc(mapsUrl((v.kind==='combo'?'':v.name+', ')+v.loc))}" target="_blank" rel="noopener">🗺️ Map</a><button class="btn plan-only ${w?'amber':''}" onclick="lockIn('${id}')">${w?'⭐ Picked':'⭐ Pick'}</button><button class="btn mini plan-only" title="Remove" onclick="delVen('${id}')">🗑️</button></div></div><div class="sub" style="margin:6px 0">${esc(v.desc)}</div><div class="row"><span class="sub" style="color:${vo.length?'var(--bad)':'var(--good)'}">${vo.length?'⚠️ Veto: '+vo.join(', '):'👍 Keen: '+(kn.join(', ')||'0')}</span><div class="row plan-only"><button class="btn ${vt[cfg.u]==='k'?'green':''}" onclick="vote('${id}','k')">👍 Keen</button><button class="btn ${vt[cfg.u]==='v'?'red':''}" onclick="vote('${id}','v')">👎 Veto</button></div></div></div>`;
   }).join('');
 
   $('d-list').innerHTML=E.slots.map(s=>{
     const av=s.av||{},all=allIn(av),d=whenOf(s),id=sid(s.id),g=all&&d?calGoogle(s.id):'';
     const cal=all?`<div class="row" style="justify-content:flex-start;margin-top:6px">${d?`<button class="btn amber" onclick="calIcs('${id}')">📅 Add to Calendar</button><a class="btn" href="${esc(g)}" target="_blank" rel="noopener">Google Cal</a>`:''}<button class="btn" onclick="setSlotTime('${id}')">🕒 ${d?'Change time':'Set exact time for calendar'}</button></div>`:'';
-    return `<div style="background:#0b111e;border:1px solid ${all?'#10b981':'#334155'};padding:8px;border-radius:10px;margin-bottom:6px"><div class="row" style="margin-bottom:6px"><span><b>${esc(s.lbl)}</b>${d?`<div class="sub">🗓️ ${esc(fmtWhen(d))}</div>`:''}</span><span class="sub" style="color:${all?'#10b981':'#94a3b8'}">${all?'🎉 100% ALIGNED!':'Tap to toggle'} <button class="btn mini plan-only" title="Remove" onclick="delSlot('${id}')">🗑️</button></span></div><div class="grid">${S.squad.map(u=>`<button class="btn ${av[u.id]?'green':''}" onclick="togSlot('${id}','${sid(u.id)}')">${esc(u.emo)} ${esc(u.name)}: ${av[u.id]?'✅':'❌'}</button>`).join('')}</div>${cal}</div>`;
+    return `<div style="background:var(--card-2);border:1px solid ${all?'var(--good)':'var(--line)'};padding:10px 12px;border-radius:14px;margin-bottom:6px"><div class="row" style="margin-bottom:6px"><span><b>${esc(s.lbl)}</b>${d?`<div class="sub">🗓️ ${esc(fmtWhen(d))}</div>`:''}</span><span class="sub" style="color:${all?'var(--good)':'var(--muted)'}">${all?'🎉 100% ALIGNED!':'Tap to toggle'} <button class="btn mini plan-only" title="Remove" onclick="delSlot('${id}')">🗑️</button></span></div><div class="grid">${S.squad.map(u=>`<button class="btn ${av[u.id]?'green':''}" onclick="togSlot('${id}','${sid(u.id)}')">${esc(u.emo)} ${esc(u.name)}: ${av[u.id]?'✅':'❌'}</button>`).join('')}</div>${cal}</div>`;
   }).join('');
 
   const M=E.mid,w=winVenue(),vp=M&&M.v&&w&&M.vid===w.id?M.v:null;
-  $('mid-box').innerHTML=M?`<div style="background:#291d06;border:1px solid #f59e0b;padding:8px;border-radius:8px;margin-bottom:8px"><div class="row"><span>🎯 Midpoint: <b>near ${esc(M.name)}</b></span><a class="btn" href="${esc(mapsUrl((+M.lat).toFixed(5)+','+(+M.lon).toFixed(5)))}" target="_blank" rel="noopener">🗺️ Map</a></div>${M.locs!==locsKey()?'<div class="sub" style="color:#fbbf24">↻ Someone changed station – tap Find Midpoint again</div>':''}<button class="btn indigo" style="margin-top:6px" onclick="ideasNearMid()">✨ Gerg AI ideas near ${esc(M.name)}</button></div>`:'<div class="sub" style="margin-bottom:6px">Tap 📍 Find Midpoint to find the fairest place to meet.</div>';
+  $('mid-box').innerHTML=M?`<div style="background:var(--accent-soft);border:1px solid var(--accent);padding:10px 12px;border-radius:14px;margin-bottom:8px"><div class="row"><span>🎯 Midpoint: <b>near ${esc(M.name)}</b></span><a class="btn" href="${esc(mapsUrl((+M.lat).toFixed(5)+','+(+M.lon).toFixed(5)))}" target="_blank" rel="noopener">🗺️ Map</a></div>${M.locs!==locsKey()?'<div class="sub" style="color:var(--accent)">↻ Someone changed station – tap Find Midpoint again</div>':''}<button class="btn indigo" style="margin-top:6px" onclick="ideasNearMid()">✨ Gerg AI ideas near ${esc(M.name)}</button></div>`:'<div class="sub" style="margin-bottom:6px">Tap 📍 Find Midpoint to find the fairest place to meet.</div>';
   $('trv-list').innerHTML=S.squad.map(u=>{
     const p=M&&M.pts&&M.pts[u.id],dist=[];
     if(p)dist.push(`${miles(p,M).toFixed(1)} mi to midpoint`);if(p&&vp)dist.push(`${miles(p,vp).toFixed(1)} mi to ${esc(w.name)}`);
-    return `<div class="row" style="background:#0b111e;padding:8px;border-radius:8px;margin-bottom:6px"><span><b>${esc(u.emo)} ${esc(u.name)}</b> (${esc(u.loc)})${dist.length?`<div class="sub">📏 ${dist.join(' • ')}</div>`:''}</span><button class="btn" onclick="cycleMode('${sid(u.id)}')">🚆 ${esc(u.mode)}</button></div>`;
+    return `<div class="row" style="background:var(--card-2);padding:10px 12px;border-radius:14px;margin-bottom:6px"><span><b>${esc(u.emo)} ${esc(u.name)}</b> (${esc(u.loc)})${dist.length?`<div class="sub">📏 ${dist.join(' • ')}</div>`:''}</span><button class="btn" onclick="cycleMode('${sid(u.id)}')">🚆 ${esc(u.mode)}</button></div>`;
   }).join('');
 
   $('b-list').innerHTML=S.squad.map(u=>{
@@ -1108,14 +1135,14 @@ function render(){
     if(hasBank(u))lines.push(`🏦 ${esc(u.acn||u.name)} • ${esc(u.sort)} • ${esc(u.acc)} <button class="btn mini" onclick="copyBank('${sid(u.id)}')">Copy</button>`);
     if(!lines.length)lines.push('No pay details yet');
     if(u.tx)lines.push('Latest: '+esc(u.tx));
-    return `<div style="background:#090d16;border:1px solid #f43f5e;padding:8px;border-radius:8px;font-size:11px"><b>${esc(u.emo)} ${esc(u.name)}</b> (${esc(u.pay)})${lines.map(x=>`<div class="sub" style="margin-top:3px">${x}</div>`).join('')}</div>`;
+    return `<div style="background:var(--card-2);border:1px solid var(--line);padding:10px 12px;border-radius:14px;font-size:11px"><b>${esc(u.emo)} ${esc(u.name)}</b> (${esc(u.pay)})${lines.map(x=>`<div class="sub" style="margin-top:3px">${x}</div>`).join('')}</div>`;
   }).join('');
 
   const{tot,share}=ledger(),everyone=S.squad.length;
   $('e-list').innerHTML=E.exp.map(e=>{
     const f=splitOf(e),forTxt=f.length<everyone?' • for '+f.map(i=>esc(who(i).name)).join(', '):'';
-    return `<div class="row sub" style="padding:4px 0"><span><b>${esc(e.ttl)}</b> (${esc((who(e.byId)||{}).name||e.by)}${forTxt})</span><span><b style="color:#10b981">${gbp(e.amt)}</b> <button class="btn mini" onclick="delExp('${sid(e.id)}')">✕</button></span></div>`;
-  }).join('')+`<div class="row" style="border-top:1px solid #334155;padding-top:6px;margin-top:4px;font-size:12px;color:#fbbf24"><b>Total ${gbp(tot)}</b><b>${m?'Your share '+gbp(share[m.id]):''}</b></div>`;
+    return `<div class="row sub" style="padding:4px 0"><span><b>${esc(e.ttl)}</b> (${esc((who(e.byId)||{}).name||e.by)}${forTxt})</span><span><b style="color:var(--good)">${gbp(e.amt)}</b> <button class="btn mini" onclick="delExp('${sid(e.id)}')">✕</button></span></div>`;
+  }).join('')+`<div class="row" style="border-top:1px solid var(--line);padding-top:6px;margin-top:4px;font-size:12px;color:var(--accent)"><b>Total ${gbp(tot)}</b><b>${m?'Your share '+gbp(share[m.id]):''}</b></div>`;
   $('e-for').innerHTML=`<button class="btn mini ${expFor?'':'green'}" onclick="togFor('*')">👥 Everyone</button>`+S.squad.map(u=>`<button class="btn mini ${expFor&&inFor(u.id)?'green':''}" onclick="togFor('${sid(u.id)}')">${esc(u.emo)} ${esc(u.name)}</button>`).join('');
 
   const st=settle();
@@ -1126,7 +1153,7 @@ function render(){
     if(hasBank(c))btns.push(`<button class="btn" onclick="copyBank('${sid(c.id)}',${t.amt})">🏦 Copy bank details</button>`);
     if(!btns.length)btns.push(`<span class="sub">${esc(c.name)} hasn't added pay details – nudge them to ✏️ Edit Me</span>`);
     btns.push(`<button class="btn" onclick="markPaid('${sid(t.from)}','${sid(t.to)}',${t.amt})">✅ Mark paid</button>`);
-    return `<div style="background:#0b111e;border:1px solid ${t.from===cfg.u?'#f59e0b':'#334155'};padding:8px;border-radius:8px;margin-bottom:6px"><div class="row"><span><b>${esc(f.emo)} ${esc(f.name)}</b>${t.from===cfg.u?' (you)':''} → <b>${esc(c.emo)} ${esc(c.name)}</b></span><b style="color:#fbbf24">${gbp(t.amt)}</b></div><div class="row" style="justify-content:flex-start;margin-top:6px">${btns.join('')}</div></div>`;
+    return `<div style="background:var(--card-2);border:1px solid ${t.from===cfg.u?'var(--accent)':'var(--line)'};padding:10px 12px;border-radius:14px;margin-bottom:6px"><div class="row"><span><b>${esc(f.emo)} ${esc(f.name)}</b>${t.from===cfg.u?' (you)':''} → <b>${esc(c.emo)} ${esc(c.name)}</b></span><b style="color:var(--accent)">${gbp(t.amt)}</b></div><div class="row" style="justify-content:flex-start;margin-top:6px">${btns.join('')}</div></div>`;
   }).join(''):'<div class="sub">✅ All square!</div>';
   const pd=(E.paid||[]).filter(x=>who(x.from)&&who(x.to));
   $('paid-list').innerHTML=pd.length?`<div class="sub" style="margin-top:6px">Paid so far:</div>`+pd.map(x=>`<div class="row sub" style="padding:3px 0"><span>✅ ${esc(who(x.from).name)} paid ${esc(who(x.to).name)} <b>${gbp(x.amt)}</b> • ${new Date(x.at).toLocaleDateString('en-GB',{day:'numeric',month:'short'})}</span><button class="btn mini" onclick="unPaid('${sid(x.id)}')">Undo</button></div>`).join(''):'';
