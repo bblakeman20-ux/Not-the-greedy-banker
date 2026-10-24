@@ -1,0 +1,353 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Not The Greedy Banker • Live Squad App</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <style>
+    body { background-color: #090d16; color: #f1f5f9; font-family: system-ui, -apple-system, sans-serif; }
+    .tab-active { background-color: #f59e0b; color: #090d16; font-weight: 700; }
+    .tab-inactive { background-color: #1e293b; color: #94a3b8; }
+    @keyframes pulse-dot { 0%, 100% { opacity: 1; } 50% { opacity: 0.3; } }
+    .live-dot { animation: pulse-dot 2s infinite; }
+  </style>
+</head>
+<body class="p-3 sm:p-5 max-w-2xl mx-auto select-none">
+
+  <!-- HEADER -->
+  <header class="bg-slate-900 border border-slate-800 rounded-2xl p-4 mb-4 shadow-lg">
+    <div class="flex items-start justify-between gap-2 flex-wrap">
+      <div>
+        <div class="flex items-center gap-2">
+          <span class="text-[11px] uppercase tracking-wider px-2 py-0.5 rounded-full bg-amber-500/20 text-amber-400 font-bold border border-amber-500/30">
+            Anti-Default Outing Engine
+          </span>
+          <span id="sync-badge" class="text-[11px] px-2 py-0.5 rounded-full bg-slate-800 text-slate-400 font-semibold border border-slate-700 flex items-center gap-1.5">
+            <span id="sync-dot" class="w-2 h-2 rounded-full bg-slate-500"></span>
+            <span id="sync-text">Local Mode</span>
+          </span>
+        </div>
+        <h1 class="text-xl sm:text-2xl font-extrabold text-white mt-1.5">🍻 Not The Greedy Banker</h1>
+        <p class="text-xs text-slate-400">Deffo Not Teams or Outlook • Gemini 2.5 Flash + Live Squad Sync</p>
+      </div>
+
+      <div class="flex gap-1.5">
+        <button onclick="toggleDrawer('setup-drawer')" class="bg-slate-800 hover:bg-slate-700 text-slate-200 font-bold text-xs px-3 py-2 rounded-xl border border-slate-700 transition">
+          ⚙️ Setup
+        </button>
+        <button onclick="toggleDrawer('summary-drawer')" class="bg-emerald-500 hover:bg-emerald-400 text-slate-950 font-bold text-xs px-3 py-2 rounded-xl shadow transition">
+          📋 Summary
+        </button>
+      </div>
+    </div>
+
+    <!-- ACTIVE USER SWITCHER -->
+    <div class="mt-4 pt-3 border-t border-slate-800">
+      <p class="text-[11px] text-slate-400 uppercase font-semibold mb-2">Tap who you are right now:</p>
+      <div id="user-switcher" class="grid grid-cols-2 sm:grid-cols-4 gap-2"></div>
+    </div>
+
+    <!-- SETUP & KEYS DRAWER -->
+    <div id="setup-drawer" class="hidden mt-4 pt-3 border-t border-slate-800 space-y-3 bg-slate-950/60 p-3 rounded-xl">
+      <div class="flex justify-between items-center">
+        <h3 class="text-xs font-bold text-amber-400 uppercase">⚙️ Live Multiplayer & Gemini Free Tier Setup</h3>
+        <button onclick="toggleDrawer('setup-drawer')" class="text-xs text-slate-400 hover:text-white">✕ Close</button>
+      </div>
+
+      <div class="space-y-2 text-xs">
+        <div>
+          <label class="block text-slate-300 font-semibold mb-1">1. Firebase Realtime Database URL (For Live Multi-Phone Sync):</label>
+          <input id="cfg-db-url" type="url" placeholder="https://your-app-default-rtdb.europe-west1.firebasedatabase.app" class="w-full bg-slate-900 border border-slate-700 rounded-lg px-2.5 py-1.5 text-white font-mono text-[11px]" />
+        </div>
+        <div class="grid grid-cols-1 sm:grid-cols-2 gap-2">
+          <div>
+            <label class="block text-slate-300 font-semibold mb-1">2. Squad Room Code:</label>
+            <input id="cfg-room" type="text" value="medway-squad" class="w-full bg-slate-900 border border-slate-700 rounded-lg px-2.5 py-1.5 text-white font-mono text-[11px]" />
+          </div>
+          <div>
+            <label class="block text-slate-300 font-semibold mb-1">3. Gemini API Key (Stored only on your device):</label>
+            <input id="cfg-gemini-key" type="password" placeholder="AIzaSy..." class="w-full bg-slate-900 border border-slate-700 rounded-lg px-2.5 py-1.5 text-white font-mono text-[11px]" />
+          </div>
+        </div>
+        <div class="flex flex-wrap gap-2 pt-1">
+          <button onclick="saveConfig()" class="bg-amber-500 hover:bg-amber-400 text-slate-950 font-bold px-3 py-1.5 rounded-lg">
+            💾 Save & Connect Live
+          </button>
+          <button onclick="copyInviteLink()" id="invite-btn" class="bg-indigo-600 hover:bg-indigo-500 text-white font-bold px-3 py-1.5 rounded-lg">
+            🔗 Copy Magic Group Chat Link (Shares Room Only, Hides Gemini Key)
+          </button>
+        </div>
+      </div>
+    </div>
+
+    <!-- SUMMARY DRAWER -->
+    <div id="summary-drawer" class="hidden mt-4 pt-3 border-t border-slate-800">
+      <div class="flex justify-between items-center mb-1">
+        <span class="text-xs font-bold text-emerald-400">Copy & Paste into Messenger:</span>
+        <button onclick="copySummaryText()" id="copy-btn" class="text-xs bg-slate-800 hover:bg-slate-700 text-white px-2.5 py-1 rounded-lg border border-slate-700">
+          Copy Text
+        </button>
+      </div>
+      <textarea id="summary-textarea" readonly rows="6" class="w-full bg-slate-950 text-slate-200 text-xs p-2.5 rounded-xl border border-slate-700 font-mono"></textarea>
+    </div>
+  </header>
+
+  <!-- NAVIGATION TABS -->
+  <nav class="grid grid-cols-4 gap-1.5 mb-4 text-xs sm:text-sm">
+    <button onclick="switchTab('activity')" id="tab-btn-activity" class="tab-active py-2.5 px-2 rounded-xl text-center transition">🎯 Activities</button>
+    <button onclick="switchTab('dates')" id="tab-btn-dates" class="tab-inactive py-2.5 px-2 rounded-xl text-center transition">📅 Dates</button>
+    <button onclick="switchTab('travel')" id="tab-btn-travel" class="tab-inactive py-2.5 px-2 rounded-xl text-center transition">🚆 Travel</button>
+    <button onclick="switchTab('kitty')" id="tab-btn-kitty" class="tab-inactive py-2.5 px-2 rounded-xl text-center transition">💷 The Kitty</button>
+  </nav>
+
+  <!-- TAB 1: ACTIVITY BUILDER, BAN LIST & GEMINI GENERATOR -->
+  <section id="tab-activity" class="space-y-4">
+    <!-- THE BAN LIST -->
+    <div class="bg-rose-950/30 border border-rose-500/40 rounded-2xl p-4">
+      <div class="flex items-center justify-between mb-2">
+        <h2 class="text-sm font-bold text-rose-300">🚫 The Default Ban List (Vetoed Forever)</h2>
+        <span class="text-[11px] text-rose-400 font-semibold">Strict Enforcement</span>
+      </div>
+      <div id="ban-list" class="space-y-2 mb-3"></div>
+      <form onsubmit="addBannedSpot(event)" class="flex gap-2">
+        <input id="ban-input" type="text" placeholder="Ban another overused default pub..." class="flex-1 bg-slate-900 border border-slate-700 rounded-xl px-3 py-1.5 text-xs text-white focus:outline-none focus:border-rose-400" />
+        <button type="submit" class="bg-rose-600 hover:bg-rose-500 text-white text-xs font-bold px-3 py-1.5 rounded-xl">Ban It</button>
+      </form>
+    </div>
+
+    <!-- GEMINI 2.5 FLASH AI WILDCARD GENERATOR -->
+    <div class="bg-indigo-950/40 border border-indigo-500/40 rounded-2xl p-4 space-y-3">
+      <div class="flex items-center justify-between flex-wrap gap-2">
+        <div>
+          <span class="text-[10px] uppercase font-extrabold px-2 py-0.5 rounded-full bg-indigo-500/30 text-indigo-300 border border-indigo-400/30">
+            Powered by Gemini 2.5 Flash
+          </span>
+          <h3 class="text-sm font-bold text-white mt-1">✨ AI Anti-Default Activity Generator</h3>
+          <p class="text-xs text-slate-400">Generates 2 fresh real-world local ideas respecting your Ban List and pushes them to everyone's phone.</p>
+        </div>
+        <button onclick="spinRoulette()" class="bg-amber-500 hover:bg-amber-400 text-slate-950 font-extrabold text-xs px-3 py-2 rounded-xl shadow">
+          🎲 Spin Roulette
+        </button>
+      </div>
+
+      <div class="grid grid-cols-1 sm:grid-cols-3 gap-2">
+        <input id="ai-area" type="text" value="Rochester, Chatham or Maidstone" placeholder="Area / Town..." class="bg-slate-900 border border-slate-700 rounded-xl px-3 py-2 text-xs text-white" />
+        <input id="ai-vibe" type="text" value="Competitive bar game, taproom, or proper smokehouse/curry" placeholder="Vibe / Interest..." class="bg-slate-900 border border-slate-700 rounded-xl px-3 py-2 text-xs text-white" />
+        <button onclick="generateWithGemini()" id="gemini-btn" class="bg-indigo-600 hover:bg-indigo-500 text-white font-bold text-xs py-2 px-3 rounded-xl shadow transition">
+          ✨ Generate with Gemini
+        </button>
+      </div>
+      <p id="gemini-status" class="text-[11px] text-indigo-300 hidden"></p>
+    </div>
+
+    <!-- VENUE CARDS -->
+    <div id="venue-list" class="space-y-3"></div>
+
+    <!-- MANUAL ADD -->
+    <div class="bg-slate-900 border border-slate-800 rounded-2xl p-4">
+      <h3 class="text-sm font-bold text-white mb-2">➕ Or Pitch Your Own Idea Manually</h3>
+      <form onsubmit="addCustomVenue(event)" class="grid grid-cols-1 sm:grid-cols-3 gap-2">
+        <input id="custom-name" type="text" placeholder="Activity / Venue Name" required class="bg-slate-950 border border-slate-700 rounded-xl px-3 py-2 text-xs text-white" />
+        <input id="custom-loc" type="text" placeholder="Town / Station" required class="bg-slate-950 border border-slate-700 rounded-xl px-3 py-2 text-xs text-white" />
+        <button type="submit" class="bg-slate-800 hover:bg-slate-700 text-white font-bold text-xs py-2 px-3 rounded-xl border border-slate-700">+ Add Pitch</button>
+      </form>
+    </div>
+  </section>
+
+  <!-- TAB 2: ALIGN DATES -->
+  <section id="tab-dates" class="hidden space-y-4">
+    <div class="bg-slate-900 border border-slate-800 rounded-2xl p-4">
+      <h2 class="text-sm font-bold text-white">📅 Tap When You're Free</h2>
+      <p class="text-xs text-slate-400 mb-3">"Requires everyone to know their dates" — tap cells below and it updates across the squad's phones.</p>
+      <div id="date-grid" class="space-y-2.5"></div>
+    </div>
+  </section>
+
+  <!-- TAB 3: TRAVEL & MIDPOINT -->
+  <section id="tab-travel" class="hidden space-y-4">
+    <div class="bg-slate-900 border border-slate-800 rounded-2xl p-4">
+      <h2 class="text-sm font-bold text-white mb-1">⚖️ Travel Fairness & Transport Plan</h2>
+      <p class="text-xs text-slate-400 mb-3">Who trekked furthest last time? Tap your transport mode to update the group.</p>
+      <div id="travel-list" class="space-y-3"></div>
+    </div>
+  </section>
+
+  <!-- TAB 4: THE KITTY & SHERLOCK BANK MODE -->
+  <section id="tab-kitty" class="hidden space-y-4">
+    <div class="bg-slate-900 border border-slate-800 rounded-2xl p-4">
+      <div class="flex items-center justify-between gap-2 flex-wrap">
+        <div>
+          <h2 class="text-sm font-bold text-amber-400">🏦 Sherlock's "Open Bank Account" Mode</h2>
+          <p class="text-xs text-slate-400">"Link in stuff like expenses, bank details, preferred ways to be paid"</p>
+        </div>
+        <button onclick="toggleSherlockBank()" id="bank-toggle-btn" class="bg-rose-600 hover:bg-rose-500 text-white text-xs font-bold px-3 py-2 rounded-xl">
+          🔓 Reveal Raw Bank Details
+        </button>
+      </div>
+
+      <div id="sherlock-bank-panel" class="hidden mt-4 space-y-3">
+        <div class="bg-rose-950/60 border border-rose-500 rounded-xl p-3 text-xs text-rose-200">
+          ⚠️ <strong>SECURITY ROAST ALERT:</strong> Broadcasting raw sort codes, live balances, and questionable transactions to the entire group chat!
+        </div>
+        <div id="bank-cards" class="grid grid-cols-1 sm:grid-cols-2 gap-2.5"></div>
+      </div>
+    </div>
+
+    <div class="bg-slate-900 border border-slate-800 rounded-2xl p-4">
+      <h3 class="text-sm font-bold text-white mb-2">🧾 Outing Kitty & Expense Splitter</h3>
+      <div id="expense-list" class="space-y-2 mb-3"></div>
+      <form onsubmit="addExpense(event)" class="grid grid-cols-1 sm:grid-cols-3 gap-2">
+        <input id="exp-title" type="text" placeholder="What for? (e.g. Uber XL)" required class="bg-slate-950 border border-slate-700 rounded-xl px-3 py-2 text-xs text-white" />
+        <input id="exp-amt" type="number" step="0.01" placeholder="Amount (£)" required class="bg-slate-950 border border-slate-700 rounded-xl px-3 py-2 text-xs text-white" />
+        <button type="submit" class="bg-emerald-500 hover:bg-emerald-400 text-slate-950 font-bold text-xs py-2 px-3 rounded-xl">+ Log Expense</button>
+      </form>
+    </div>
+  </section>
+
+  <script>
+    // --- LOCAL DEVICE CONFIG (API KEYS & ROOM) ---
+    const urlParams = new URLSearchParams(window.location.search);
+    const localConfig = {
+      activeUser: localStorage.getItem('ntgb_user') || 'ben',
+      dbUrl: (urlParams.get('db') || localStorage.getItem('ntgb_db') || '').replace(/\/$/, ''),
+      room: urlParams.get('room') || localStorage.getItem('ntgb_room') || 'medway-squad',
+      geminiKey: localStorage.getItem('ntgb_gemini') || '',
+      sherlockBankOpen: false
+    };
+
+    // --- SHARED MULTIPLAYER STATE (SYNCED VIA FIREBASE REST/POLLING) ---
+    let sharedState = {
+      updatedAt: Date.now(),
+      lockedVenueId: 'v1',
+      squad: [
+        { id: 'ben', name: 'Ben', role: 'Anti-Default Architect', avatar: '🧬', station: 'Sittingbourne / Medway', miles: 18.4, mode: 'Train', pay: 'Monzo Link', balance: '£412.80', sort: '04-00-04', tx: 'Axe Throwing Deposit (-£64.00)' },
+        { id: 'sherlock', name: 'Sherlock', role: 'App Pitch Visionary', avatar: '🕵️‍♂️', station: 'Chatham', miles: 6.5, mode: 'Uber Split', pay: 'Revolut', balance: '£19.45', sort: '22-10-99', tx: '🚨 The Greedy Banker (-£42.50 - TRAITOR)' },
+        { id: 'mate3', name: 'Mate 3', role: 'Vibe Coordinator', avatar: '🍻', station: 'Rochester', miles: 4.2, mode: 'Train', pay: 'PayPal', balance: '£184.10', sort: '60-83-71', tx: 'Loaded Fries & Craft Round (-£38.50)' },
+        { id: 'mate4', name: 'Mate 4', role: 'Wildcard Enforcer', avatar: '🎯', station: 'Gillingham', miles: 11.0, mode: 'Designated Driver', pay: 'Pint IOU', balance: '£88.00', sort: '54-21-08', tx: 'Station Uber XL (-£16.00)' }
+      ],
+      banned: [
+        { id: 'b1', name: 'The Greedy Banker', reason: 'Permanently Banned: Default planning inertia', locked: true },
+        { id: 'b2', name: 'Spoons on the High Street', reason: 'Banned: Sticky carpets & microwave curry', locked: false }
+      ],
+      venues: [
+        { id: 'v1', name: 'Timber & Steel Axe Throwing + Taproom', loc: 'Chatham Historic Dockyard', desc: 'Private axe-throwing lanes, interactive darts, loud indie rock & local ciders. Loser buys first curry round.', fairness: 95, ai: false, votes: { ben: 'keen', sherlock: 'keen', mate3: 'keen', mate4: 'keen' } },
+        { id: 'v2', name: 'Dead Pigeon Independent Craft Taproom', loc: 'Rochester High Street', desc: '14 rotating craft lines, Detroit-style square pizzas, vintage arcade cabinets, zero fruit machines.', fairness: 92, ai: false, votes: { ben: 'keen', sherlock: 'keen', mate3: 'keen', mate4: null } },
+        { id: 'v3', name: 'Bombay Coal & Craft Smokehouse', loc: 'Rainham Station Yard', desc: 'Charcoal-grilled lamb chops, railway mutton curries, garlic chilli naans & Cobra on tap right by the station.', fairness: 97, ai: false, votes: { ben: 'keen', sherlock: null, mate3: 'keen', mate4: 'keen' } }
+      ],
+      slots: [
+        { id: 's1', label: 'Fri Evening (6:30 PM)', avail: { ben: true, sherlock: true, mate3: false, mate4: true } },
+        { id: 's2', label: 'Sat Afternoon (2:00 PM)', avail: { ben: true, sherlock: true, mate3: true, mate4: true } },
+        { id: 's3', label: 'Sat Night (7:00 PM)', avail: { ben: true, sherlock: true, mate3: true, mate4: false } },
+        { id: 's4', label: 'Sun Session (1:30 PM)', avail: { ben: false, sherlock: true, mate3: true, mate4: true } }
+      ],
+      expenses: [
+        { id: 'e1', title: 'Axe Throwing Lane Deposit', amt: 64.00, by: 'Ben' },
+        { id: 'e2', title: 'First Round + Loaded Masala Fries', amt: 38.50, by: 'Mate 3' }
+      ]
+    };
+
+    // --- FIREBASE MULTIPLAYER SYNC ENGINE (ZERO SDK REQUIRED, WORKS IN ALL IFRAMES) ---
+    let syncTimer = null;
+
+    function getRoomEndpoint() {
+      if (!localConfig.dbUrl) return null;
+      const cleanRoom = (localConfig.room || 'medway-squad').replace(/[^a-zA-Z0-9_-]/g, '');
+      return `${localConfig.dbUrl}/rooms/${cleanRoom}.json`;
+    }
+
+    async function pushSharedState() {
+      sharedState.updatedAt = Date.now();
+      renderAll();
+      const endpoint = getRoomEndpoint();
+      if (!endpoint) return;
+      try {
+        await fetch(endpoint, {
+          method: 'PUT',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(sharedState)
+        });
+        updateSyncBadge(true);
+      } catch (err) {
+        updateSyncBadge(false);
+      }
+    }
+
+    async function pullSharedState() {
+      const endpoint = getRoomEndpoint();
+      if (!endpoint) {
+        updateSyncBadge(false);
+        return;
+      }
+      try {
+        const res = await fetch(endpoint);
+        if (!res.ok) throw new Error('DB error');
+        const remote = await res.json();
+        if (remote && remote.squad) {
+          // Ensure empty arrays in Firebase aren't lost
+          sharedState = {
+            ...sharedState,
+            ...remote,
+            banned: remote.banned || sharedState.banned,
+            venues: remote.venues || [],
+            expenses: remote.expenses || []
+          };
+          renderAll();
+        } else {
+          // First time room creation: seed room with initial state
+          await pushSharedState();
+        }
+        updateSyncBadge(true);
+      } catch (err) {
+        updateSyncBadge(false);
+      }
+    }
+
+    function updateSyncBadge(isLive) {
+      const dot = document.getElementById('sync-dot');
+      const txt = document.getElementById('sync-text');
+      if (isLive) {
+        dot.className = 'w-2 h-2 rounded-full bg-emerald-400 live-dot';
+        txt.innerText = `Live: ${localConfig.room}`;
+      } else {
+        dot.className = 'w-2 h-2 rounded-full bg-slate-500';
+        txt.innerText = 'Local Mode (Click ⚙️ Setup)';
+      }
+    }
+
+    function initSync() {
+      document.getElementById('cfg-db-url').value = localConfig.dbUrl;
+      document.getElementById('cfg-room').value = localConfig.room;
+      document.getElementById('cfg-gemini-key').value = localConfig.geminiKey;
+      if (syncTimer) clearInterval(syncTimer);
+      if (localConfig.dbUrl) {
+        pullSharedState();
+        syncTimer = setInterval(pullSharedState, 3500);
+      }
+    }
+
+    function saveConfig() {
+      localConfig.dbUrl = document.getElementById('cfg-db-url').value.trim().replace(/\/$/, '');
+      localConfig.room = document.getElementById('cfg-room').value.trim() || 'medway-squad';
+      localConfig.geminiKey = document.getElementById('cfg-gemini-key').value.trim();
+      localStorage.setItem('ntgb_db', localConfig.dbUrl);
+      localStorage.setItem('ntgb_room', localConfig.room);
+      localStorage.setItem('ntgb_gemini', localConfig.geminiKey);
+      initSync();
+      alert('✅ Saved! Live sync & Gemini key updated.');
+    }
+
+    function copyInviteLink() {
+      saveConfig();
+      const base = window.location.origin + window.location.pathname;
+      const inviteUrl = `${base}?db=${encodeURIComponent(localConfig.dbUrl)}&room=${encodeURIComponent(localConfig.room)}`;
+      navigator.clipboard?.writeText(inviteUrl);
+      const btn = document.getElementById('invite-btn');
+      btn.innerText = '✅ Magic Link Copied! Paste in Messenger';
+      setTimeout(() => btn.innerText = '🔗 Copy Magic Group Chat Link (Shares Room Only, Hides Gemini Key)', 3000);
+    }
+
+    // --- GOOGLE GEMINI 2.5 FLASH FREE TIER GENERATOR ---
+    async function generateWithGemini() {
+      const key = localConfig.geminiKey || document.getElementById('cfg-gemini-key').value.trim();
+      const statusEl = document.getElementById('gemini-
