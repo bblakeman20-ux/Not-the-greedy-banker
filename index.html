@@ -38,7 +38,7 @@
 <div class="card">
   <div class="row">
     <div>
-      <span id="sync-txt" style="font-size:11px;color:#fbbf24;font-weight:700">⚪ Local Mode</span>
+      <span id="sync-txt" style="font-size:11px;color:#fbbf24;font-weight:700">⚪ Local Mode (demo data)</span>
       <h2 style="margin:2px 0;font-size:18px">🍻 Not The Greedy Banker</h2>
       <div class="sub">Anti-Default Outing Engine • Deffo Not Outlook</div>
     </div>
@@ -54,7 +54,7 @@
     <div style="font-size:12px;font-weight:700;color:#fbbf24">⚙️ Firebase Live Sync & Gerg AI (powered by Gemini)</div>
     <input id="c-db" placeholder="Firebase URL (https://...-rtdb.europe-west1.firebasedatabase.app)">
     <div class="grid">
-      <input id="c-room" value="medway-squad" placeholder="Room Code">
+      <div class="row" style="flex-wrap:nowrap"><input id="c-room" value="medway-squad" placeholder="Room Code"><button class="btn" style="margin-top:4px" title="Make a secret room code" onclick="newRoomCode()">🎲</button></div>
       <input id="c-model" value="gemini-3.8-flash" placeholder="Model">
     </div>
     <input id="c-key" type="password" placeholder="Gemini API Key (AIzaSy...)">
@@ -76,6 +76,7 @@
       <button id="sum-cal" class="btn amber" style="display:none">📅 Add to Calendar</button>
       <button class="btn" onclick="tog('sum-box')">Close</button>
     </div>
+    <button class="btn red" style="margin-top:8px" onclick="newPlan()">🔄 Start a new plan</button>
     <div id="sum-msg" class="sub" style="color:#10b981;margin-top:4px"></div>
   </div>
 
@@ -106,6 +107,7 @@
         <input id="p-sort" inputmode="numeric" placeholder="Sort code (12-34-56)">
         <input id="p-acc" inputmode="numeric" placeholder="Account no. (8 digits)">
       </div>
+      <input id="p-tx" placeholder="😈 Roast line for your pay card (optional, e.g. Still owes for 2019 Uber)">
       <div class="sub" style="color:#fda4af;margin-top:4px">⚠️ Anyone with the group link can see these. A pay link is safer than account numbers.</div>
       <div id="prof-msg" class="sub" style="color:#f43f5e;margin-top:4px"></div>
       <div class="row" style="margin-top:8px">
@@ -193,9 +195,10 @@
     <div style="font-size:14px;font-weight:700;margin-bottom:8px">📅 Tap Your Name When Free</div>
     <div id="d-list"></div>
     <div class="grid" style="margin-top:8px">
-      <input id="d-in" placeholder="Add date (e.g. Next Sat 3pm)" style="margin:0">
-      <input id="d-at" type="datetime-local" title="Exact time (optional)" style="margin:0">
+      <input id="d-in" placeholder="Add date (e.g. Next Sat 3pm)" style="margin:0" oninput="previewWhen()">
+      <input id="d-at" type="datetime-local" title="Exact time (optional)" style="margin:0" oninput="previewWhen()">
     </div>
+    <div id="d-prev" class="sub" style="margin-top:4px"></div>
     <button class="btn amber" style="width:100%;margin-top:6px" onclick="addSlot()">+ Add Date</button>
   </div>
 </div>
@@ -255,9 +258,11 @@ const P=new URLSearchParams(location.search);
 let cfg={u:get('u',''),db:(P.get('db')||get('db','')).replace(/\/$/,''),rm:P.get('room')||get('rm','medway-squad'),md:get('md','gemini-3.8-flash'),key:get('key',''),edit:0};
 // Remember the room from a group link, so the installed app (which opens without the link) stays connected
 if(P.get('db'))set('db',cfg.db);if(P.get('room'))set('rm',cfg.rm);
-const FALLBACK='gemini-2.5-flash',AI_TIMEOUT=15000,BOUNTY_MS=60000,MAX_VETOES=2;
+const FALLBACK='gemini-2.5-flash',AI_TIMEOUT=15000,BOUNTY_MS=60000,MAX_VETOES=2,APP_VER=2;
 
+// Demo data for Local Mode only; a real (synced) room starts empty, see freshRoom()
 let S={
+  ver:APP_VER,
   win:'v1',
   squad:[
     {id:'u1',name:'Ben',emo:'🧬',loc:'Medway',mode:'Train',pay:'Monzo Link',tx:'Axe Deposit (-£64)'},
@@ -278,8 +283,10 @@ let S={
   exp:[{id:'e1',ttl:'Axe Throwing Deposit',amt:64,by:'Ben',byId:'u1'}],
   bounties:[],
   paid:[],
-  mid:null
+  mid:null,
+  board:{}
 };
+const freshRoom=()=>({ver:APP_VER,win:null,squad:[],ban:[{id:'b1',name:'The Greedy Banker',lock:1}],venues:[],slots:[],exp:[],bounties:[],paid:[],mid:null,board:{}});
 
 const $=id=>document.getElementById(id);
 const tog=id=>$(id).classList.toggle('open');
@@ -290,6 +297,8 @@ const me=()=>S.squad.find(x=>x.id===cfg.u);
 const who=id=>S.squad.find(x=>x.id===id);
 const gbp=n=>'£'+(+n||0).toFixed(2);
 const winVenue=()=>S.venues.find(v=>v.id===S.win)||S.venues[0];
+// Is everyone free for this slot? (an empty squad is not "100% aligned")
+const allIn=av=>S.squad.length>0&&S.squad.every(u=>av&&av[u.id]);
 const mapsUrl=q=>'https://www.google.com/maps/search/?api=1&query='+encodeURIComponent(q);
 function needMe(){if(me())return 1;alert('👆 Tap your profile first (or + New Profile)');return 0}
 function tab(t){['act','dat','trv','kit'].forEach(x=>{$('t-'+x).style.display=x===t?'block':'none';$('tb-'+x).className='btn'+(x===t?' amber':'')})}
@@ -315,12 +324,14 @@ function toDb(s){
   LISTS.forEach(k=>{const a=s[k]||[];if(!a.length)return delete o[k];o[k]={};a.forEach((x,i)=>o[k][sid(x.id)||k+i]=fb({...x,o:i}))});
   return o;
 }
+// An edit landing on something another phone just deleted can recreate a stub (e.g. only "mode"); drop those
+const REQ={squad:'name',ban:'name',venues:'name',slots:'lbl',exp:'ttl',bounties:'uid',paid:'from'};
 function fromDb(d){
   const o={...d};
-  LISTS.forEach(k=>{const v=d[k];o[k]=!v?[]:Array.isArray(v)?v.filter(Boolean):Object.entries(v).map(([id,x])=>({...x,id:x.id||id})).sort((a,b)=>(a.o??0)-(b.o??0))});
+  LISTS.forEach(k=>{const v=d[k];o[k]=(!v?[]:Array.isArray(v)?v.filter(Boolean):Object.entries(v).map(([id,x])=>({...x,id:x.id||id})).sort((a,b)=>(a.o??0)-(b.o??0))).filter(x=>x&&x[REQ[k]]!=null)});
   return o;
 }
-const norm=d=>({...S,...d,win:d.win||null,mid:d.mid||null,squad:d.squad.length?d.squad:S.squad,ban:d.ban.length?d.ban:S.ban,slots:d.slots.map(s=>({...s,av:s.av||{}}))});
+const norm=d=>({...freshRoom(),...d,win:d.win||null,mid:d.mid||null,board:d.board||{},slots:d.slots.map(s=>({...s,av:s.av||{}}))});
 function setPath(root,parts,v){
   parts=parts.filter(Boolean);if(!parts.length)return v;
   root=root&&typeof root==='object'?root:{};let o=root;
@@ -335,10 +346,14 @@ function diff(a,b,p,out){
   else if(JSON.stringify(a??null)!==JSON.stringify(b??null))out[p.slice(1)]=b??null;
   return out;
 }
-const status=ok=>$('sync-txt').innerText=ok?(streaming?'⚡ Live: ':'🟢 Live: ')+cfg.rm:'🔴 Sync failed – retrying';
-function dbUrl(){return cfg.db?`${cfg.db}/rooms/${cfg.rm.replace(/\W/g,'')}.json`:null}
+const status=ok=>frozen||($('sync-txt').innerText=ok?(streaming?'⚡ Live: ':'🟢 Live: ')+cfg.rm:'🔴 Sync failed – retrying');
+const roomKey=()=>cfg.rm.replace(/\W/g,'');
+// v2 rooms live at a new path so phones still on the old app version never read the new format (and crash)
+function dbUrl(){return cfg.db?`${cfg.db}/v2/rooms/${roomKey()}.json`:null}
+const oldUrl=()=>`${cfg.db}/rooms/${roomKey()}.json`;
+let frozen=0,initing=0;
 async function push(full){
-  touched=Date.now();render();const u=dbUrl();if(!u)return;
+  touched=Date.now();render();const u=dbUrl();if(!u||frozen)return;
   const db=toDb(S);let method='PATCH',body;
   // Empty room, or a room saved by the old array format: write the whole thing once
   if(full||!R||LISTS.some(k=>Array.isArray(R[k]))){method='PUT';body=db;R=clone(db)}
@@ -346,9 +361,26 @@ async function push(full){
   busy++;try{const r=await fetch(u,{method,body:JSON.stringify(body)});status(r.ok)}catch(e){status(0)}finally{busy--;if(!busy)applyRemote()}
 }
 function applyRemote(){
-  if(busy)return;
-  if(!R||!R.squad)return push(1);
+  if(busy||initing)return;
+  if(!R)return initRoom();
+  if((+R.ver||0)>APP_VER){frozen=1;$('sync-txt').innerText='⬆️ New version out – reload the page';return}
   S=norm(fromDb(clone(R)));render(); // clone: local edits must not leak into the server mirror, or diff() sees nothing
+}
+// Empty room: bring over a plan saved by the old app version if there is one, otherwise start clean
+async function initRoom(){
+  initing=1;let old=null;
+  try{const r=await fetch(oldUrl());if(r.ok)old=await r.json()}catch(e){}
+  S=old&&old.squad?{...norm(fromDb(old)),ver:APP_VER}:freshRoom();
+  initing=0;await push(1);
+  if(old&&old.squad)fetch(oldUrl(),{method:'PUT',body:JSON.stringify({...old,win:'upd',venues:[{id:'upd',name:'🔄 This app was updated – reload the page',loc:'Your plan has moved to the new version',desc:'Close and reopen the app (or refresh) to carry on planning.',votes:{}}]})}).catch(()=>{});
+  if(!me()){openProf(0);$('prof-msg').innerText='👋 New room – add yourself first'}
+}
+// Bounty timers run on Firebase's clock, so a phone with the wrong time can't stretch or cut a countdown
+let skew=0;const now=()=>Date.now()+skew;
+async function syncClock(){
+  if(!cfg.db)return;let dev=get('dev','');if(!dev){dev=Math.random().toString(36).slice(2,12);set('dev',dev)}
+  const u=`${cfg.db}/v2/clock/${dev}.json`;
+  try{const t0=Date.now(),r=await fetch(u,{method:'PUT',body:'{".sv":"timestamp"}'}),t1=Date.now();let v=await r.json();if(typeof v!=='number')v=await(await fetch(u)).json();if(typeof v==='number')skew=Math.round(v-(t0+t1)/2)}catch(e){}
 }
 async function pull(){
   const u=dbUrl();if(!u)return;const t0=Date.now();
@@ -375,7 +407,13 @@ function saveCfg(){
   cfg.md=$('c-model').value.trim()||'gemini-3.8-flash';cfg.key=$('c-key').value.trim();
   set('db',cfg.db);set('rm',cfg.rm);set('md',cfg.md);set('key',cfg.key);
   $('cfg-msg').innerText='✅ Saved!';
-  if(was!==cfg.db+cfg.rm){R=null;stream();pull()}
+  if(roomKey().length<12)$('cfg-msg').innerText='✅ Saved – ⚠️ short room codes are easy to guess, tap 🎲 for a secret one';
+  if(was!==cfg.db+cfg.rm){R=null;frozen=0;stream();pull();syncClock()}
+}
+function newRoomCode(){
+  const a=new Uint8Array(12);crypto.getRandomValues(a);
+  $('c-room').value='squad-'+[...a].map(x=>'abcdefghijkmnpqrstuvwxyz23456789'[x%32]).join('');
+  $('cfg-msg').innerText='🎲 New secret room – tap Save & Connect, then share the link';
 }
 const groupLink=()=>`${location.origin}${location.pathname}`+(cfg.db?`?db=${encodeURIComponent(cfg.db)}&room=${encodeURIComponent(cfg.rm)}`:'');
 // Phone share sheet (pick Messenger); on desktop copy and open Messenger to paste
@@ -398,12 +436,12 @@ function openProf(ed){
   $('prof-title').innerText=cfg.edit?'👤 Edit '+m.name:'👤 New Profile';$('p-del').style.display=cfg.edit?'':'none';
   const f=(k,d)=>cfg.edit?m[k]||'':d;
   $('p-name').value=f('name','');$('p-emo').value=f('emo','🍺');$('p-loc').value=f('loc','Medway');$('p-pay').value=f('pay','Monzo');
-  $('p-link').value=f('payLink','');$('p-mail').value=f('payMail','');$('p-acn').value=f('acn','');$('p-sort').value=f('sort','');$('p-acc').value=f('acc','');
+  $('p-link').value=f('payLink','');$('p-mail').value=f('payMail','');$('p-acn').value=f('acn','');$('p-sort').value=f('sort','');$('p-acc').value=f('acc','');$('p-tx').value=f('tx','');
 }
 function saveProf(){
   const v=k=>$(k).value.trim(),dig=k=>v(k).replace(/\D/g,''),err=t=>{$('prof-msg').innerText='⚠️ '+t};
   const name=v('p-name');if(!name)return err('Add your name');
-  const d={name,emo:v('p-emo')||'🍺',loc:v('p-loc')||'Local',pay:v('p-pay')||'Monzo',payLink:v('p-link'),payMail:v('p-mail'),acn:v('p-acn'),sort:dig('p-sort'),acc:dig('p-acc')};
+  const d={name,emo:v('p-emo')||'🍺',loc:v('p-loc')||'Local',pay:v('p-pay')||'Monzo',payLink:v('p-link'),payMail:v('p-mail'),acn:v('p-acn'),sort:dig('p-sort'),acc:dig('p-acc'),tx:v('p-tx')};
   if(d.payLink&&!payUrl(d))return err('That pay link doesn\'t look like a web link');
   if(d.payMail&&!mailOk(d))return err('That email doesn\'t look right');
   if(d.sort&&d.sort.length!==6)return err('Sort code should be 6 digits');
@@ -411,7 +449,7 @@ function saveProf(){
   if(d.sort)d.sort=d.sort.replace(/(\d\d)(\d\d)(\d\d)/,'$1-$2-$3');
   const m=me();
   if(cfg.edit&&m)Object.assign(m,d);
-  else{const id='u'+Date.now();S.squad.push({id,mode:'Train',tx:'Pint (-£6.50)',...d});cfg.u=id;set('u',id)}
+  else{const id='u'+Date.now();S.squad.push({id,mode:'Train',...d});cfg.u=id;set('u',id)}
   $('prof-box').classList.remove('open');push();
 }
 function delProf(){
@@ -462,7 +500,7 @@ function renderModes(){
 const safeUrl=u=>{try{const x=new URL(String(u||''));return /^https?:$/.test(x.protocol)?x.href:''}catch(e){return ''}};
 // Everything Gerg AI knows about the squad, so ideas fit them rather than just the postcode
 function squadBrief(){
-  const al=S.slots.find(s=>S.squad.every(u=>s.av&&s.av[u.id])),liked=[],vetoed=[];
+  const al=S.slots.find(s=>allIn(s.av)),liked=[],vetoed=[];
   S.venues.forEach(v=>{const vs=Object.values(v.votes||{});if(vs.includes('v'))vetoed.push(v.name);else if(vs.filter(x=>x==='k').length>=2)liked.push(v.name)});
   const when=$('ai-when').value.trim()||(al?(whenOf(al)?fmtWhen(whenOf(al)):al.lbl):'this coming weekend');
   return [
@@ -524,8 +562,8 @@ async function askAI(){
 
 /* ---------- VETO BOUNTY ---------- */
 // Bounties are kept after they finish (done = redeemed, hide = round bought) so the Bounty Board can count them
-const live=b=>!b.done&&Date.now()<b.until;
-const missed=b=>!b.done&&Date.now()>=b.until;
+const live=b=>!b.done&&now()<b.until;
+const missed=b=>!b.done&&now()>=b.until;
 const myBounties=()=>(S.bounties||[]).filter(b=>b.uid===cfg.u&&live(b));
 const vetoesUsed=uid=>S.venues.filter(v=>(v.votes||{})[uid]==='v').length;
 const clock=ms=>{const s=Math.max(0,Math.ceil(ms/1000));return Math.floor(s/60)+':'+String(s%60).padStart(2,'0')};
@@ -535,9 +573,11 @@ let liveKey='';const liveIds=()=>(S.bounties||[]).filter(live).map(b=>b.id).join
 function hideBounty(id){const b=(S.bounties||[]).find(x=>x.id===id);if(b){b.hide=1;push()}}
 
 /* ---------- ACTIONS ---------- */
-// Loose match so "Greedy Banker 2" or "the greedy-banker" still count as banned
+// Loose match so "Greedy Banker 2", "the greedy-banker" or "GreedyBanker" still count as banned
 const normName=n=>String(n).toLowerCase().replace(/\bthe\b/g,'').replace(/[^a-z0-9]/g,'');
-const banned=n=>S.ban.some(b=>normName(b.name)&&normName(n).includes(normName(b.name)));
+// Whole words only, so banning "The Ship" doesn't also ban "Shipwright's Arms"
+const words=n=>' '+String(n).toLowerCase().replace(/['’]/g,'').replace(/[^a-z0-9]+/g,' ').replace(/\bthe\b/g,' ').replace(/\s+/g,' ').trim()+' ';
+const banned=n=>S.ban.some(b=>{const w=words(b.name);return w.trim()&&(words(n).includes(w)||normName(n)===normName(b.name))});
 function addBan(){const v=$('ban-in').value.trim();if(v){S.ban.push({id:'b'+Date.now(),name:v});$('ban-in').value='';push()}}
 function unban(id){S.ban=S.ban.filter(x=>x.id!==id||x.lock);push()}
 function vote(id,v){
@@ -547,10 +587,24 @@ function vote(id,v){
   x.votes[cfg.u]=x.votes[cfg.u]===v?null:v;
   // Changing your mind cancels a live bounty; a fresh veto starts the 60s clock
   S.bounties=(S.bounties||[]).filter(b=>!(b.uid===cfg.u&&b.vid===id&&live(b)));
-  if(x.votes[cfg.u]==='v'){S.bounties.push({id:'x'+Date.now(),uid:cfg.u,vid:id,vname:x.name,until:Date.now()+BOUNTY_MS});setTimeout(()=>$('bx-name').focus(),0)}
+  if(x.votes[cfg.u]==='v'){S.bounties.push({id:'x'+Date.now(),uid:cfg.u,vid:id,vname:x.name,until:now()+BOUNTY_MS});setTimeout(()=>$('bx-name').focus(),0)}
   push();
 }
 function lockIn(id){S.win=id;push()}
+function delVen(id){const v=S.venues.find(x=>x.id===id);if(v&&confirm(`Remove "${v.name}" from the list?`)){S.venues=S.venues.filter(x=>x.id!==id);if(S.win===id)S.win=null;push()}}
+function delSlot(id){const s=S.slots.find(x=>x.id===id);if(s&&confirm(`Remove "${s.lbl}"?`)){S.slots=S.slots.filter(x=>x.id!==id);push()}}
+// Bounty Board totals carried over from finished plans, plus this plan's bounties
+function boardTally(){
+  const t=clone(S.board||{});
+  (S.bounties||[]).forEach(b=>{const x=t[b.uid]=t[b.uid]||{r:0,m:0};if(b.done)x.r++;else if(missed(b))x.m++});
+  return t;
+}
+function newPlan(){
+  const owed=settle().length;
+  if(!confirm(`Start a new plan?\n\nClears the venues, dates, midpoint and bounties (the Bounty Board keeps its totals). The squad and Ban List stay.\n${owed?'The kitty still has unsettled debts, so it stays.':'The kitty is all square, so it gets cleared too.'}`))return;
+  S.board=boardTally();S.venues=[];S.slots=[];S.bounties=[];S.win=null;S.mid=null;if(!owed){S.exp=[];S.paid=[]}
+  $('sum-box').classList.remove('open');tab('act');push();
+}
 function spin(){const ok=S.venues.filter(v=>!Object.values(v.votes||{}).includes('v'));if(ok.length){S.win=ok[Math.floor(Math.random()*ok.length)].id;push()}}
 function addVen(nId='v-name',lId='v-loc'){
   const n=$(nId).value.trim(),l=$(lId).value.trim();if(!n||!needMe())return;
@@ -577,7 +631,11 @@ function parseWhen(t){
   else if(m=t.match(/\b(\d{1,2})\/(\d{1,2})(?:\/(\d{2,4}))?\b/))d=m[3]?new Date(+m[3]<100?2000+ +m[3]:+m[3],m[2]-1,+m[1]):ahead(new Date(now.getFullYear(),m[2]-1,+m[1]));
   else if(/\btomorrow\b/.test(t)){d=today();d.setDate(d.getDate()+1)}
   else if(/\b(today|tonight)\b/.test(t))d=today();
-  else if(m=t.match(/\b(sun|mon|tue|wed|thu|fri|sat)/)){d=today();d.setDate(d.getDate()+('sunmontuewedthufrisat'.indexOf(m[1])/3-d.getDay()+7)%7);wk=1}
+  else if(m=t.match(/\b(next\s+)?(sun|mon|tue|wed|thu|fri|sat)/)){
+    const day='sunmontuewedthufrisat'.indexOf(m[2])/3;d=today();
+    // "Sat" = the coming one; "next Sat" = Saturday of next week (weeks start Monday)
+    if(m[1])d.setDate(d.getDate()-(d.getDay()+6)%7+7+(day+6)%7);else{d.setDate(d.getDate()+(day-d.getDay()+7)%7);wk=1}
+  }
   if(!d||isNaN(d))return null;
   if(m)t=t.replace(m[0],' ');
   let h=19,mi=0;
@@ -589,11 +647,15 @@ function parseWhen(t){
   return d;
 }
 const whenOf=s=>s&&s.at?new Date(s.at):null;
+function previewWhen(){
+  const l=$('d-in').value.trim(),at=$('d-at').value,d=at?new Date(at):parseWhen(l);
+  $('d-prev').innerText=!l&&!at?'':d?'🗓️ Saves as '+fmtWhen(d):'⚠️ No date spotted – it saves as text; set an exact time later for the calendar';
+}
 function addSlot(){
   let l=$('d-in').value.trim(),at=$('d-at').value;if(!needMe())return;
   if(!at&&l){const p=parseWhen(l);if(p)at=isoLocal(p)}
   if(!l&&at)l=fmtWhen(new Date(at));if(!l)return;
-  S.slots.push({id:'s'+Date.now(),lbl:l,at:at||null,av:{[cfg.u]:1}});$('d-in').value='';$('d-at').value='';push();
+  S.slots.push({id:'s'+Date.now(),lbl:l,at:at||null,av:{[cfg.u]:1}});$('d-in').value='';$('d-at').value='';previewWhen();push();
 }
 function setSlotTime(id){
   const s=S.slots.find(x=>x.id===id);if(!s)return;
@@ -696,7 +758,7 @@ function unPaid(id){if(confirm('Undo this payment?')){S.paid=(S.paid||[]).filter
 
 function openSum(){
   const w=winVenue();
-  const al=S.slots.filter(s=>S.squad.every(u=>s.av&&s.av[u.id]));
+  const al=S.slots.filter(s=>allIn(s.av));
   const{tot}=ledger();
   const owes=settle().map(t=>{const c=who(t.to),l=payUrl(c,t.amt);return `   ${who(t.from).name} → ${c.name} ${gbp(t.amt)}${l?' '+l:''}`});
   const shame=[...new Set((S.bounties||[]).filter(b=>missed(b)&&!b.hide).map(b=>(who(b.uid)||{}).name).filter(Boolean))];
@@ -717,29 +779,28 @@ function render(){
 
   const mine=myBounties()[0];liveKey=liveIds();
   $('bounty-me').style.display=mine?'block':'none';
-  if(mine){$('bx-cd').dataset.until=mine.until;$('bx-cd').innerText=clock(mine.until-Date.now());$('bx-txt').innerHTML=`You vetoed <b>${esc(mine.vname)}</b>. Pitch a replacement before the clock hits zero or it's default-planning inertia — and you owe the first round 🍺`}
+  if(mine){$('bx-cd').dataset.until=mine.until;$('bx-cd').innerText=clock(mine.until-now());$('bx-txt').innerHTML=`You vetoed <b>${esc(mine.vname)}</b>. Pitch a replacement before the clock hits zero or it's default-planning inertia — and you owe the first round 🍺`}
   else delete $('bx-cd').dataset.until;
   $('bounty-list').innerHTML=(S.bounties||[]).filter(b=>(live(b)&&b.uid!==cfg.u)||(missed(b)&&!b.hide)).map(b=>{
     const n=esc((who(b.uid)||{}).name||'Someone');
     return live(b)
-      ?`<div class="card row" style="border-color:#f59e0b;padding:8px 12px"><span class="sub">⏱️ <b>${n}</b> vetoed <b>${esc(b.vname)}</b> – must pitch a replacement</span><span class="cd" data-until="${+b.until}">${clock(b.until-Date.now())}</span></div>`
+      ?`<div class="card row" style="border-color:#f59e0b;padding:8px 12px"><span class="sub">⏱️ <b>${n}</b> vetoed <b>${esc(b.vname)}</b> – must pitch a replacement</span><span class="cd" data-until="${+b.until}">${clock(b.until-now())}</span></div>`
       :`<div class="card row" style="border-color:#9f1239;background:#1f0913;padding:8px 12px"><span class="sub" style="color:#fda4af">💀 <b>${n}</b> vetoed <b>${esc(b.vname)}</b> and pitched nothing – owes the first round 🍺</span><button class="btn mini" onclick="hideBounty('${sid(b.id)}')">🍺 Bought it</button></div>`;
   }).join('');
-  const tally={};(S.bounties||[]).forEach(b=>{if(!who(b.uid))return;const t=tally[b.uid]=tally[b.uid]||{r:0,m:0};if(b.done)t.r++;else if(missed(b))t.m++});
-  const board=Object.entries(tally).filter(([,t])=>t.r||t.m).sort((a,b)=>b[1].m-a[1].m||b[1].r-a[1].r);
+  const board=Object.entries(boardTally()).filter(([id,t])=>who(id)&&(t.r||t.m)).sort((a,b)=>b[1].m-a[1].m||b[1].r-a[1].r);
   $('bounty-board').innerHTML=board.length?'🏆 Bounty Board: '+board.map(([id,t])=>`${esc(who(id).emo)} ${esc(who(id).name)} ${t.r?'✅'+t.r:''}${t.m?' 💀'+t.m:''}`).join(' • '):'';
 
   $('v-list').innerHTML=S.venues.map(v=>{
     const vt=v.votes||{},kn=S.squad.filter(u=>vt[u.id]==='k').map(u=>esc(u.name)),vo=S.squad.filter(u=>vt[u.id]==='v').map(u=>esc(u.name)),w=S.win===v.id,id=sid(v.id);
     const meta=[v.when?'🗓️ '+esc(v.when):'',v.cost?'💷 '+esc(v.cost)+' pp':''].filter(Boolean).join(' • '),u=safeUrl(v.url);
     const extra=(meta?`<div class="sub" style="color:#c7d2fe;margin-top:2px">${meta}${v.live?' • 🔎 checked live':''}</div>`:'')+(v.steps&&v.steps.length?`<ol class="sub" style="margin:6px 0 0;padding-left:18px;color:#e2e8f0">${v.steps.map(x=>`<li>${esc(x)}</li>`).join('')}</ol>`:'');
-    return `<div class="card" style="border-color:${w?'#f59e0b':'#334155'}"><div class="row"><div><b>${w?'⭐ ':''}${KIND[v.kind]||''}${esc(v.name)}</b><div class="sub" style="color:#fbbf24">📍 ${esc(v.loc)}</div>${extra}</div><div class="row">${u?`<a class="btn" href="${esc(u)}" target="_blank" rel="noopener">🔗 Info</a>`:''}<a class="btn" href="${esc(mapsUrl((v.kind==='combo'?'':v.name+', ')+v.loc))}" target="_blank" rel="noopener">🗺️ Map</a><button class="btn ${w?'amber':''}" onclick="lockIn('${id}')">${w?'Locked':'Select'}</button></div></div><div class="sub" style="margin:6px 0">${esc(v.desc)}</div><div class="row"><span class="sub" style="color:${vo.length?'#f43f5e':'#10b981'}">${vo.length?'⚠️ Veto: '+vo.join(', '):'👍 Keen: '+(kn.join(', ')||'0')}</span><div class="row"><button class="btn ${vt[cfg.u]==='k'?'green':''}" onclick="vote('${id}','k')">👍 Keen</button><button class="btn ${vt[cfg.u]==='v'?'red':''}" onclick="vote('${id}','v')">👎 Veto</button></div></div></div>`;
+    return `<div class="card" style="border-color:${w?'#f59e0b':'#334155'}"><div class="row"><div><b>${w?'⭐ ':''}${KIND[v.kind]||''}${esc(v.name)}</b><div class="sub" style="color:#fbbf24">📍 ${esc(v.loc)}</div>${extra}</div><div class="row">${u?`<a class="btn" href="${esc(u)}" target="_blank" rel="noopener">🔗 Info</a>`:''}<a class="btn" href="${esc(mapsUrl((v.kind==='combo'?'':v.name+', ')+v.loc))}" target="_blank" rel="noopener">🗺️ Map</a><button class="btn ${w?'amber':''}" onclick="lockIn('${id}')">${w?'Locked':'Select'}</button><button class="btn mini" title="Remove" onclick="delVen('${id}')">🗑️</button></div></div><div class="sub" style="margin:6px 0">${esc(v.desc)}</div><div class="row"><span class="sub" style="color:${vo.length?'#f43f5e':'#10b981'}">${vo.length?'⚠️ Veto: '+vo.join(', '):'👍 Keen: '+(kn.join(', ')||'0')}</span><div class="row"><button class="btn ${vt[cfg.u]==='k'?'green':''}" onclick="vote('${id}','k')">👍 Keen</button><button class="btn ${vt[cfg.u]==='v'?'red':''}" onclick="vote('${id}','v')">👎 Veto</button></div></div></div>`;
   }).join('');
 
   $('d-list').innerHTML=S.slots.map(s=>{
-    const av=s.av||{},all=S.squad.every(u=>av[u.id]),d=whenOf(s),id=sid(s.id),g=all&&d?calGoogle(s.id):'';
+    const av=s.av||{},all=allIn(av),d=whenOf(s),id=sid(s.id),g=all&&d?calGoogle(s.id):'';
     const cal=all?`<div class="row" style="justify-content:flex-start;margin-top:6px">${d?`<button class="btn amber" onclick="calIcs('${id}')">📅 Add to Calendar</button><a class="btn" href="${esc(g)}" target="_blank" rel="noopener">Google Cal</a>`:''}<button class="btn" onclick="setSlotTime('${id}')">🕒 ${d?'Change time':'Set exact time for calendar'}</button></div>`:'';
-    return `<div style="background:#0b111e;border:1px solid ${all?'#10b981':'#334155'};padding:8px;border-radius:10px;margin-bottom:6px"><div class="row" style="margin-bottom:6px"><span><b>${esc(s.lbl)}</b>${d?`<div class="sub">🗓️ ${esc(fmtWhen(d))}</div>`:''}</span><span class="sub" style="color:${all?'#10b981':'#94a3b8'}">${all?'🎉 100% ALIGNED!':'Tap to toggle'}</span></div><div class="grid">${S.squad.map(u=>`<button class="btn ${av[u.id]?'green':''}" onclick="togSlot('${id}','${sid(u.id)}')">${esc(u.emo)} ${esc(u.name)}: ${av[u.id]?'✅':'❌'}</button>`).join('')}</div>${cal}</div>`;
+    return `<div style="background:#0b111e;border:1px solid ${all?'#10b981':'#334155'};padding:8px;border-radius:10px;margin-bottom:6px"><div class="row" style="margin-bottom:6px"><span><b>${esc(s.lbl)}</b>${d?`<div class="sub">🗓️ ${esc(fmtWhen(d))}</div>`:''}</span><span class="sub" style="color:${all?'#10b981':'#94a3b8'}">${all?'🎉 100% ALIGNED!':'Tap to toggle'} <button class="btn mini" title="Remove" onclick="delSlot('${id}')">🗑️</button></span></div><div class="grid">${S.squad.map(u=>`<button class="btn ${av[u.id]?'green':''}" onclick="togSlot('${id}','${sid(u.id)}')">${esc(u.emo)} ${esc(u.name)}: ${av[u.id]?'✅':'❌'}</button>`).join('')}</div>${cal}</div>`;
   }).join('');
 
   const M=S.mid,w=winVenue(),vp=M&&M.v&&w&&M.vid===w.id?M.v:null;
@@ -784,7 +845,7 @@ function render(){
 // Bounty countdowns tick every second without a full re-render (which would wipe what you're typing)
 setInterval(()=>{
   if(liveIds()!==liveKey)render();
-  document.querySelectorAll('.cd[data-until]').forEach(e=>e.innerText=clock(+e.dataset.until-Date.now()));
+  document.querySelectorAll('.cd[data-until]').forEach(e=>e.innerText=clock(+e.dataset.until-now()));
 },1000);
 
 /* ---------- INSTALL ---------- */
@@ -794,7 +855,7 @@ async function install(){if(!installEvt)return;installEvt.prompt();await install
 if('serviceWorker' in navigator&&location.protocol==='https:')navigator.serviceWorker.register('sw.js').catch(()=>{});
 
 $('c-db').value=cfg.db;$('c-room').value=cfg.rm;$('c-model').value=cfg.md;$('c-key').value=cfg.key;
-renderModes();render();if(cfg.db){stream();pull()}
+renderModes();render();if(cfg.db){syncClock();stream();pull()}
 // Polling is only the fallback for when the live stream drops
 setInterval(()=>{if(cfg.db&&!document.hidden&&!streaming)pull()},4000);
 document.addEventListener('visibilitychange',()=>{if(!document.hidden&&cfg.db)pull()});
