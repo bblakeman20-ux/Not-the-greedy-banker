@@ -3,6 +3,12 @@
 <head>
 <meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1">
 <title>Not The Greedy Banker</title>
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="icon" href="icon.svg">
+<link rel="apple-touch-icon" href="icon-192.png">
+<meta name="theme-color" content="#090d16">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="Greedy Banker">
 <style>
   *{box-sizing:border-box;font-family:system-ui,sans-serif}
   body{background:#090d16;color:#f8fafc;margin:0;padding:10px;max-width:640px;margin-inline:auto}
@@ -15,7 +21,9 @@
   .green{background:#10b981;color:#000;border-color:#10b981}
   .red{background:#f43f5e;color:#fff;border-color:#f43f5e}
   .indigo{background:#6366f1;color:#fff;border-color:#6366f1}
+  .mini{padding:2px 7px;font-size:11px}
   input,textarea{width:100%;background:#050811;border:1px solid #475569;color:#fff;padding:7px;border-radius:8px;font-size:12px;margin-top:4px}
+  input[type=datetime-local]{color-scheme:dark}
   .box{display:none;background:#050811;border:1px solid #f59e0b;border-radius:10px;padding:10px;margin-top:10px}
   .open{display:block!important}
   .pill{cursor:pointer;padding:8px;border-radius:10px;border:2px solid #334155;background:#0b111e;color:#fff;text-align:left}
@@ -35,6 +43,7 @@
       <div class="sub">Anti-Default Outing Engine • Deffo Not Outlook</div>
     </div>
     <div class="row">
+      <button id="inst" class="btn indigo" style="display:none" onclick="install()">📲 Install</button>
       <button class="btn amber" onclick="tog('setup-box')">⚙️ Setup</button>
       <button class="btn green" onclick="openSum()">📋 Summary</button>
     </div>
@@ -51,19 +60,23 @@
     <input id="c-key" type="password" placeholder="Gemini API Key (AIzaSy...)">
     <div class="row" style="margin-top:8px">
       <button class="btn amber" onclick="saveCfg()">💾 Save & Connect</button>
-      <button class="btn indigo" onclick="shareLink()">🔗 Copy Group Link</button>
+      <button class="btn indigo" onclick="shareLink()">💬 Share Group Link</button>
       <button class="btn" onclick="tog('setup-box')">Close</button>
     </div>
     <div id="cfg-msg" class="sub" style="color:#10b981;margin-top:4px"></div>
+    <div class="sub" style="margin-top:4px">📲 iPhone: Share ⬆️ → Add to Home Screen to install.</div>
   </div>
 
   <!-- SUMMARY -->
   <div id="sum-box" class="box">
-    <textarea id="sum-txt" rows="8" readonly></textarea>
+    <textarea id="sum-txt" rows="9" readonly></textarea>
     <div class="row" style="margin-top:6px">
+      <button class="btn indigo" onclick="shareSum()">💬 Send to Messenger</button>
       <button class="btn green" onclick="copyTxt('sum-txt')">Copy Text</button>
+      <button id="sum-cal" class="btn amber" style="display:none">📅 Add to Calendar</button>
       <button class="btn" onclick="tog('sum-box')">Close</button>
     </div>
+    <div id="sum-msg" class="sub" style="color:#10b981;margin-top:4px"></div>
   </div>
 
   <!-- PROFILES -->
@@ -140,6 +153,7 @@
     </div>
   </div>
   <div id="bounty-list"></div>
+  <div id="bounty-board" class="sub" style="margin:-4px 2px 10px"></div>
 
   <div class="card" style="border-color:#4338ca;background:#131633">
     <div class="row">
@@ -171,17 +185,23 @@
   <div class="card">
     <div style="font-size:14px;font-weight:700;margin-bottom:8px">📅 Tap Your Name When Free</div>
     <div id="d-list"></div>
-    <div class="row" style="margin-top:8px">
-      <input id="d-in" placeholder="Add date (e.g. Next Sat 3pm)" style="flex:1;margin:0">
-      <button class="btn amber" onclick="addSlot()">+ Add</button>
+    <div class="grid" style="margin-top:8px">
+      <input id="d-in" placeholder="Add date (e.g. Next Sat 3pm)" style="margin:0">
+      <input id="d-at" type="datetime-local" title="Exact time (optional)" style="margin:0">
     </div>
+    <button class="btn amber" style="width:100%;margin-top:6px" onclick="addSlot()">+ Add Date</button>
   </div>
 </div>
 
 <!-- TAB 3: TRAVEL -->
 <div id="t-trv" style="display:none">
   <div class="card">
-    <div style="font-size:14px;font-weight:700;margin-bottom:8px">🚆 Squad Travel & Midpoint</div>
+    <div class="row" style="margin-bottom:8px">
+      <div style="font-size:14px;font-weight:700">🚆 Squad Travel & Midpoint</div>
+      <button class="btn amber" onclick="findMid()">📍 Find Midpoint</button>
+    </div>
+    <div id="mid-box"></div>
+    <div id="mid-msg" class="sub" style="margin-bottom:6px;color:#a5b4fc"></div>
     <div id="trv-list"></div>
   </div>
 </div>
@@ -208,11 +228,14 @@
       <input id="e-ttl" placeholder="Item (e.g. Uber XL)">
       <input id="e-amt" type="number" step="0.01" min="0" placeholder="£ Amount">
     </div>
+    <div class="sub" style="margin:4px 0">Split between:</div>
+    <div id="e-for" class="row" style="justify-content:flex-start;margin-bottom:8px"></div>
     <button class="btn green" onclick="addExp()">+ Add Expense</button>
   </div>
   <div class="card">
     <div style="font-size:13px;font-weight:700;margin-bottom:6px">🤝 Settle Up</div>
     <div id="st-list"></div>
+    <div id="paid-list"></div>
     <div id="kit-msg" class="sub" style="color:#10b981;margin-top:4px"></div>
   </div>
 </div>
@@ -223,7 +246,9 @@ const get=(k,d)=>{try{return localStorage.getItem(k)||d}catch(e){return mem[k]||
 const set=(k,v)=>{try{localStorage.setItem(k,v)}catch(e){mem[k]=v}};
 const P=new URLSearchParams(location.search);
 let cfg={u:get('u',''),db:(P.get('db')||get('db','')).replace(/\/$/,''),rm:P.get('room')||get('rm','medway-squad'),md:get('md','gemini-3.8-flash'),key:get('key',''),edit:0};
-const FALLBACK='gemini-2.5-flash',AI_TIMEOUT=15000,BOUNTY_MS=60000;
+// Remember the room from a group link, so the installed app (which opens without the link) stays connected
+if(P.get('db'))set('db',cfg.db);if(P.get('room'))set('rm',cfg.rm);
+const FALLBACK='gemini-2.5-flash',AI_TIMEOUT=15000,BOUNTY_MS=60000,MAX_VETOES=2;
 
 let S={
   win:'v1',
@@ -244,7 +269,9 @@ let S={
     {id:'s3',lbl:'Sat 7:30 PM',av:{u1:1,u3:1}}
   ],
   exp:[{id:'e1',ttl:'Axe Throwing Deposit',amt:64,by:'Ben',byId:'u1'}],
-  bounties:[]
+  bounties:[],
+  paid:[],
+  mid:null
 };
 
 const $=id=>document.getElementById(id);
@@ -255,6 +282,8 @@ const sid=s=>String(s??'').replace(/[^\w-]/g,'');
 const me=()=>S.squad.find(x=>x.id===cfg.u);
 const who=id=>S.squad.find(x=>x.id===id);
 const gbp=n=>'£'+(+n||0).toFixed(2);
+const winVenue=()=>S.venues.find(v=>v.id===S.win)||S.venues[0];
+const mapsUrl=q=>'https://www.google.com/maps/search/?api=1&query='+encodeURIComponent(q);
 function needMe(){if(me())return 1;alert('👆 Tap your profile first (or + New Profile)');return 0}
 function tab(t){['act','dat','trv','kit'].forEach(x=>{$('t-'+x).style.display=x===t?'block':'none';$('tb-'+x).className='btn'+(x===t?' amber':'')})}
 async function copyStr(s){
@@ -263,33 +292,97 @@ async function copyStr(s){
 }
 
 /* ---------- SYNC ---------- */
-let busy=0,touched=0;
-const status=ok=>$('sync-txt').innerText=ok?'🟢 Live: '+cfg.rm:'🔴 Sync failed – retrying';
-function dbUrl(){return cfg.db?`${cfg.db}/rooms/${cfg.rm.replace(/\W/g,'')}.json`:null}
-async function push(){
-  touched=Date.now();render();const u=dbUrl();if(!u)return;
-  busy++;try{const r=await fetch(u,{method:'PUT',body:JSON.stringify(S)});status(r.ok)}catch(e){status(0)}finally{busy--}
+// Lists are stored in Firebase keyed by id (not as arrays) so each change can be written to its own path:
+// two people voting, pitching or adding expenses at once no longer overwrite each other.
+const LISTS=['squad','ban','venues','slots','exp','bounties','paid'];
+let busy=0,touched=0,R=null,es=null,streaming=0;
+const clone=o=>JSON.parse(JSON.stringify(o));
+// Mirror Firebase: nulls and empty objects/arrays don't exist there
+function fb(x){
+  if(Array.isArray(x)){const a=x.map(fb).filter(v=>v!=null);return a.length?a:null}
+  if(x&&typeof x==='object'){const o={};for(const[k,v]of Object.entries(x)){const y=fb(v);if(y!=null)o[k]=y}return Object.keys(o).length?o:null}
+  return x===undefined?null:x;
 }
-// Skip pulls while our own write is in flight or just landed, so a stale poll can't undo a tap
-const quiet=()=>busy||Date.now()-touched<3000;
+function toDb(s){
+  const o=fb(s)||{};
+  LISTS.forEach(k=>{const a=s[k]||[];if(!a.length)return delete o[k];o[k]={};a.forEach((x,i)=>o[k][sid(x.id)||k+i]=fb({...x,o:i}))});
+  return o;
+}
+function fromDb(d){
+  const o={...d};
+  LISTS.forEach(k=>{const v=d[k];o[k]=!v?[]:Array.isArray(v)?v.filter(Boolean):Object.entries(v).map(([id,x])=>({...x,id:x.id||id})).sort((a,b)=>(a.o??0)-(b.o??0))});
+  return o;
+}
+const norm=d=>({...S,...d,win:d.win||null,mid:d.mid||null,squad:d.squad.length?d.squad:S.squad,ban:d.ban.length?d.ban:S.ban,slots:d.slots.map(s=>({...s,av:s.av||{}}))});
+function setPath(root,parts,v){
+  parts=parts.filter(Boolean);if(!parts.length)return v;
+  root=root&&typeof root==='object'?root:{};let o=root;
+  parts.slice(0,-1).forEach(p=>{if(!o[p]||typeof o[p]!=='object')o[p]={};o=o[p]});
+  const last=parts[parts.length-1];if(v==null)delete o[last];else o[last]=v;
+  return root;
+}
+// Multi-path update of only the leaves that changed
+function diff(a,b,p,out){
+  const obj=x=>x&&typeof x==='object'&&!Array.isArray(x);
+  if(obj(a)&&obj(b))new Set([...Object.keys(a),...Object.keys(b)]).forEach(k=>diff(a[k],b[k],p+'/'+k,out));
+  else if(JSON.stringify(a??null)!==JSON.stringify(b??null))out[p.slice(1)]=b??null;
+  return out;
+}
+const status=ok=>$('sync-txt').innerText=ok?(streaming?'⚡ Live: ':'🟢 Live: ')+cfg.rm:'🔴 Sync failed – retrying';
+function dbUrl(){return cfg.db?`${cfg.db}/rooms/${cfg.rm.replace(/\W/g,'')}.json`:null}
+async function push(full){
+  touched=Date.now();render();const u=dbUrl();if(!u)return;
+  const db=toDb(S);let method='PATCH',body;
+  // Empty room, or a room saved by the old array format: write the whole thing once
+  if(full||!R||LISTS.some(k=>Array.isArray(R[k]))){method='PUT';body=db;R=clone(db)}
+  else{body=diff(R,db,'',{});if(!Object.keys(body).length)return;Object.entries(body).forEach(([p,v])=>R=setPath(R,p.split('/'),v))}
+  busy++;try{const r=await fetch(u,{method,body:JSON.stringify(body)});status(r.ok)}catch(e){status(0)}finally{busy--;if(!busy)applyRemote()}
+}
+function applyRemote(){
+  if(busy)return;
+  if(!R||!R.squad)return push(1);
+  S=norm(fromDb(clone(R)));render(); // clone: local edits must not leak into the server mirror, or diff() sees nothing
+}
 async function pull(){
-  const u=dbUrl();if(!u||quiet())return;
-  try{
-    const r=await fetch(u);if(!r.ok)throw 0;const d=await r.json();if(quiet())return;
-    if(d&&d.squad){S={...S,...d,ban:d.ban||S.ban,venues:d.venues||[],slots:(d.slots||[]).map(s=>({...s,av:s.av||{}})),exp:d.exp||[],bounties:d.bounties||[]};render();status(1)}else push()
-  }catch(e){status(0)}
+  const u=dbUrl();if(!u)return;const t0=Date.now();
+  try{const r=await fetch(u);if(!r.ok)throw 0;const d=await r.json();if(busy||touched>t0)return;R=d;applyRemote();status(1)}catch(e){status(0)}
+}
+// Firebase REST streaming: changes land instantly instead of waiting for the next poll
+function stream(){
+  if(es){es.close();es=null}streaming=0;const u=dbUrl();if(!u||!window.EventSource)return;
+  es=new EventSource(u);
+  const on=(e,patch)=>{try{
+    const{path,data}=JSON.parse(e.data),base=String(path).split('/');streaming=1;
+    if(patch)Object.entries(data||{}).forEach(([k,v])=>R=setPath(R,[...base,...k.split('/')],v));else R=setPath(R,base,data);
+    applyRemote();status(1);
+  }catch(x){}};
+  es.addEventListener('put',e=>on(e,0));es.addEventListener('patch',e=>on(e,1));
+  const stop=()=>{if(es)es.close();es=null;streaming=0};
+  es.addEventListener('cancel',stop);es.addEventListener('auth_revoked',stop);
+  es.onerror=()=>{streaming=0;status(0)};
 }
 
 function saveCfg(){
+  const was=cfg.db+cfg.rm;
   cfg.db=$('c-db').value.trim().replace(/\/$/,'');cfg.rm=$('c-room').value.trim()||'medway';
   cfg.md=$('c-model').value.trim()||'gemini-3.8-flash';cfg.key=$('c-key').value.trim();
   set('db',cfg.db);set('rm',cfg.rm);set('md',cfg.md);set('key',cfg.key);
-  $('cfg-msg').innerText='✅ Saved!';pull();
+  $('cfg-msg').innerText='✅ Saved!';
+  if(was!==cfg.db+cfg.rm){R=null;stream();pull()}
 }
-async function shareLink(){
-  saveCfg();const u=`${location.origin}${location.pathname}?db=${encodeURIComponent(cfg.db)}&room=${encodeURIComponent(cfg.rm)}`;
-  $('cfg-msg').innerText=await copyStr(u)?'🔗 Link copied! Paste in Messenger.':'❌ Couldn\'t copy – link: '+u;
+const groupLink=()=>`${location.origin}${location.pathname}`+(cfg.db?`?db=${encodeURIComponent(cfg.db)}&room=${encodeURIComponent(cfg.rm)}`:'');
+// Phone share sheet (pick Messenger); on desktop copy and open Messenger to paste
+async function shareOut(text,url,msgId){
+  if(navigator.share){
+    try{await navigator.share({title:'Not The Greedy Banker',text,url});$(msgId).innerText='✅ Shared!';return}
+    catch(e){if(e.name==='AbortError')return}
+  }
+  const ok=await copyStr(url?text+'\n'+url:text);
+  $(msgId).innerText=ok?'📋 Copied – paste it into the Messenger chat':'❌ Couldn\'t copy';
+  if(ok)window.open('https://www.messenger.com/','_blank','noopener');
 }
+function shareLink(){saveCfg();shareOut('🍻 Join our plan on Not The Greedy Banker',groupLink(),'cfg-msg')}
+function shareSum(){shareOut($('sum-txt').value,cfg.db?groupLink():'','sum-msg')}
 
 /* ---------- PROFILES & PAY DETAILS ---------- */
 function pick(id){cfg.u=id;set('u',id);render()}
@@ -305,7 +398,7 @@ function saveProf(){
   const name=v('p-name');if(!name)return err('Add your name');
   const d={name,emo:v('p-emo')||'🍺',loc:v('p-loc')||'Local',pay:v('p-pay')||'Monzo',payLink:v('p-link'),payMail:v('p-mail'),acn:v('p-acn'),sort:dig('p-sort'),acc:dig('p-acc')};
   if(d.payLink&&!payUrl(d))return err('That pay link doesn\'t look like a web link');
-  if(d.payMail&&!/^[^\s@<>"']+@[^\s@<>"']+\.[^\s@<>"']+$/.test(d.payMail))return err('That email doesn\'t look right');
+  if(d.payMail&&!mailOk(d))return err('That email doesn\'t look right');
   if(d.sort&&d.sort.length!==6)return err('Sort code should be 6 digits');
   if(d.acc&&d.acc.length!==8)return err('Account number should be 8 digits');
   if(d.sort)d.sort=d.sort.replace(/(\d\d)(\d\d)(\d\d)/,'$1-$2-$3');
@@ -367,29 +460,34 @@ async function askAI(){
     ideas=ideas.filter(x=>x&&x.name&&!banned(x.name)).slice(0,2);
     if(!ideas.length)throw new Error('Gerg Ai only came up with banned spots');
     ideas.forEach((x,i)=>S.venues.unshift({id:'v'+Date.now()+i,name:String(x.name),loc:String(x.loc||'Local'),desc:String(x.desc||''),votes:{[cfg.u]:'k'}}));
-    const won=redeem(pend);
+    const won=redeem(pend,ideas[0].name);
     $('ai-msg').innerText=`✅ Gerg Ai added ${ideas.length} idea${ideas.length>1?'s':''} in ${((Date.now()-t0)/1000).toFixed(1)}s${used!==cfg.md?` (via ${used} – ${cfg.md} failed)`:''}${won?' • 🎯 Veto Bounty redeemed!':''}`;push();
   }catch(e){$('ai-msg').innerText='❌ '+e.message}
 }
 
 /* ---------- VETO BOUNTY ---------- */
-const live=b=>Date.now()<b.until;
+// Bounties are kept after they finish (done = redeemed, hide = round bought) so the Bounty Board can count them
+const live=b=>!b.done&&Date.now()<b.until;
+const missed=b=>!b.done&&Date.now()>=b.until;
 const myBounties=()=>(S.bounties||[]).filter(b=>b.uid===cfg.u&&live(b));
+const vetoesUsed=uid=>S.venues.filter(v=>(v.votes||{})[uid]==='v').length;
 const clock=ms=>{const s=Math.max(0,Math.ceil(ms/1000));return Math.floor(s/60)+':'+String(s%60).padStart(2,'0')};
 // Pitching anything clears the bounties that were live when the pitch started
-function redeem(ids){const n=(S.bounties||[]).length;S.bounties=(S.bounties||[]).filter(b=>!ids.includes(b.id));return n-S.bounties.length}
+function redeem(ids,withName){let n=0;(S.bounties||[]).forEach(b=>{if(ids.includes(b.id)&&!b.done){b.done=1;b.with=withName;n++}});return n}
 let liveKey='';const liveIds=()=>(S.bounties||[]).filter(live).map(b=>b.id).join();
-function dropBounty(id){S.bounties=(S.bounties||[]).filter(b=>b.id!==id);push()}
+function hideBounty(id){const b=(S.bounties||[]).find(x=>x.id===id);if(b){b.hide=1;push()}}
 
 /* ---------- ACTIONS ---------- */
 // Loose match so "Greedy Banker 2" or "the greedy-banker" still count as banned
-const norm=n=>String(n).toLowerCase().replace(/\bthe\b/g,'').replace(/[^a-z0-9]/g,'');
-const banned=n=>S.ban.some(b=>norm(b.name)&&norm(n).includes(norm(b.name)));
+const normName=n=>String(n).toLowerCase().replace(/\bthe\b/g,'').replace(/[^a-z0-9]/g,'');
+const banned=n=>S.ban.some(b=>normName(b.name)&&normName(n).includes(normName(b.name)));
 function addBan(){const v=$('ban-in').value.trim();if(v){S.ban.push({id:'b'+Date.now(),name:v});$('ban-in').value='';push()}}
 function unban(id){S.ban=S.ban.filter(x=>x.id!==id||x.lock);push()}
 function vote(id,v){
   if(!needMe())return;const x=S.venues.find(a=>a.id===id);if(!x)return;
-  x.votes=x.votes||{};x.votes[cfg.u]=x.votes[cfg.u]===v?null:v;
+  x.votes=x.votes||{};
+  if(v==='v'&&x.votes[cfg.u]!=='v'&&vetoesUsed(cfg.u)>=MAX_VETOES)return alert(`🚫 You've used both vetoes. Un-veto one, or pitch something better!`);
+  x.votes[cfg.u]=x.votes[cfg.u]===v?null:v;
   // Changing your mind cancels a live bounty; a fresh veto starts the 60s clock
   S.bounties=(S.bounties||[]).filter(b=>!(b.uid===cfg.u&&b.vid===id&&live(b)));
   if(x.votes[cfg.u]==='v'){S.bounties.push({id:'x'+Date.now(),uid:cfg.u,vid:id,vname:x.name,until:Date.now()+BOUNTY_MS});setTimeout(()=>$('bx-name').focus(),0)}
@@ -400,25 +498,132 @@ function spin(){const ok=S.venues.filter(v=>!Object.values(v.votes||{}).includes
 function addVen(nId='v-name',lId='v-loc'){
   const n=$(nId).value.trim(),l=$(lId).value.trim();if(!n||!needMe())return;
   if(banned(n)){$(nId).value='';alert('🚫 Nice try – that\'s on the Ban List');return}
-  const pend=myBounties(),won=redeem(pend.map(b=>b.id));
+  const pend=myBounties(),won=redeem(pend.map(b=>b.id),n);
   S.venues.unshift({id:'v'+Date.now(),name:n,loc:l||'Local',desc:won?`🎯 Veto Bounty replacement for ${pend[0].vname}`:'Squad pitch',votes:{[cfg.u]:'k'}});
   $(nId).value='';$(lId).value='';push();
 }
-function addSlot(){const l=$('d-in').value.trim();if(l&&needMe()){S.slots.push({id:'s'+Date.now(),lbl:l,av:{[cfg.u]:1}});$('d-in').value='';push()}}
-function togSlot(id,uid){const s=S.slots.find(x=>x.id===id);if(s){s.av=s.av||{};s.av[uid]=s.av[uid]?null:1;push()}}
 function cycleMode(uid){const m=['Train','Uber Split','Driver','Walk'],u=who(uid);if(u){u.mode=m[(m.indexOf(u.mode)+1)%m.length];push()}}
+
+/* ---------- DATES & CALENDAR ---------- */
+const pad=n=>String(n).padStart(2,'0');
+const isoLocal=d=>`${d.getFullYear()}-${pad(d.getMonth()+1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`;
+const fmtWhen=d=>d.toLocaleString('en-GB',{weekday:'short',day:'numeric',month:'short',hour:'numeric',minute:'2-digit'});
+// Best-effort reading of "Sat 2pm", "Next Fri 6:30 PM", "7 Nov 7.30pm", "14/11 19:00", "2026-11-07 19:30", "tomorrow"
+function parseWhen(t){
+  t=String(t||'').toLowerCase().replace(/(\d)t(\d)/,'$1 $2');if(!t.trim())return null;
+  const now=new Date(),today=()=>new Date(now.getFullYear(),now.getMonth(),now.getDate()),MON='janfebmaraprmayjunjulaugsepoctnovdec';
+  let d=null,m,wk=0;
+  const ahead=x=>{if(x<today())x.setFullYear(x.getFullYear()+1);return x};
+  if(m=t.match(/(\d{4})-(\d{1,2})-(\d{1,2})/))d=new Date(+m[1],m[2]-1,+m[3]);
+  else if(m=t.match(/(\d{1,2})(?:st|nd|rd|th)?\s+(jan|feb|mar|apr|may|jun|jul|aug|sep|oct|nov|dec)[a-z]*/))d=ahead(new Date(now.getFullYear(),MON.indexOf(m[2])/3,+m[1]));
+  else if(m=t.match(/(jan|feb|mar|apr|may|jun|jul|aug|sep|oct|nov|dec)[a-z]*\s+(\d{1,2})(?:st|nd|rd|th)?\b/))d=ahead(new Date(now.getFullYear(),MON.indexOf(m[1])/3,+m[2]));
+  else if(m=t.match(/\b(\d{1,2})\/(\d{1,2})(?:\/(\d{2,4}))?\b/))d=m[3]?new Date(+m[3]<100?2000+ +m[3]:+m[3],m[2]-1,+m[1]):ahead(new Date(now.getFullYear(),m[2]-1,+m[1]));
+  else if(/\btomorrow\b/.test(t)){d=today();d.setDate(d.getDate()+1)}
+  else if(/\b(today|tonight)\b/.test(t))d=today();
+  else if(m=t.match(/\b(sun|mon|tue|wed|thu|fri|sat)/)){d=today();d.setDate(d.getDate()+('sunmontuewedthufrisat'.indexOf(m[1])/3-d.getDay()+7)%7);wk=1}
+  if(!d||isNaN(d))return null;
+  if(m)t=t.replace(m[0],' ');
+  let h=19,mi=0;
+  if(m=t.match(/\b(\d{1,2})(?:[:.](\d{2}))?\s*(am|pm)\b/)){h=+m[1]%12+(m[3]==='pm'?12:0);mi=+(m[2]||0)}
+  else if(m=t.match(/\b(\d{1,2})[:.](\d{2})\b/)){h=+m[1];mi=+m[2]}
+  else if(/\bnoon\b/.test(t))h=12;
+  d.setHours(h,mi,0,0);
+  if(wk&&d<now)d.setDate(d.getDate()+7);
+  return d;
+}
+const whenOf=s=>s&&s.at?new Date(s.at):null;
+function addSlot(){
+  let l=$('d-in').value.trim(),at=$('d-at').value;if(!needMe())return;
+  if(!at&&l){const p=parseWhen(l);if(p)at=isoLocal(p)}
+  if(!l&&at)l=fmtWhen(new Date(at));if(!l)return;
+  S.slots.push({id:'s'+Date.now(),lbl:l,at:at||null,av:{[cfg.u]:1}});$('d-in').value='';$('d-at').value='';push();
+}
+function setSlotTime(id){
+  const s=S.slots.find(x=>x.id===id);if(!s)return;
+  const v=prompt('When exactly? e.g. "Sat 7 Nov 7:30pm" or "2026-11-07 19:30"',s.at?fmtWhen(new Date(s.at)):s.lbl);if(v==null)return;
+  const d=parseWhen(v);if(!d)return alert('🤔 Couldn\'t read that date – try "7 Nov 7:30pm"');
+  s.at=isoLocal(d);push();
+}
+function togSlot(id,uid){const s=S.slots.find(x=>x.id===id);if(s){s.av=s.av||{};s.av[uid]=s.av[uid]?null:1;push()}}
+const icsStamp=d=>isoLocal(d).replace(/[-:]/g,'')+'00';
+const icsEsc=s=>String(s).replace(/[\\;,]/g,'\\$&').replace(/\n/g,'\\n');
+function calInfo(id){
+  const s=S.slots.find(x=>x.id===id),d=whenOf(s);if(!d)return null;
+  const w=winVenue(),e=new Date(d.getTime()+3*3600e3);
+  return{s,d,e,title:'🍻 '+(w?w.name:'Squad outing'),loc:w?w.loc:'',desc:'Planned on Not The Greedy Banker'+(cfg.db?' – '+groupLink():'')};
+}
+function calIcs(id){
+  const c=calInfo(id);if(!c)return setSlotTime(id);
+  const txt=['BEGIN:VCALENDAR','VERSION:2.0','PRODID:-//NotTheGreedyBanker//EN','BEGIN:VEVENT','UID:'+sid(c.s.id)+'-'+sid(cfg.rm)+'@ntgb','DTSTAMP:'+new Date().toISOString().replace(/[-:]/g,'').replace(/\.\d+/,''),'DTSTART:'+icsStamp(c.d),'DTEND:'+icsStamp(c.e),'SUMMARY:'+icsEsc(c.title),'LOCATION:'+icsEsc(c.loc),'DESCRIPTION:'+icsEsc(c.desc),'END:VEVENT','END:VCALENDAR'].join('\r\n');
+  const a=document.createElement('a');a.href=URL.createObjectURL(new Blob([txt],{type:'text/calendar'}));a.download='squad-plan.ics';document.body.appendChild(a);a.click();a.remove();
+}
+function calGoogle(id){
+  const c=calInfo(id);if(!c)return '';
+  return 'https://calendar.google.com/calendar/render?action=TEMPLATE&'+new URLSearchParams({text:c.title,dates:icsStamp(c.d)+'/'+icsStamp(c.e),ctz:Intl.DateTimeFormat().resolvedOptions().timeZone,location:c.loc,details:c.desc});
+}
+
+/* ---------- TRAVEL & MIDPOINT ---------- */
+// OpenStreetMap lookups: free, no key, but max 1 request a second, so results are cached on this device
+const geoC=(()=>{try{return JSON.parse(get('geo','{}'))}catch(e){return{}}})();
+let lastGeo=0;
+async function osm(url){
+  const wait=1100-(Date.now()-lastGeo);if(wait>0)await new Promise(r=>setTimeout(r,wait));lastGeo=Date.now();
+  const r=await fetch(url,{headers:{'Accept-Language':'en-GB'}});if(!r.ok)throw new Error('Map lookup failed ('+r.status+')');return r.json();
+}
+async function geocode(q){
+  const k=String(q||'').toLowerCase().trim();if(!k)return null;if(geoC[k])return geoC[k];
+  const j=await osm('https://nominatim.openstreetmap.org/search?format=jsonv2&limit=1&countrycodes=gb&q='+encodeURIComponent(q));
+  if(!j[0])return null;geoC[k]={lat:+j[0].lat,lon:+j[0].lon};set('geo',JSON.stringify(geoC));return geoC[k];
+}
+async function placeName(lat,lon){
+  const j=await osm(`https://nominatim.openstreetmap.org/reverse?format=jsonv2&zoom=12&lat=${lat}&lon=${lon}`),a=j.address||{};
+  return a.town||a.city||a.village||a.suburb||a.county||j.name||'the middle';
+}
+const miles=(a,b)=>{const r=x=>x*Math.PI/180,dLa=r(b.lat-a.lat),dLo=r(b.lon-a.lon),h=Math.sin(dLa/2)**2+Math.cos(r(a.lat))*Math.cos(r(b.lat))*Math.sin(dLo/2)**2;return 3958.8*2*Math.asin(Math.sqrt(h))};
+const locsKey=()=>S.squad.map(u=>u.id+':'+u.loc).join('|');
+async function findMid(){
+  const msg=t=>$('mid-msg').innerText=t;msg('🗺️ Looking up everyone\'s stations...');
+  try{
+    const pts={},lost=[];
+    for(const u of S.squad){const p=await geocode(u.loc);if(p)pts[u.id]=p;else lost.push(u.name)}
+    const ps=Object.values(pts);if(!ps.length)throw new Error('Couldn\'t find anyone\'s station on the map');
+    const c={lat:ps.reduce((a,p)=>a+p.lat,0)/ps.length,lon:ps.reduce((a,p)=>a+p.lon,0)/ps.length};
+    msg('🗺️ Finding the middle...');const name=await placeName(c.lat,c.lon);
+    const w=winVenue();let vp=null;
+    if(w){msg('🗺️ Finding '+w.name+'...');vp=await geocode(`${w.name}, ${w.loc}`)||await geocode(w.loc)}
+    S.mid={...c,name,pts,locs:locsKey(),vid:w?w.id:null,v:vp};
+    msg(lost.length?`⚠️ Couldn't find ${lost.join(', ')} – fix their station in ✏️ Edit Me`:'');push();
+  }catch(e){msg('❌ '+e.message)}
+}
+function ideasNearMid(){if(!S.mid)return;$('ai-loc').value=S.mid.name;tab('act');$('ai-vib').focus();$('ai-vib').scrollIntoView({block:'center'})}
+
+/* ---------- KITTY & SETTLE UP ---------- */
+let expFor=null; // null = everyone
+const inFor=id=>!expFor||expFor.includes(id);
+function togFor(id){
+  if(id==='*')expFor=null;
+  else{const f=expFor||S.squad.map(u=>u.id);expFor=f.includes(id)?f.filter(x=>x!==id):[...f,id];if(expFor.length===S.squad.length)expFor=null}
+  render();
+}
 function addExp(){
   const t=$('e-ttl').value.trim(),a=Math.round(parseFloat($('e-amt').value)*100)/100;
-  if(t&&a>0&&needMe()){const m=me();S.exp.push({id:'e'+Date.now(),ttl:t,amt:a,by:m.name,byId:m.id});$('e-ttl').value='';$('e-amt').value='';push()}
+  if(!t||!(a>0)||!needMe())return;
+  const f=(expFor||[]).filter(who);if(expFor&&!f.length)return alert('Pick at least one person to split it between');
+  const m=me(),e={id:'e'+Date.now(),ttl:t,amt:a,by:m.name,byId:m.id};if(expFor)e.for=Object.fromEntries(f.map(i=>[i,1]));
+  S.exp.push(e);$('e-ttl').value='';$('e-amt').value='';expFor=null;push();
 }
 function delExp(id){const e=S.exp.find(x=>x.id===id);if(e&&confirm(`Remove "${e.ttl}"?`)){S.exp=S.exp.filter(x=>x.id!==id);push()}}
-
-/* ---------- SETTLE UP ---------- */
 const payerOf=e=>(who(e.byId)||S.squad.find(u=>u.name===e.by)||{}).id;
-// Even split between everyone in the squad, then greedily match debtors to creditors
+const splitOf=e=>{const f=Object.keys(e.for||{}).filter(i=>e.for[i]&&who(i));return f.length?f:S.squad.map(u=>u.id)};
+// Each expense splits evenly between the people it was for; payments already made count against what's owed
+function ledger(){
+  const bal={},share={};let tot=0;S.squad.forEach(u=>{bal[u.id]=0;share[u.id]=0});
+  S.exp.forEach(e=>{const p=payerOf(e),a=+e.amt||0;if(!p)return;tot+=a;bal[p]+=a;const f=splitOf(e);f.forEach(i=>{bal[i]-=a/f.length;share[i]+=a/f.length})});
+  (S.paid||[]).forEach(x=>{if(who(x.from)&&who(x.to)){bal[x.from]+=+x.amt||0;bal[x.to]-=+x.amt||0}});
+  return{bal,share,tot};
+}
 function settle(){
-  const bal={},ex=S.exp.filter(e=>payerOf(e)),tot=ex.reduce((a,e)=>a+(+e.amt||0),0),share=tot/S.squad.length;
-  S.squad.forEach(u=>bal[u.id]=-share);ex.forEach(e=>bal[payerOf(e)]+=+e.amt||0);
+  const{bal}=ledger();
   const cr=S.squad.filter(u=>bal[u.id]>0.005).map(u=>({id:u.id,a:bal[u.id]})),db=S.squad.filter(u=>bal[u.id]<-0.005).map(u=>({id:u.id,a:-bal[u.id]})),out=[];
   while(cr.length&&db.length){
     const c=cr[0],d=db[0],a=Math.min(c.a,d.a);if(a>=0.01)out.push({from:d.id,to:c.id,amt:Math.round(a*100)/100});
@@ -426,58 +631,81 @@ function settle(){
   }
   return out;
 }
+function markPaid(from,to,amt){
+  const f=who(from),t=who(to);if(!f||!t||!confirm(`Mark ${gbp(amt)} from ${f.name} to ${t.name} as paid?`))return;
+  S.paid=S.paid||[];S.paid.push({id:'p'+Date.now(),from,to,amt,at:Date.now()});$('kit-msg').innerText=`✅ ${f.name} → ${t.name} marked paid`;push();
+}
+function unPaid(id){if(confirm('Undo this payment?')){S.paid=(S.paid||[]).filter(x=>x.id!==id);push()}}
 
 function openSum(){
-  const w=S.venues.find(v=>v.id===S.win)||S.venues[0];
-  const al=S.slots.filter(s=>S.squad.every(u=>s.av&&s.av[u.id])).map(s=>s.lbl);
-  const tot=S.exp.reduce((a,b)=>a+(+b.amt||0),0);
+  const w=winVenue();
+  const al=S.slots.filter(s=>S.squad.every(u=>s.av&&s.av[u.id]));
+  const{tot}=ledger();
   const owes=settle().map(t=>{const c=who(t.to),l=payUrl(c,t.amt);return `   ${who(t.from).name} → ${c.name} ${gbp(t.amt)}${l?' '+l:''}`});
-  const shame=[...new Set((S.bounties||[]).filter(b=>!live(b)).map(b=>(who(b.uid)||{}).name).filter(Boolean))];
-  $('sum-txt').value=`🍻 SQUAD PLAN\n🎯 LOCKED IN: ${w?w.name+' ('+w.loc+')':'TBD'}\n📅 ALIGNED: ${al.join(' OR ')||'Voting'}\n💷 KITTY: ${gbp(tot)} (${gbp(tot/S.squad.length)} each)`+(owes.length?`\n💸 SETTLE UP:\n${owes.join('\n')}`:'')+(shame.length?`\n🍺 FIRST ROUND: ${shame.join(', ')} (missed the Veto Bounty)`:'');
-  tog('sum-box');
+  const shame=[...new Set((S.bounties||[]).filter(b=>missed(b)&&!b.hide).map(b=>(who(b.uid)||{}).name).filter(Boolean))];
+  const when=al.map(s=>s.lbl+(whenOf(s)?` (${fmtWhen(whenOf(s))})`:''));
+  $('sum-txt').value=`🍻 SQUAD PLAN\n🎯 LOCKED IN: ${w?w.name+' ('+w.loc+')':'TBD'}${w?'\n📍 '+mapsUrl(w.name+', '+w.loc):''}\n📅 ALIGNED: ${when.join(' OR ')||'Voting'}\n💷 KITTY: ${gbp(tot)} total`+(owes.length?`\n💸 SETTLE UP:\n${owes.join('\n')}`:'')+(shame.length?`\n🍺 FIRST ROUND: ${shame.join(', ')} (missed the Veto Bounty)`:'');
+  const cal=al.find(s=>whenOf(s));$('sum-cal').style.display=cal?'':'none';if(cal)$('sum-cal').onclick=()=>calIcs(cal.id);
+  $('sum-msg').innerText='';tog('sum-box');
 }
-async function copyTxt(id){await copyStr($(id).value)}
+async function copyTxt(id){$('sum-msg').innerText=await copyStr($(id).value)?'📋 Copied':'❌ Couldn\'t copy'}
 
 /* ---------- RENDER ---------- */
 function render(){
-  const m=me();
-  $('me-txt').innerText=m?`YOU ARE: ${m.emo} ${m.name}`:'👆 TAP YOUR PROFILE:';
+  const m=me(),left=m?Math.max(0,MAX_VETOES-vetoesUsed(m.id)):0;
+  $('me-txt').innerText=m?`YOU ARE: ${m.emo} ${m.name} • 👎 ${left} veto${left===1?'':'es'} left`:'👆 TAP YOUR PROFILE:';
   $('u-list').innerHTML=S.squad.map(u=>`<button class="pill ${cfg.u===u.id?'on':''}" onclick="pick('${sid(u.id)}')"><b>${esc(u.emo)} ${esc(u.name)}</b><div class="sub">📍 ${esc(u.loc)} • ${esc(u.pay)}${hasPay(u)?' 💳':''}</div></button>`).join('');
-  $('ban-list').innerHTML=S.ban.map(b=>`<div class="row sub" style="background:#090d16;padding:5px 8px;border-radius:6px;margin-top:4px"><span>🔒 <b>${esc(b.name)}</b></span>${b.lock?'<span>Eternal</span>':`<button class="btn" style="padding:1px 5px" onclick="unban('${sid(b.id)}')">✕</button>`}</div>`).join('');
+  $('ban-list').innerHTML=S.ban.map(b=>`<div class="row sub" style="background:#090d16;padding:5px 8px;border-radius:6px;margin-top:4px"><span>🔒 <b>${esc(b.name)}</b></span>${b.lock?'<span>Eternal</span>':`<button class="btn mini" onclick="unban('${sid(b.id)}')">✕</button>`}</div>`).join('');
 
   const mine=myBounties()[0];liveKey=liveIds();
   $('bounty-me').style.display=mine?'block':'none';
   if(mine){$('bx-cd').dataset.until=mine.until;$('bx-cd').innerText=clock(mine.until-Date.now());$('bx-txt').innerHTML=`You vetoed <b>${esc(mine.vname)}</b>. Pitch a replacement before the clock hits zero or it's default-planning inertia — and you owe the first round 🍺`}
   else delete $('bx-cd').dataset.until;
-  $('bounty-list').innerHTML=(S.bounties||[]).filter(b=>b.uid!==cfg.u||!live(b)).map(b=>{
+  $('bounty-list').innerHTML=(S.bounties||[]).filter(b=>(live(b)&&b.uid!==cfg.u)||(missed(b)&&!b.hide)).map(b=>{
     const n=esc((who(b.uid)||{}).name||'Someone');
     return live(b)
       ?`<div class="card row" style="border-color:#f59e0b;padding:8px 12px"><span class="sub">⏱️ <b>${n}</b> vetoed <b>${esc(b.vname)}</b> – must pitch a replacement</span><span class="cd" data-until="${+b.until}">${clock(b.until-Date.now())}</span></div>`
-      :`<div class="card row" style="border-color:#9f1239;background:#1f0913;padding:8px 12px"><span class="sub" style="color:#fda4af">💀 <b>${n}</b> vetoed <b>${esc(b.vname)}</b> and pitched nothing – owes the first round 🍺</span><button class="btn" style="padding:1px 5px" onclick="dropBounty('${sid(b.id)}')">✕</button></div>`;
+      :`<div class="card row" style="border-color:#9f1239;background:#1f0913;padding:8px 12px"><span class="sub" style="color:#fda4af">💀 <b>${n}</b> vetoed <b>${esc(b.vname)}</b> and pitched nothing – owes the first round 🍺</span><button class="btn mini" onclick="hideBounty('${sid(b.id)}')">🍺 Bought it</button></div>`;
   }).join('');
+  const tally={};(S.bounties||[]).forEach(b=>{if(!who(b.uid))return;const t=tally[b.uid]=tally[b.uid]||{r:0,m:0};if(b.done)t.r++;else if(missed(b))t.m++});
+  const board=Object.entries(tally).filter(([,t])=>t.r||t.m).sort((a,b)=>b[1].m-a[1].m||b[1].r-a[1].r);
+  $('bounty-board').innerHTML=board.length?'🏆 Bounty Board: '+board.map(([id,t])=>`${esc(who(id).emo)} ${esc(who(id).name)} ${t.r?'✅'+t.r:''}${t.m?' 💀'+t.m:''}`).join(' • '):'';
 
   $('v-list').innerHTML=S.venues.map(v=>{
     const vt=v.votes||{},kn=S.squad.filter(u=>vt[u.id]==='k').map(u=>esc(u.name)),vo=S.squad.filter(u=>vt[u.id]==='v').map(u=>esc(u.name)),w=S.win===v.id,id=sid(v.id);
-    return `<div class="card" style="border-color:${w?'#f59e0b':'#334155'}"><div class="row"><div><b>${w?'⭐ ':''}${esc(v.name)}</b><div class="sub" style="color:#fbbf24">📍 ${esc(v.loc)}</div></div><button class="btn ${w?'amber':''}" onclick="lockIn('${id}')">${w?'Locked':'Select'}</button></div><div class="sub" style="margin:6px 0">${esc(v.desc)}</div><div class="row"><span class="sub" style="color:${vo.length?'#f43f5e':'#10b981'}">${vo.length?'⚠️ Veto: '+vo.join(', '):'👍 Keen: '+(kn.join(', ')||'0')}</span><div class="row"><button class="btn ${vt[cfg.u]==='k'?'green':''}" onclick="vote('${id}','k')">👍 Keen</button><button class="btn ${vt[cfg.u]==='v'?'red':''}" onclick="vote('${id}','v')">👎 Veto</button></div></div></div>`;
+    return `<div class="card" style="border-color:${w?'#f59e0b':'#334155'}"><div class="row"><div><b>${w?'⭐ ':''}${esc(v.name)}</b><div class="sub" style="color:#fbbf24">📍 ${esc(v.loc)}</div></div><div class="row"><a class="btn" href="${esc(mapsUrl(v.name+', '+v.loc))}" target="_blank" rel="noopener">🗺️ Map</a><button class="btn ${w?'amber':''}" onclick="lockIn('${id}')">${w?'Locked':'Select'}</button></div></div><div class="sub" style="margin:6px 0">${esc(v.desc)}</div><div class="row"><span class="sub" style="color:${vo.length?'#f43f5e':'#10b981'}">${vo.length?'⚠️ Veto: '+vo.join(', '):'👍 Keen: '+(kn.join(', ')||'0')}</span><div class="row"><button class="btn ${vt[cfg.u]==='k'?'green':''}" onclick="vote('${id}','k')">👍 Keen</button><button class="btn ${vt[cfg.u]==='v'?'red':''}" onclick="vote('${id}','v')">👎 Veto</button></div></div></div>`;
   }).join('');
+
   $('d-list').innerHTML=S.slots.map(s=>{
-    const av=s.av||{},all=S.squad.every(u=>av[u.id]);
-    return `<div style="background:#0b111e;border:1px solid ${all?'#10b981':'#334155'};padding:8px;border-radius:10px;margin-bottom:6px"><div class="row" style="margin-bottom:6px"><b>${esc(s.lbl)}</b><span class="sub" style="color:${all?'#10b981':'#94a3b8'}">${all?'🎉 100% ALIGNED!':'Tap to toggle'}</span></div><div class="grid">${S.squad.map(u=>`<button class="btn ${av[u.id]?'green':''}" onclick="togSlot('${sid(s.id)}','${sid(u.id)}')">${esc(u.emo)} ${esc(u.name)}: ${av[u.id]?'✅':'❌'}</button>`).join('')}</div></div>`;
+    const av=s.av||{},all=S.squad.every(u=>av[u.id]),d=whenOf(s),id=sid(s.id),g=all&&d?calGoogle(s.id):'';
+    const cal=all?`<div class="row" style="justify-content:flex-start;margin-top:6px">${d?`<button class="btn amber" onclick="calIcs('${id}')">📅 Add to Calendar</button><a class="btn" href="${esc(g)}" target="_blank" rel="noopener">Google Cal</a>`:''}<button class="btn" onclick="setSlotTime('${id}')">🕒 ${d?'Change time':'Set exact time for calendar'}</button></div>`:'';
+    return `<div style="background:#0b111e;border:1px solid ${all?'#10b981':'#334155'};padding:8px;border-radius:10px;margin-bottom:6px"><div class="row" style="margin-bottom:6px"><span><b>${esc(s.lbl)}</b>${d?`<div class="sub">🗓️ ${esc(fmtWhen(d))}</div>`:''}</span><span class="sub" style="color:${all?'#10b981':'#94a3b8'}">${all?'🎉 100% ALIGNED!':'Tap to toggle'}</span></div><div class="grid">${S.squad.map(u=>`<button class="btn ${av[u.id]?'green':''}" onclick="togSlot('${id}','${sid(u.id)}')">${esc(u.emo)} ${esc(u.name)}: ${av[u.id]?'✅':'❌'}</button>`).join('')}</div>${cal}</div>`;
   }).join('');
-  $('trv-list').innerHTML=S.squad.map(u=>`<div class="row" style="background:#0b111e;padding:8px;border-radius:8px;margin-bottom:6px"><span><b>${esc(u.emo)} ${esc(u.name)}</b> (${esc(u.loc)})</span><button class="btn" onclick="cycleMode('${sid(u.id)}')">🚆 ${esc(u.mode)}</button></div>`).join('');
+
+  const M=S.mid,w=winVenue(),vp=M&&M.v&&w&&M.vid===w.id?M.v:null;
+  $('mid-box').innerHTML=M?`<div style="background:#291d06;border:1px solid #f59e0b;padding:8px;border-radius:8px;margin-bottom:8px"><div class="row"><span>🎯 Midpoint: <b>near ${esc(M.name)}</b></span><a class="btn" href="${esc(mapsUrl((+M.lat).toFixed(5)+','+(+M.lon).toFixed(5)))}" target="_blank" rel="noopener">🗺️ Map</a></div>${M.locs!==locsKey()?'<div class="sub" style="color:#fbbf24">↻ Someone changed station – tap Find Midpoint again</div>':''}<button class="btn indigo" style="margin-top:6px" onclick="ideasNearMid()">✨ Gerg Ai ideas near ${esc(M.name)}</button></div>`:'<div class="sub" style="margin-bottom:6px">Tap 📍 Find Midpoint to find the fairest place to meet.</div>';
+  $('trv-list').innerHTML=S.squad.map(u=>{
+    const p=M&&M.pts&&M.pts[u.id],dist=[];
+    if(p)dist.push(`${miles(p,M).toFixed(1)} mi to midpoint`);if(p&&vp)dist.push(`${miles(p,vp).toFixed(1)} mi to ${esc(w.name)}`);
+    return `<div class="row" style="background:#0b111e;padding:8px;border-radius:8px;margin-bottom:6px"><span><b>${esc(u.emo)} ${esc(u.name)}</b> (${esc(u.loc)})${dist.length?`<div class="sub">📏 ${dist.join(' • ')}</div>`:''}</span><button class="btn" onclick="cycleMode('${sid(u.id)}')">🚆 ${esc(u.mode)}</button></div>`;
+  }).join('');
 
   $('b-list').innerHTML=S.squad.map(u=>{
     const l=payUrl(u),lines=[];
     if(l)lines.push(`🔗 <a href="${esc(l)}" target="_blank" rel="noopener">${esc(l.replace(/^https?:\/\/(www\.)?/,''))}</a>`);
     if(mailOk(u))lines.push(`📧 <a href="mailto:${esc(u.payMail)}">${esc(u.payMail)}</a>`);
-    if(hasBank(u))lines.push(`🏦 ${esc(u.acn||u.name)} • ${esc(u.sort)} • ${esc(u.acc)} <button class="btn" style="padding:1px 5px" onclick="copyBank('${sid(u.id)}')">Copy</button>`);
+    if(hasBank(u))lines.push(`🏦 ${esc(u.acn||u.name)} • ${esc(u.sort)} • ${esc(u.acc)} <button class="btn mini" onclick="copyBank('${sid(u.id)}')">Copy</button>`);
     if(!lines.length)lines.push('No pay details yet');
     if(u.tx)lines.push('Latest: '+esc(u.tx));
     return `<div style="background:#090d16;border:1px solid #f43f5e;padding:8px;border-radius:8px;font-size:11px"><b>${esc(u.emo)} ${esc(u.name)}</b> (${esc(u.pay)})${lines.map(x=>`<div class="sub" style="margin-top:3px">${x}</div>`).join('')}</div>`;
   }).join('');
 
-  const tot=S.exp.reduce((a,b)=>a+(+b.amt||0),0);
-  $('e-list').innerHTML=S.exp.map(e=>`<div class="row sub" style="padding:4px 0"><span><b>${esc(e.ttl)}</b> (${esc((who(e.byId)||{}).name||e.by)})</span><span><b style="color:#10b981">${gbp(e.amt)}</b> <button class="btn" style="padding:1px 5px" onclick="delExp('${sid(e.id)}')">✕</button></span></div>`).join('')+`<div class="row" style="border-top:1px solid #334155;padding-top:6px;margin-top:4px;font-size:12px;color:#fbbf24"><b>Total Split (${S.squad.length} ways)</b><b>${gbp(tot)} (${gbp(tot/S.squad.length)} ea)</b></div>`;
+  const{tot,share}=ledger(),everyone=S.squad.length;
+  $('e-list').innerHTML=S.exp.map(e=>{
+    const f=splitOf(e),forTxt=f.length<everyone?' • for '+f.map(i=>esc(who(i).name)).join(', '):'';
+    return `<div class="row sub" style="padding:4px 0"><span><b>${esc(e.ttl)}</b> (${esc((who(e.byId)||{}).name||e.by)}${forTxt})</span><span><b style="color:#10b981">${gbp(e.amt)}</b> <button class="btn mini" onclick="delExp('${sid(e.id)}')">✕</button></span></div>`;
+  }).join('')+`<div class="row" style="border-top:1px solid #334155;padding-top:6px;margin-top:4px;font-size:12px;color:#fbbf24"><b>Total ${gbp(tot)}</b><b>${m?'Your share '+gbp(share[m.id]):''}</b></div>`;
+  $('e-for').innerHTML=`<button class="btn mini ${expFor?'':'green'}" onclick="togFor('*')">👥 Everyone</button>`+S.squad.map(u=>`<button class="btn mini ${expFor&&inFor(u.id)?'green':''}" onclick="togFor('${sid(u.id)}')">${esc(u.emo)} ${esc(u.name)}</button>`).join('');
 
   const st=settle();
   $('st-list').innerHTML=st.length?st.map(t=>{
@@ -486,8 +714,11 @@ function render(){
     if(mailOk(c))btns.push(`<a class="btn" href="mailto:${esc(c.payMail)}?subject=${encodeURIComponent('Not The Greedy Banker – '+gbp(t.amt))}">📧 Email</a>`);
     if(hasBank(c))btns.push(`<button class="btn" onclick="copyBank('${sid(c.id)}',${t.amt})">🏦 Copy bank details</button>`);
     if(!btns.length)btns.push(`<span class="sub">${esc(c.name)} hasn't added pay details – nudge them to ✏️ Edit Me</span>`);
+    btns.push(`<button class="btn" onclick="markPaid('${sid(t.from)}','${sid(t.to)}',${t.amt})">✅ Mark paid</button>`);
     return `<div style="background:#0b111e;border:1px solid ${t.from===cfg.u?'#f59e0b':'#334155'};padding:8px;border-radius:8px;margin-bottom:6px"><div class="row"><span><b>${esc(f.emo)} ${esc(f.name)}</b>${t.from===cfg.u?' (you)':''} → <b>${esc(c.emo)} ${esc(c.name)}</b></span><b style="color:#fbbf24">${gbp(t.amt)}</b></div><div class="row" style="justify-content:flex-start;margin-top:6px">${btns.join('')}</div></div>`;
   }).join(''):'<div class="sub">✅ All square!</div>';
+  const pd=(S.paid||[]).filter(x=>who(x.from)&&who(x.to));
+  $('paid-list').innerHTML=pd.length?`<div class="sub" style="margin-top:6px">Paid so far:</div>`+pd.map(x=>`<div class="row sub" style="padding:3px 0"><span>✅ ${esc(who(x.from).name)} paid ${esc(who(x.to).name)} <b>${gbp(x.amt)}</b> • ${new Date(x.at).toLocaleDateString('en-GB',{day:'numeric',month:'short'})}</span><button class="btn mini" onclick="unPaid('${sid(x.id)}')">Undo</button></div>`).join(''):'';
 }
 
 // Bounty countdowns tick every second without a full re-render (which would wipe what you're typing)
@@ -496,9 +727,16 @@ setInterval(()=>{
   document.querySelectorAll('.cd[data-until]').forEach(e=>e.innerText=clock(+e.dataset.until-Date.now()));
 },1000);
 
+/* ---------- INSTALL ---------- */
+let installEvt=null;
+addEventListener('beforeinstallprompt',e=>{e.preventDefault();installEvt=e;$('inst').style.display=''});
+async function install(){if(!installEvt)return;installEvt.prompt();await installEvt.userChoice;installEvt=null;$('inst').style.display='none'}
+if('serviceWorker' in navigator&&location.protocol==='https:')navigator.serviceWorker.register('sw.js').catch(()=>{});
+
 $('c-db').value=cfg.db;$('c-room').value=cfg.rm;$('c-model').value=cfg.md;$('c-key').value=cfg.key;
-render();if(cfg.db)pull();
-setInterval(()=>{if(cfg.db&&!document.hidden)pull()},4000);
+render();if(cfg.db){stream();pull()}
+// Polling is only the fallback for when the live stream drops
+setInterval(()=>{if(cfg.db&&!document.hidden&&!streaming)pull()},4000);
 document.addEventListener('visibilitychange',()=>{if(!document.hidden&&cfg.db)pull()});
 </script>
 </body>
