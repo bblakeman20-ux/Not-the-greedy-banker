@@ -51,7 +51,7 @@
 
   <!-- SETUP -->
   <div id="setup-box" class="box">
-    <div style="font-size:12px;font-weight:700;color:#fbbf24">⚙️ Firebase Live Sync & Gerg Ai (powered by Gemini)</div>
+    <div style="font-size:12px;font-weight:700;color:#fbbf24">⚙️ Firebase Live Sync & Gerg AI (powered by Gemini)</div>
     <input id="c-db" placeholder="Firebase URL (https://...-rtdb.europe-west1.firebasedatabase.app)">
     <div class="grid">
       <input id="c-room" value="medway-squad" placeholder="Room Code">
@@ -149,7 +149,7 @@
     </div>
     <div class="row">
       <button class="btn amber" style="flex:1" onclick="addVen('bx-name','bx-loc')">🚀 Pitch Replacement</button>
-      <button class="btn indigo" onclick="askAI()">🤖 Gerg Ai, bail me out</button>
+      <button class="btn indigo" onclick="askAI()">🤖 Gerg AI, bail me out</button>
     </div>
   </div>
   <div id="bounty-list"></div>
@@ -157,14 +157,21 @@
 
   <div class="card" style="border-color:#4338ca;background:#131633">
     <div class="row">
-      <strong id="m-lbl" style="font-size:13px;color:#c7d2fe">✨ Gerg Ai</strong>
+      <div>
+        <strong id="m-lbl" style="font-size:13px;color:#c7d2fe">🤖 Gerg AI</strong>
+        <div class="sub">Your anti-default outing planner</div>
+      </div>
       <button class="btn amber" onclick="spin()">🎲 Roulette</button>
     </div>
+    <div id="ai-modes" class="grid" style="grid-template-columns:repeat(2,1fr);margin:8px 0"></div>
+    <div id="ai-mode-sub" class="sub" style="margin-bottom:4px;color:#a5b4fc"></div>
     <div class="grid" style="margin:6px 0">
-      <input id="ai-loc" value="Rochester, Chatham or Maidstone">
-      <input id="ai-vib" value="Axe throwing, taproom, or proper curry">
+      <input id="ai-loc" value="Rochester, Chatham or Maidstone" placeholder="Where (town, area or midpoint)">
+      <input id="ai-vib" value="Axe throwing, taproom, or proper curry" placeholder="Vibe (e.g. competitive, messy, chilled)">
+      <input id="ai-when" placeholder="When (blank = your agreed date)">
+      <input id="ai-bud" inputmode="numeric" placeholder="Budget £ per head (optional)">
     </div>
-    <button class="btn indigo" style="width:100%" onclick="askAI()">✨ Generate Anti-Default Ideas</button>
+    <button id="ai-go" class="btn indigo" style="width:100%" onclick="askAI()">✨ Ask Gerg AI</button>
     <div id="ai-msg" class="sub" style="margin-top:4px;color:#a5b4fc"></div>
   </div>
 
@@ -435,33 +442,83 @@ async function copyBank(id,amt){
 /* ---------- GERG AI ---------- */
 // Gemini 3.x / 2.5 think by default, which is what made 3.8 slow; dial it right down for quick idea lists
 const thinkCfg=m=>/^gemini-2\.5-flash/.test(m)?{thinkingBudget:0}:/^gemini-3/.test(m)?{thinkingLevel:/flash/.test(m)?'minimal':'low'}:null;
+// search = ground on live Google Search results (needed for real, dated events; slower)
+const MODES={
+  gems:{lbl:'💎 Hidden gems',sub:'Unusual local spots – not the obvious default',search:0,
+    ask:'3 specific, real, bookable venues or activities in or near the area that a group would never default to: independent, unusual, newly opened or under-the-radar. Skip anything generic.'},
+  events:{lbl:"🎟️ What's on",sub:'Real, dated events checked on live Google Search',search:1,
+    ask:'3 real events happening on or close to the date, in or within easy train reach of the area: gigs, comedy, festivals, markets, live sport, pop-ups, quizzes, tastings, club nights, screenings. Use Google Search to confirm each is really on, give its date and time, and an official or ticket link.'},
+  combo:{lbl:'🔀 Combo night',sub:'Creative multi-stop plans that chain activities together',search:0,
+    ask:'3 creative combo plans that chain 2-4 different activities into one outing with a theme (e.g. competitive thing, then food, then a late spot; or a daytime challenge into a night out). Use real venues close to each other, rough times, and make each plan feel distinct.'},
+  wild:{lbl:'🎲 Surprise me',sub:'One event, one combo, one total wildcard',search:1,
+    ask:'3 wildcard ideas: one real dated event (confirm with Google Search), one creative multi-stop combo, and one unusual one-off experience (workshop, challenge, themed night, day trip by train, something they would never think of).'}
+};
+let aiMode=get('aimode','gems');if(!MODES[aiMode])aiMode='gems';
+function setMode(k){aiMode=k;set('aimode',k);renderModes()}
+function renderModes(){
+  $('ai-modes').innerHTML=Object.entries(MODES).map(([k,m])=>`<button class="btn ${k===aiMode?'indigo':''}" onclick="setMode('${k}')">${m.lbl}</button>`).join('');
+  $('ai-mode-sub').innerText=MODES[aiMode].sub;$('ai-go').innerText='✨ Ask Gerg AI: '+MODES[aiMode].lbl.replace(/^\S+\s/,'');
+}
+const safeUrl=u=>{try{const x=new URL(String(u||''));return /^https?:$/.test(x.protocol)?x.href:''}catch(e){return ''}};
+// Everything Gerg AI knows about the squad, so ideas fit them rather than just the postcode
+function squadBrief(){
+  const al=S.slots.find(s=>S.squad.every(u=>s.av&&s.av[u.id])),liked=[],vetoed=[];
+  S.venues.forEach(v=>{const vs=Object.values(v.votes||{});if(vs.includes('v'))vetoed.push(v.name);else if(vs.filter(x=>x==='k').length>=2)liked.push(v.name)});
+  const when=$('ai-when').value.trim()||(al?(whenOf(al)?fmtWhen(whenOf(al)):al.lbl):'this coming weekend');
+  return [
+    `Group: ${S.squad.length} mates, travelling from ${S.squad.map(u=>`${u.name} (${u.loc}, ${u.mode})`).join('; ')}.`,
+    `Today is ${new Date().toDateString()}. The outing is: ${when}.`,
+    `Area: ${$('ai-loc').value.trim()||(S.mid?S.mid.name:'Medway, Kent')}${S.mid?` (fair midpoint for the group: ${S.mid.name})`:''}.`,
+    `Vibe: ${$('ai-vib').value.trim()||'surprise us'}.`,
+    `Budget: ${$('ai-bud').value.trim()?'about £'+$('ai-bud').value.trim().replace(/[^\d.]/g,'')+' per head':'flexible'}.`,
+    liked.length?`They were keen on: ${liked.join(', ')}.`:'',
+    vetoed.length?`They vetoed (avoid similar): ${vetoed.join(', ')}.`:'',
+    `Already on the list, do not repeat: ${S.venues.map(v=>v.name).join(', ')||'nothing yet'}.`,
+    `Never suggest: ${S.ban.map(b=>b.name).join(', ')}, or any generic chain pub or default local.`
+  ].filter(Boolean).join('\n');
+}
 async function askAI(){
   saveCfg();if(!cfg.key){$('setup-box').classList.add('open');$('ai-msg').innerText='⚠️ Paste Gemini API Key in Setup first!';return}
   if(!needMe())return;
-  const pend=myBounties().map(b=>b.id),t0=Date.now();
-  $('ai-msg').innerText='🤖 Gerg Ai is scouting anti-default ideas...';
-  const prompt=`Suggest 2 real fun group outing activities/venues in "${$('ai-loc').value}" for "${$('ai-vib').value}". Never suggest: ${S.ban.map(b=>b.name).join(',')}. Keep each "desc" under 15 words. Return ONLY a JSON array of 2 objects with keys: "name","loc","desc".`;
-  const schema={type:'ARRAY',items:{type:'OBJECT',properties:{name:{type:'STRING'},loc:{type:'STRING'},desc:{type:'STRING'}},required:['name','loc','desc']}};
-  const call=async(m,think)=>{
-    const ac=new AbortController(),tm=setTimeout(()=>ac.abort(),AI_TIMEOUT),gen={responseMimeType:'application/json',responseSchema:schema};
-    if(think)gen.thinkingConfig=think;
-    try{return await(await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${encodeURIComponent(m)}:generateContent`,{method:'POST',signal:ac.signal,headers:{'Content-Type':'application/json','x-goog-api-key':cfg.key},body:JSON.stringify({contents:[{parts:[{text:prompt}]}],generationConfig:gen})})).json()}
-    catch(e){return{error:{message:e.name==='AbortError'?`${m} took over ${AI_TIMEOUT/1000}s`:e.message}}}
+  const mode=MODES[aiMode],pend=myBounties().map(b=>b.id),t0=Date.now();
+  $('ai-msg').innerText=mode.search?'🤖 Gerg AI is searching what\'s on...':'🤖 Gerg AI is cooking up anti-default plans...';
+  const shape='Each object has keys: "name" (punchy title), "kind" ("spot", "event" or "combo"), "loc" (town or area), "when" (date and time for events, else ""), "cost" (rough £ per head, e.g. "£25"), "desc" (max 20 words: why it beats the default for this group), "steps" (for combos: 2-4 short strings like "6pm – crazy golf @ Venue", else []), "url" (official or ticket link if known, else "").';
+  const prompt=`You are Gerg AI, the anti-default outing planner for a UK group of mates who always end up in the same pub.\n${squadBrief()}\n\nTask: suggest ${mode.ask}\nMake the ideas fit the group: easy to reach from their stations, in budget, and genuinely more fun than the default.\nReturn ONLY a JSON array of 3 objects, no other text. ${shape}`;
+  const str={type:'STRING'},schema={type:'ARRAY',items:{type:'OBJECT',properties:{name:str,kind:{type:'STRING',enum:['spot','event','combo']},loc:str,when:str,cost:str,desc:str,steps:{type:'ARRAY',items:str},url:str},required:['name','kind','loc','desc']}};
+  const call=async(m,think,search)=>{
+    // Structured output and the search tool don't mix on every model, so searched replies are parsed leniently instead
+    const limit=search?AI_TIMEOUT*2:AI_TIMEOUT,ac=new AbortController(),tm=setTimeout(()=>ac.abort(),limit),gen=search?{}:{responseMimeType:'application/json',responseSchema:schema},body={contents:[{parts:[{text:prompt}]}],generationConfig:gen};
+    if(think)gen.thinkingConfig=think;if(search)body.tools=[{google_search:{}}];
+    try{return await(await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${encodeURIComponent(m)}:generateContent`,{method:'POST',signal:ac.signal,headers:{'Content-Type':'application/json','x-goog-api-key':cfg.key},body:JSON.stringify(body)})).json()}
+    catch(e){return{error:{message:e.name==='AbortError'?`${m} took over ${limit/1000}s`:e.message}}}
     finally{clearTimeout(tm)}
   };
   try{
-    let used=cfg.md,d=await call(used,thinkCfg(used));
-    if(d.error&&d.error.code===400&&thinkCfg(used))d=await call(used);
-    if(d.error&&used!==FALLBACK){used=FALLBACK;$('ai-msg').innerText='🤖 Gerg Ai is trying the backup brain...';d=await call(used,thinkCfg(used))}
+    let d,used,search=mode.search;
+    for(const m of [...new Set([cfg.md,FALLBACK])]){
+      used=m;let think=thinkCfg(m);
+      if(m!==cfg.md)$('ai-msg').innerText='🤖 Gerg AI is trying the backup brain...';
+      d=await call(m,think,search);
+      if(d.error&&d.error.code===400&&think){think=null;d=await call(m,null,search)}
+      if(d.error&&d.error.code===400&&search){search=0;d=await call(m,think,0)}
+      if(!d.error)break;
+    }
     if(d.error)throw new Error(d.error.message);
-    const txt=d.candidates?.[0]?.content?.parts?.find(p=>p.text&&!p.thought)?.text;
-    if(!txt)throw new Error(d.promptFeedback?.blockReason||'Gerg Ai came back empty');
-    let ideas=JSON.parse(txt);if(!Array.isArray(ideas))ideas=Object.values(ideas).find(Array.isArray)||[];
-    ideas=ideas.filter(x=>x&&x.name&&!banned(x.name)).slice(0,2);
-    if(!ideas.length)throw new Error('Gerg Ai only came up with banned spots');
-    ideas.forEach((x,i)=>S.venues.unshift({id:'v'+Date.now()+i,name:String(x.name),loc:String(x.loc||'Local'),desc:String(x.desc||''),votes:{[cfg.u]:'k'}}));
+    const txt=(d.candidates?.[0]?.content?.parts||[]).filter(p=>p.text&&!p.thought).map(p=>p.text).join('');
+    if(!txt)throw new Error(d.promptFeedback?.blockReason||'Gerg AI came back empty');
+    let ideas;try{ideas=JSON.parse(txt)}catch(e){const i=txt.indexOf('['),j=txt.lastIndexOf(']');if(i<0||j<i)throw new Error('Gerg AI rambled instead of answering – try again');ideas=JSON.parse(txt.slice(i,j+1))}
+    if(!Array.isArray(ideas))ideas=Object.values(ideas).find(Array.isArray)||[];
+    const have=new Set(S.venues.map(v=>normName(v.name)));
+    ideas=ideas.filter(x=>x&&x.name&&!banned(x.name)&&!have.has(normName(x.name))).slice(0,3);
+    if(!ideas.length)throw new Error('Gerg AI only came up with banned or repeat ideas – try another vibe');
+    ideas.reverse().forEach((x,i)=>S.venues.unshift({id:'v'+Date.now()+i,name:String(x.name),loc:String(x.loc||'Local'),desc:String(x.desc||''),
+      kind:['spot','event','combo'].includes(x.kind)?x.kind:'spot',when:String(x.when||''),cost:String(x.cost||''),url:safeUrl(x.url),
+      steps:Array.isArray(x.steps)?x.steps.slice(0,4).map(String):[],live:search?1:0,votes:{[cfg.u]:'k'}}));
     const won=redeem(pend,ideas[0].name);
-    $('ai-msg').innerText=`✅ Gerg Ai added ${ideas.length} idea${ideas.length>1?'s':''} in ${((Date.now()-t0)/1000).toFixed(1)}s${used!==cfg.md?` (via ${used} – ${cfg.md} failed)`:''}${won?' • 🎯 Veto Bounty redeemed!':''}`;push();
+    const src=(d.candidates?.[0]?.groundingMetadata?.groundingChunks||[]).map(c=>c.web).filter(w=>w&&safeUrl(w.uri)).slice(0,4);
+    $('ai-msg').innerHTML=esc(`✅ Gerg AI added ${ideas.length} idea${ideas.length>1?'s':''} in ${((Date.now()-t0)/1000).toFixed(1)}s${used!==cfg.md?` (via ${used} – ${cfg.md} failed)`:''}${mode.search&&!search?' • ⚠️ live search unavailable, double-check dates':''}${won?' • 🎯 Veto Bounty redeemed!':''}`)
+      +(src.length?'<br>🔎 Checked: '+src.map(w=>`<a href="${esc(safeUrl(w.uri))}" target="_blank" rel="noopener">${esc(w.title||'source')}</a>`).join(', '):'');
+    push();
   }catch(e){$('ai-msg').innerText='❌ '+e.message}
 }
 
@@ -644,13 +701,14 @@ function openSum(){
   const owes=settle().map(t=>{const c=who(t.to),l=payUrl(c,t.amt);return `   ${who(t.from).name} → ${c.name} ${gbp(t.amt)}${l?' '+l:''}`});
   const shame=[...new Set((S.bounties||[]).filter(b=>missed(b)&&!b.hide).map(b=>(who(b.uid)||{}).name).filter(Boolean))];
   const when=al.map(s=>s.lbl+(whenOf(s)?` (${fmtWhen(whenOf(s))})`:''));
-  $('sum-txt').value=`🍻 SQUAD PLAN\n🎯 LOCKED IN: ${w?w.name+' ('+w.loc+')':'TBD'}${w?'\n📍 '+mapsUrl(w.name+', '+w.loc):''}\n📅 ALIGNED: ${when.join(' OR ')||'Voting'}\n💷 KITTY: ${gbp(tot)} total`+(owes.length?`\n💸 SETTLE UP:\n${owes.join('\n')}`:'')+(shame.length?`\n🍺 FIRST ROUND: ${shame.join(', ')} (missed the Veto Bounty)`:'');
+  $('sum-txt').value=`🍻 SQUAD PLAN\n🎯 LOCKED IN: ${w?w.name+' ('+w.loc+')'+(w.when?' – '+w.when:''):'TBD'}${w&&w.steps&&w.steps.length?'\n'+w.steps.map(x=>'   • '+x).join('\n'):''}${w&&safeUrl(w.url)?'\n🔗 '+safeUrl(w.url):''}${w?'\n📍 '+mapsUrl((w.kind==='combo'?'':w.name+', ')+w.loc):''}\n📅 ALIGNED: ${when.join(' OR ')||'Voting'}\n💷 KITTY: ${gbp(tot)} total`+(owes.length?`\n💸 SETTLE UP:\n${owes.join('\n')}`:'')+(shame.length?`\n🍺 FIRST ROUND: ${shame.join(', ')} (missed the Veto Bounty)`:'');
   const cal=al.find(s=>whenOf(s));$('sum-cal').style.display=cal?'':'none';if(cal)$('sum-cal').onclick=()=>calIcs(cal.id);
   $('sum-msg').innerText='';tog('sum-box');
 }
 async function copyTxt(id){$('sum-msg').innerText=await copyStr($(id).value)?'📋 Copied':'❌ Couldn\'t copy'}
 
 /* ---------- RENDER ---------- */
+const KIND={event:'🎟️ ',combo:'🔀 '};
 function render(){
   const m=me(),left=m?Math.max(0,MAX_VETOES-vetoesUsed(m.id)):0;
   $('me-txt').innerText=m?`YOU ARE: ${m.emo} ${m.name} • 👎 ${left} veto${left===1?'':'es'} left`:'👆 TAP YOUR PROFILE:';
@@ -673,7 +731,9 @@ function render(){
 
   $('v-list').innerHTML=S.venues.map(v=>{
     const vt=v.votes||{},kn=S.squad.filter(u=>vt[u.id]==='k').map(u=>esc(u.name)),vo=S.squad.filter(u=>vt[u.id]==='v').map(u=>esc(u.name)),w=S.win===v.id,id=sid(v.id);
-    return `<div class="card" style="border-color:${w?'#f59e0b':'#334155'}"><div class="row"><div><b>${w?'⭐ ':''}${esc(v.name)}</b><div class="sub" style="color:#fbbf24">📍 ${esc(v.loc)}</div></div><div class="row"><a class="btn" href="${esc(mapsUrl(v.name+', '+v.loc))}" target="_blank" rel="noopener">🗺️ Map</a><button class="btn ${w?'amber':''}" onclick="lockIn('${id}')">${w?'Locked':'Select'}</button></div></div><div class="sub" style="margin:6px 0">${esc(v.desc)}</div><div class="row"><span class="sub" style="color:${vo.length?'#f43f5e':'#10b981'}">${vo.length?'⚠️ Veto: '+vo.join(', '):'👍 Keen: '+(kn.join(', ')||'0')}</span><div class="row"><button class="btn ${vt[cfg.u]==='k'?'green':''}" onclick="vote('${id}','k')">👍 Keen</button><button class="btn ${vt[cfg.u]==='v'?'red':''}" onclick="vote('${id}','v')">👎 Veto</button></div></div></div>`;
+    const meta=[v.when?'🗓️ '+esc(v.when):'',v.cost?'💷 '+esc(v.cost)+' pp':''].filter(Boolean).join(' • '),u=safeUrl(v.url);
+    const extra=(meta?`<div class="sub" style="color:#c7d2fe;margin-top:2px">${meta}${v.live?' • 🔎 checked live':''}</div>`:'')+(v.steps&&v.steps.length?`<ol class="sub" style="margin:6px 0 0;padding-left:18px;color:#e2e8f0">${v.steps.map(x=>`<li>${esc(x)}</li>`).join('')}</ol>`:'');
+    return `<div class="card" style="border-color:${w?'#f59e0b':'#334155'}"><div class="row"><div><b>${w?'⭐ ':''}${KIND[v.kind]||''}${esc(v.name)}</b><div class="sub" style="color:#fbbf24">📍 ${esc(v.loc)}</div>${extra}</div><div class="row">${u?`<a class="btn" href="${esc(u)}" target="_blank" rel="noopener">🔗 Info</a>`:''}<a class="btn" href="${esc(mapsUrl((v.kind==='combo'?'':v.name+', ')+v.loc))}" target="_blank" rel="noopener">🗺️ Map</a><button class="btn ${w?'amber':''}" onclick="lockIn('${id}')">${w?'Locked':'Select'}</button></div></div><div class="sub" style="margin:6px 0">${esc(v.desc)}</div><div class="row"><span class="sub" style="color:${vo.length?'#f43f5e':'#10b981'}">${vo.length?'⚠️ Veto: '+vo.join(', '):'👍 Keen: '+(kn.join(', ')||'0')}</span><div class="row"><button class="btn ${vt[cfg.u]==='k'?'green':''}" onclick="vote('${id}','k')">👍 Keen</button><button class="btn ${vt[cfg.u]==='v'?'red':''}" onclick="vote('${id}','v')">👎 Veto</button></div></div></div>`;
   }).join('');
 
   $('d-list').innerHTML=S.slots.map(s=>{
@@ -683,7 +743,7 @@ function render(){
   }).join('');
 
   const M=S.mid,w=winVenue(),vp=M&&M.v&&w&&M.vid===w.id?M.v:null;
-  $('mid-box').innerHTML=M?`<div style="background:#291d06;border:1px solid #f59e0b;padding:8px;border-radius:8px;margin-bottom:8px"><div class="row"><span>🎯 Midpoint: <b>near ${esc(M.name)}</b></span><a class="btn" href="${esc(mapsUrl((+M.lat).toFixed(5)+','+(+M.lon).toFixed(5)))}" target="_blank" rel="noopener">🗺️ Map</a></div>${M.locs!==locsKey()?'<div class="sub" style="color:#fbbf24">↻ Someone changed station – tap Find Midpoint again</div>':''}<button class="btn indigo" style="margin-top:6px" onclick="ideasNearMid()">✨ Gerg Ai ideas near ${esc(M.name)}</button></div>`:'<div class="sub" style="margin-bottom:6px">Tap 📍 Find Midpoint to find the fairest place to meet.</div>';
+  $('mid-box').innerHTML=M?`<div style="background:#291d06;border:1px solid #f59e0b;padding:8px;border-radius:8px;margin-bottom:8px"><div class="row"><span>🎯 Midpoint: <b>near ${esc(M.name)}</b></span><a class="btn" href="${esc(mapsUrl((+M.lat).toFixed(5)+','+(+M.lon).toFixed(5)))}" target="_blank" rel="noopener">🗺️ Map</a></div>${M.locs!==locsKey()?'<div class="sub" style="color:#fbbf24">↻ Someone changed station – tap Find Midpoint again</div>':''}<button class="btn indigo" style="margin-top:6px" onclick="ideasNearMid()">✨ Gerg AI ideas near ${esc(M.name)}</button></div>`:'<div class="sub" style="margin-bottom:6px">Tap 📍 Find Midpoint to find the fairest place to meet.</div>';
   $('trv-list').innerHTML=S.squad.map(u=>{
     const p=M&&M.pts&&M.pts[u.id],dist=[];
     if(p)dist.push(`${miles(p,M).toFixed(1)} mi to midpoint`);if(p&&vp)dist.push(`${miles(p,vp).toFixed(1)} mi to ${esc(w.name)}`);
@@ -734,7 +794,7 @@ async function install(){if(!installEvt)return;installEvt.prompt();await install
 if('serviceWorker' in navigator&&location.protocol==='https:')navigator.serviceWorker.register('sw.js').catch(()=>{});
 
 $('c-db').value=cfg.db;$('c-room').value=cfg.rm;$('c-model').value=cfg.md;$('c-key').value=cfg.key;
-render();if(cfg.db){stream();pull()}
+renderModes();render();if(cfg.db){stream();pull()}
 // Polling is only the fallback for when the live stream drops
 setInterval(()=>{if(cfg.db&&!document.hidden&&!streaming)pull()},4000);
 document.addEventListener('visibilitychange',()=>{if(!document.hidden&&cfg.db)pull()});
