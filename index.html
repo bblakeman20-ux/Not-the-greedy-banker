@@ -258,7 +258,7 @@ const P=new URLSearchParams(location.search);
 let cfg={u:get('u',''),db:(P.get('db')||get('db','')).replace(/\/$/,''),rm:P.get('room')||get('rm','medway-squad'),md:get('md','gemini-3.8-flash'),key:get('key',''),edit:0};
 // Remember the room from a group link, so the installed app (which opens without the link) stays connected
 if(P.get('db'))set('db',cfg.db);if(P.get('room'))set('rm',cfg.rm);
-const FALLBACK='gemini-2.5-flash',AI_TIMEOUT=15000,BOUNTY_MS=60000,MAX_VETOES=2,APP_VER=2;
+const AI_TIMEOUT=25000,BOUNTY_MS=60000,MAX_VETOES=2,APP_VER=2;
 
 // Demo data for Local Mode only; a real (synced) room starts empty, see freshRoom()
 let S={
@@ -480,6 +480,19 @@ async function copyBank(id,amt){
 /* ---------- GERG AI ---------- */
 // Gemini 3.x / 2.5 think by default, which is what made 3.8 slow; dial it right down for quick idea lists
 const thinkCfg=m=>/^gemini-2\.5-flash/.test(m)?{thinkingBudget:0}:/^gemini-3/.test(m)?{thinkingLevel:/flash/.test(m)?'minimal':'low'}:null;
+// Google retires model names (2.5-flash went for new users), so backups come from the models this key can actually use
+let keyModels=null;
+async function liveModels(){
+  if(keyModels)return keyModels;
+  try{const j=await(await fetch('https://generativelanguage.googleapis.com/v1beta/models?pageSize=200',{headers:{'x-goog-api-key':cfg.key}})).json();
+    if(j.models)keyModels=j.models.filter(m=>(m.supportedGenerationMethods||[]).includes('generateContent')).map(m=>m.name.replace(/^models\//,''))}catch(e){}
+  return keyModels||[];
+}
+// Newest plain Flash first, then Flash-Lite; skips previews, image/audio/TTS variants
+function backups(list){
+  const v=n=>{const m=n.match(/^gemini-(\d+(?:\.\d+)?)-flash(-lite)?$/);return m?+m[1]-(m[2]?0.001:0):-1};
+  return list.filter(n=>v(n)>0&&n!==cfg.md).sort((a,b)=>v(b)-v(a)).slice(0,2);
+}
 // search = ground on live Google Search results (needed for real, dated events; slower)
 const MODES={
   gems:{lbl:'💎 Hidden gems',sub:'Unusual local spots – not the obvious default',search:0,
@@ -523,25 +536,31 @@ async function askAI(){
   const shape='Each object has keys: "name" (punchy title), "kind" ("spot", "event" or "combo"), "loc" (town or area), "when" (date and time for events, else ""), "cost" (rough £ per head, e.g. "£25"), "desc" (max 20 words: why it beats the default for this group), "steps" (for combos: 2-4 short strings like "6pm – crazy golf @ Venue", else []), "url" (official or ticket link if known, else "").';
   const prompt=`You are Gerg AI, the anti-default outing planner for a UK group of mates who always end up in the same pub.\n${squadBrief()}\n\nTask: suggest ${mode.ask}\nMake the ideas fit the group: easy to reach from their stations, in budget, and genuinely more fun than the default.\nReturn ONLY a JSON array of 3 objects, no other text. ${shape}`;
   const str={type:'STRING'},schema={type:'ARRAY',items:{type:'OBJECT',properties:{name:str,kind:{type:'STRING',enum:['spot','event','combo']},loc:str,when:str,cost:str,desc:str,steps:{type:'ARRAY',items:str},url:str},required:['name','kind','loc','desc']}};
-  const call=async(m,think,search)=>{
+  const call=async(m,think,search,strict=1)=>{
     // Structured output and the search tool don't mix on every model, so searched replies are parsed leniently instead
-    const limit=search?AI_TIMEOUT*2:AI_TIMEOUT,ac=new AbortController(),tm=setTimeout(()=>ac.abort(),limit),gen=search?{}:{responseMimeType:'application/json',responseSchema:schema},body={contents:[{parts:[{text:prompt}]}],generationConfig:gen};
+    const limit=search?AI_TIMEOUT*2:AI_TIMEOUT,ac=new AbortController(),tm=setTimeout(()=>ac.abort(),limit),gen=search||!strict?{}:{responseMimeType:'application/json',responseSchema:schema},body={contents:[{parts:[{text:prompt}]}],generationConfig:gen};
     if(think)gen.thinkingConfig=think;if(search)body.tools=[{google_search:{}}];
     try{return await(await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${encodeURIComponent(m)}:generateContent`,{method:'POST',signal:ac.signal,headers:{'Content-Type':'application/json','x-goog-api-key':cfg.key},body:JSON.stringify(body)})).json()}
     catch(e){return{error:{message:e.name==='AbortError'?`${m} took over ${limit/1000}s`:e.message}}}
     finally{clearTimeout(tm)}
   };
   try{
-    let d,used,search=mode.search;
-    for(const m of [...new Set([cfg.md,FALLBACK])]){
-      used=m;let think=thinkCfg(m);
-      if(m!==cfg.md)$('ai-msg').innerText='🤖 Gerg AI is trying the backup brain...';
+    const list=await liveModels(),fails=[];let d,used,search=mode.search,models=[cfg.md,...backups(list)];
+    // The model typed in Setup isn't on this key: go straight to the best one that is
+    if(list.length&&!list.includes(cfg.md))fails.push(`${cfg.md}: not available on your key`),models=models.slice(1);
+    for(const m of models){
+      used=m;let think=thinkCfg(m),strict=1;
+      if(m!==cfg.md)$('ai-msg').innerText=`🤖 Gerg AI is trying the backup brain (${m})...`;
+      // 400 = a setting this model doesn't accept: drop thinking, then the strict JSON schema, then live search
       d=await call(m,think,search);
       if(d.error&&d.error.code===400&&think){think=null;d=await call(m,null,search)}
-      if(d.error&&d.error.code===400&&search){search=0;d=await call(m,think,0)}
+      if(d.error&&d.error.code===400&&!search){strict=0;d=await call(m,null,0,0)}
+      if(d.error&&d.error.code===400&&search){search=0;d=await call(m,null,0)}
       if(!d.error)break;
+      fails.push(`${m}: ${d.error.message}`);
     }
-    if(d.error)throw new Error(d.error.message);
+    // Show why the chosen model failed first – the backup's error alone hides the real problem
+    if(d.error)throw new Error(fails.join('\n• ')+(list.length?'':'\n(Couldn\'t list your key\'s models – check the API key in Setup)'));
     const txt=(d.candidates?.[0]?.content?.parts||[]).filter(p=>p.text&&!p.thought).map(p=>p.text).join('');
     if(!txt)throw new Error(d.promptFeedback?.blockReason||'Gerg AI came back empty');
     let ideas;try{ideas=JSON.parse(txt)}catch(e){const i=txt.indexOf('['),j=txt.lastIndexOf(']');if(i<0||j<i)throw new Error('Gerg AI rambled instead of answering – try again');ideas=JSON.parse(txt.slice(i,j+1))}
@@ -554,7 +573,7 @@ async function askAI(){
       steps:Array.isArray(x.steps)?x.steps.slice(0,4).map(String):[],live:search?1:0,votes:{[cfg.u]:'k'}}));
     const won=redeem(pend,ideas[0].name);
     const src=(d.candidates?.[0]?.groundingMetadata?.groundingChunks||[]).map(c=>c.web).filter(w=>w&&safeUrl(w.uri)).slice(0,4);
-    $('ai-msg').innerHTML=esc(`✅ Gerg AI added ${ideas.length} idea${ideas.length>1?'s':''} in ${((Date.now()-t0)/1000).toFixed(1)}s${used!==cfg.md?` (via ${used} – ${cfg.md} failed)`:''}${mode.search&&!search?' • ⚠️ live search unavailable, double-check dates':''}${won?' • 🎯 Veto Bounty redeemed!':''}`)
+    $('ai-msg').innerHTML=esc(`✅ Gerg AI added ${ideas.length} idea${ideas.length>1?'s':''} in ${((Date.now()-t0)/1000).toFixed(1)}s${used!==cfg.md?` (via ${used} – ${fails[0]||cfg.md+' failed'})`:''}${mode.search&&!search?' • ⚠️ live search unavailable, double-check dates':''}${won?' • 🎯 Veto Bounty redeemed!':''}`)
       +(src.length?'<br>🔎 Checked: '+src.map(w=>`<a href="${esc(safeUrl(w.uri))}" target="_blank" rel="noopener">${esc(w.title||'source')}</a>`).join(', '):'');
     push();
   }catch(e){$('ai-msg').innerText='❌ '+e.message}
