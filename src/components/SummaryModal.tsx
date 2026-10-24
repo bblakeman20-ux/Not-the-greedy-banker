@@ -1,0 +1,186 @@
+import React, { useState } from 'react';
+import { AppConfig, OutingEvent, User } from '../types';
+import { copyStr, gbp, payUrl, safeUrl } from '../utils/storage';
+import { calculateLedger, calculateSettlement, who } from '../utils/kitty';
+import { downloadIcs, fmtWhen, whenOf } from '../utils/dates';
+
+interface SummaryModalProps {
+  isOpen: boolean;
+  onClose: () => void;
+  event: OutingEvent | null;
+  squad: User[];
+  config: AppConfig;
+  now: number;
+}
+
+export const SummaryModal: React.FC<SummaryModalProps> = ({
+  isOpen,
+  onClose,
+  event,
+  squad,
+  config,
+  now,
+}) => {
+  const [msg, setMsg] = useState('');
+
+  if (!isOpen || !event) return null;
+
+  const winVenue = event.venues.find((v) => v.id === event.win) || event.venues[0];
+  const allInSlots = event.slots.filter(
+    (s) => squad.length > 0 && squad.every((u) => s.av && s.av[u.id])
+  );
+  const { tot } = calculateLedger(event, squad);
+  const settlements = calculateSettlement(event, squad);
+
+  const owes = settlements.map((t) => {
+    const c = who(t.to, squad);
+    const l = c ? payUrl(c, t.amt) : '';
+    const fromName = who(t.from, squad)?.name || 'Someone';
+    const toName = c?.name || 'Someone';
+    return `   ${fromName} → ${toName} ${gbp(t.amt)}${l ? ' ' + l : ''}`;
+  });
+
+  const shame = [
+    ...new Set(
+      (event.bounties || [])
+        .filter((b) => !b.done && now >= b.until && !b.hide)
+        .map((b) => (who(b.uid, squad) || {}).name)
+        .filter(Boolean)
+    ),
+  ];
+
+  const mapsUrl = (q: string) =>
+    'https://www.google.com/maps/search/?api=1&query=' + encodeURIComponent(q);
+
+  const whenList = allInSlots.map((s) => {
+    const w = whenOf(s);
+    return s.lbl + (w ? ` (${fmtWhen(w)})` : '');
+  });
+
+  const summaryText =
+    `🍻 ${event.name.toUpperCase()}\n` +
+    `${event.locked ? '🔒 LOCKED IN' : '🎯 FRONT RUNNER'}: ${
+      winVenue
+        ? winVenue.name +
+          ' (' +
+          winVenue.loc +
+          ')' +
+          (winVenue.when ? ' – ' + winVenue.when : '')
+        : 'TBD'
+    }` +
+    (winVenue && winVenue.steps && winVenue.steps.length
+      ? '\n' + winVenue.steps.map((x) => '   • ' + x).join('\n')
+      : '') +
+    (winVenue && safeUrl(winVenue.url) ? '\n🔗 ' + safeUrl(winVenue.url) : '') +
+    (winVenue
+      ? '\n📍 ' + mapsUrl((winVenue.kind === 'combo' ? '' : winVenue.name + ', ') + winVenue.loc)
+      : '') +
+    `\n📅 ${event.locked ? 'WHEN' : 'ALIGNED'}: ${
+      whenList.join(' OR ') || event.when || 'Voting'
+    }` +
+    `\n💷 KITTY: ${gbp(tot)} total` +
+    (owes.length ? `\n💸 SETTLE UP:\n${owes.join('\n')}` : '') +
+    (shame.length ? `\n🍺 FIRST ROUND: ${shame.join(', ')} (missed the Veto Bounty)` : '');
+
+  const calSlot = allInSlots.find((s) => whenOf(s));
+
+  const handleCopy = async () => {
+    const ok = await copyStr(summaryText);
+    setMsg(ok ? '📋 Copied summary text to clipboard!' : "❌ Couldn't copy");
+  };
+
+  const handleShareMessenger = async () => {
+    const groupLink =
+      `${window.location.origin}${window.location.pathname}` +
+      (config.db
+        ? `?db=${encodeURIComponent(config.db)}&room=${encodeURIComponent(config.rm)}&ev=${encodeURIComponent(
+            event.id
+          )}`
+        : '');
+
+    if (navigator.share) {
+      try {
+        await navigator.share({
+          title: 'Not The Greedy Banker',
+          text: summaryText,
+          url: config.db ? groupLink : '',
+        });
+        setMsg('✅ Shared summary!');
+        return;
+      } catch (e: any) {
+        if (e.name === 'AbortError') return;
+      }
+    }
+
+    const copied = await copyStr(
+      config.db ? summaryText + '\n' + groupLink : summaryText
+    );
+    setMsg(
+      copied
+        ? '📋 Copied – paste it into the Messenger chat!'
+        : "❌ Couldn't copy"
+    );
+    if (copied) {
+      window.open('https://www.messenger.com/', '_blank', 'noopener');
+    }
+  };
+
+  return (
+    <div className="mt-3 bg-[#212124] border border-[#2b2b2f] rounded-2xl p-4 transition-all">
+      <div className="flex items-center justify-between mb-2">
+        <div className="text-xs font-bold text-[#c6ff3d]">
+          📋 Outing Summary & Debts
+        </div>
+        <button
+          type="button"
+          onClick={onClose}
+          className="text-xs text-[#8d8d94] hover:text-[#f4f4f5] cursor-pointer"
+        >
+          ✕
+        </button>
+      </div>
+
+      <textarea
+        rows={9}
+        readOnly
+        value={summaryText}
+        className="w-full bg-[#17171a] border border-[#2b2b2f] text-[#f4f4f5] p-3 rounded-xl text-xs font-mono leading-relaxed outline-none"
+      />
+
+      <div className="flex flex-wrap items-center gap-2 mt-2">
+        <button
+          type="button"
+          onClick={handleShareMessenger}
+          className="cursor-pointer border border-[#2b2b2f] bg-[#17171a] text-[#f4f4f5] font-semibold text-xs px-3.5 py-2 rounded-xl hover:border-[#3b3b40] active:scale-95 transition"
+        >
+          💬 Send to Messenger
+        </button>
+        <button
+          type="button"
+          onClick={handleCopy}
+          className="cursor-pointer bg-[rgba(198,255,61,0.12)] text-[#c6ff3d] font-semibold text-xs px-3.5 py-2 rounded-xl hover:bg-[rgba(198,255,61,0.2)] active:scale-95 transition"
+        >
+          Copy Text
+        </button>
+        {calSlot && (
+          <button
+            type="button"
+            onClick={() => downloadIcs(calSlot, winVenue, config)}
+            className="cursor-pointer bg-[#ff6b57] text-[#1a0703] font-semibold text-xs px-3.5 py-2 rounded-xl hover:brightness-105 active:scale-95 transition"
+          >
+            📅 Add to Calendar
+          </button>
+        )}
+        <button
+          type="button"
+          onClick={onClose}
+          className="cursor-pointer border border-[#2b2b2f] bg-transparent text-[#8d8d94] font-semibold text-xs px-3 py-2 rounded-xl hover:text-[#f4f4f5] transition"
+        >
+          Close
+        </button>
+      </div>
+
+      {msg && <div className="text-xs text-[#c6ff3d] mt-2">{msg}</div>}
+    </div>
+  );
+};

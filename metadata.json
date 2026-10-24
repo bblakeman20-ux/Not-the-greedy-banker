@@ -1,0 +1,8 @@
+{
+  "name": "Not The Greedy Banker",
+  "description": "Anti-default outing engine for groups of mates: pitch & vote on venues, Veto Bounty countdowns, date alignment, fair midpoint finder, Gerg AI & free map ideas, and expense kitty.",
+  "permissions": [],
+  "capabilities": [
+    "MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"
+  ]
+}
