@@ -72,7 +72,7 @@
 <div class="card">
   <div class="row">
     <div>
-      <span id="sync-txt" style="font-size:11px;color:var(--accent);font-weight:700">⚪ Local Mode (demo data)</span>
+      <span id="sync-txt" onclick="if(denied)$('setup-box').classList.add('open')" style="font-size:11px;color:var(--accent);font-weight:700">⚪ Local Mode (demo data)</span>
       <h2 style="margin:2px 0;font-size:18px">🍻 Not The Greedy Banker</h2>
       <div class="sub">Anti-Default Outing Engine • Deffo Not Outlook</div>
     </div>
@@ -331,7 +331,7 @@ const P=new URLSearchParams(location.search);
 let cfg={u:get('u',''),db:(P.get('db')||get('db','')).replace(/\/$/,''),rm:P.get('room')||get('rm','medway-squad'),md:get('md','gemini-3.8-flash'),key:get('key',''),edit:0};
 // Remember the room from a group link, so the installed app (which opens without the link) stays connected
 if(P.get('db'))set('db',cfg.db);if(P.get('room'))set('rm',cfg.rm);
-const AI_TIMEOUT=25000,BOUNTY_MS=60000,MAX_VETOES=2,APP_VER=3;
+const AI_TIMEOUT=20000,BOUNTY_MS=60000,MAX_VETOES=2,APP_VER=3;
 
 // One event = one night out with its own ideas, dates, kitty and bounties
 const newEvent=(o={})=>({id:'ev'+Date.now(),name:'New event',where:'',vibe:'',when:'',created:Date.now(),locked:null,win:null,mid:null,venues:[],slots:[],exp:[],bounties:[],paid:[],...o});
@@ -434,7 +434,14 @@ function diff(a,b,p,out){
   else if(JSON.stringify(a??null)!==JSON.stringify(b??null))out[p.slice(1)]=b??null;
   return out;
 }
-const status=ok=>frozen||($('sync-txt').innerText=ok?(streaming?'⚡ Live: ':'🟢 Live: ')+cfg.rm:'🔴 Sync failed – retrying');
+// ok: 1 = fine, 0 = network trouble, or the HTTP status when Firebase refused (401/403 = the database rules said no)
+let denied=0;
+const status=ok=>{
+  if(frozen)return;denied=ok===401||ok===403;
+  $('sync-txt').innerText=ok===1||ok===true?(streaming?'⚡ Live: ':'🟢 Live: ')+cfg.rm
+    :denied?(roomKey().length<12?'🔒 Room code too short for your database rules – ⚙️ Setup → 🎲':'🔒 Database said no – check the rules in Firebase')
+    :'🔴 Can\'t reach the database – retrying';
+};
 const roomKey=()=>cfg.rm.replace(/\W/g,'');
 // v2 rooms live at a new path so phones still on the old app version never read the new format (and crash)
 function dbUrl(){return cfg.db?`${cfg.db}/v2/rooms/${roomKey()}.json`:null}
@@ -446,7 +453,7 @@ async function push(full){
   // Empty room, or a room saved by the old array format: write the whole thing once
   if(full||!R||['squad','ban'].some(k=>Array.isArray(R[k]))){method='PUT';body=db;R=clone(db)}
   else{body=diff(R,db,'',{});if(!Object.keys(body).length)return;Object.entries(body).forEach(([p,v])=>R=setPath(R,p.split('/'),v))}
-  busy++;try{const r=await fetch(u,{method,body:JSON.stringify(body)});status(r.ok)}catch(e){status(0)}finally{busy--;if(!busy)applyRemote()}
+  busy++;try{const r=await fetch(u,{method,body:JSON.stringify(body)});status(r.ok?1:r.status)}catch(e){status(0)}finally{busy--;if(!busy)applyRemote()}
 }
 function applyRemote(){
   if(busy||initing)return;
@@ -455,10 +462,16 @@ function applyRemote(){
   const d=fromDb(clone(R)); // clone: local edits must not leak into the server mirror, or diff() sees nothing
   if((+R.ver||0)<APP_VER){S=upgrade(d);render();return push(1)} // rewrite an older room in the new format once
   S=norm(d);render();
+  try{set('snap',JSON.stringify({room:roomKey(),S}))}catch(e){}
 }
 // Empty room: bring over a plan saved by the old app version if there is one, otherwise start clean
 async function initRoom(){
-  initing=1;let old=null;
+  initing=1;let old=null,snap=null;
+  // Moving to a new (e.g. secret) room: offer to bring the squad and events from the last room this phone had open
+  try{snap=JSON.parse(get('snap','null'))}catch(e){}
+  if(snap&&snap.room!==roomKey()&&snap.S&&(snap.S.events||[]).length&&confirm(`This room is empty. Bring your squad and ${snap.S.events.length} event${snap.S.events.length>1?'s':''} across from "${snap.room}"?`)){
+    S={...snap.S,ver:APP_VER};initing=0;await push(1);return;
+  }
   try{const r=await fetch(oldUrl());if(r.ok)old=await r.json()}catch(e){}
   S=old&&old.squad?upgrade(fromDb(old)):freshRoom();
   initing=0;await push(1);
@@ -474,7 +487,7 @@ async function syncClock(){
 }
 async function pull(){
   const u=dbUrl();if(!u)return;const t0=Date.now();
-  try{const r=await fetch(u);if(!r.ok)throw 0;const d=await r.json();if(busy||touched>t0)return;R=d;applyRemote();status(1)}catch(e){status(0)}
+  try{const r=await fetch(u);if(!r.ok)return status(r.status);const d=await r.json();if(busy||touched>t0)return;R=d;applyRemote();status(1)}catch(e){status(0)}
 }
 // Firebase REST streaming: changes land instantly instead of waiting for the next poll
 function stream(){
@@ -488,7 +501,7 @@ function stream(){
   es.addEventListener('put',e=>on(e,0));es.addEventListener('patch',e=>on(e,1));
   const stop=()=>{if(es)es.close();es=null;streaming=0};
   es.addEventListener('cancel',stop);es.addEventListener('auth_revoked',stop);
-  es.onerror=()=>{streaming=0;status(0)};
+  es.onerror=()=>{streaming=0;if(!denied)status(0)};
 }
 
 function saveCfg(){
@@ -626,13 +639,29 @@ async function askAI(){
   const shape='Each object has keys: "name" (punchy title), "kind" ("spot", "event" or "combo"), "loc" (town or area), "when" (date and time for events, else ""), "cost" (rough £ per head, e.g. "£25"), "desc" (max 20 words: why it beats the default for this group), "steps" (for combos: 2-4 short strings like "6pm – crazy golf @ Venue", else []), "url" (official or ticket link if known, else "").';
   const prompt=`You are Gerg AI, the anti-default outing planner for a UK group of mates who always end up in the same pub.\n${squadBrief()}\n\nTask: suggest ${mode.ask}\nMake the ideas fit the group: easy to reach from their stations, in budget, and genuinely more fun than the default.\nReturn ONLY a JSON array of 3 objects, no other text. ${shape}`;
   const str={type:'STRING'},schema={type:'ARRAY',items:{type:'OBJECT',properties:{name:str,kind:{type:'STRING',enum:['spot','event','combo']},loc:str,when:str,cost:str,desc:str,steps:{type:'ARRAY',items:str},url:str},required:['name','kind','loc','desc']}};
+  // Streamed: the clock only runs until the first words arrive, so a slow-but-working model isn't cut off mid-answer
   const call=async(m,think,search,strict=1)=>{
-    // Structured output and the search tool don't mix on every model, so searched replies are parsed leniently instead
-    const limit=search?AI_TIMEOUT*2:AI_TIMEOUT,ac=new AbortController(),tm=setTimeout(()=>ac.abort(),limit),gen=search||!strict?{}:{responseMimeType:'application/json',responseSchema:schema},body={contents:[{parts:[{text:prompt}]}],generationConfig:gen};
+    const first=search?AI_TIMEOUT*1.6:AI_TIMEOUT,ac=new AbortController(),gen=search||!strict?{}:{responseMimeType:'application/json',responseSchema:schema},body={contents:[{parts:[{text:prompt}]}],generationConfig:gen};
     if(think)gen.thinkingConfig=think;if(search)body.tools=[{google_search:{}}];
-    try{return await(await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${encodeURIComponent(m)}:generateContent`,{method:'POST',signal:ac.signal,headers:{'Content-Type':'application/json','x-goog-api-key':cfg.key},body:JSON.stringify(body)})).json()}
-    catch(e){return{error:{message:e.name==='AbortError'?`${m} took over ${limit/1000}s`:e.message}}}
-    finally{clearTimeout(tm)}
+    let got=0,tm=setTimeout(()=>ac.abort(),first);const cap=setTimeout(()=>ac.abort(),90000);
+    try{
+      const r=await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${encodeURIComponent(m)}:streamGenerateContent?alt=sse`,{method:'POST',signal:ac.signal,headers:{'Content-Type':'application/json','x-goog-api-key':cfg.key},body:JSON.stringify(body)});
+      if(!r.ok){const j=await r.json().catch(()=>({}));return{error:{code:j.error?.code||r.status,message:j.error?.message||'HTTP '+r.status}}}
+      const rd=r.body.getReader(),dec=new TextDecoder();let buf='',text='',meta=null,fbk=null;
+      for(;;){
+        const{done,value}=await rd.read();if(done)break;buf+=dec.decode(value,{stream:true});let i;
+        while((i=buf.indexOf('\n'))>=0){
+          const line=buf.slice(0,i).trim();buf=buf.slice(i+1);if(!line.startsWith('data:'))continue;
+          const j=JSON.parse(line.slice(5));if(j.error)return{error:j.error};
+          const c=j.candidates?.[0];(c?.content?.parts||[]).forEach(p=>{if(p.text&&!p.thought)text+=p.text});
+          if(c?.groundingMetadata)meta=c.groundingMetadata;if(j.promptFeedback)fbk=j.promptFeedback;
+          if(!got){got=1;clearTimeout(tm);$('ai-msg').innerText=`🤖 Gerg AI (${m}) is writing...`}
+        }
+      }
+      return{candidates:[{content:{parts:[{text}]},groundingMetadata:meta}],promptFeedback:fbk};
+    }
+    catch(e){return{error:{message:e.name==='AbortError'?(got?`${m} stopped mid-answer after 90s`:`${m} didn't start answering within ${Math.round(first/1000)}s`):e.message}}}
+    finally{clearTimeout(tm);clearTimeout(cap)}
   };
   try{
     const list=await liveModels(),fails=[];let d,used,search=mode.search,models=[cfg.md,...backups(list)];
@@ -794,11 +823,14 @@ const CATS=[
   {k:'grill',t:'food',e:'🍔',l:'Burgers / BBQ',w:/burger|bbq|barbecue|steak|grill|wings/,q:['"amenity"="restaurant"]["cuisine"~"burger|barbecue|steak_house|american|wings"'],m:t=>t.amenity==='restaurant'&&/burger|barbecue|steak|american|wings/.test(t.cuisine||'')},
   {k:'mex',t:'food',e:'🌮',l:'Mexican / tapas',w:/mexic|taco|tapas|spanish/,q:['"amenity"="restaurant"]["cuisine"~"mexican|tapas|spanish"'],m:t=>t.amenity==='restaurant'&&/mexican|tapas|spanish/.test(t.cuisine||'')},
   {k:'brew',t:'drink',e:'🍺',l:'Taproom / brewery',w:/tap|brew|craft|beer|ale/,q:['"craft"="brewery"','"microbrewery"="yes"'],m:t=>t.craft==='brewery'||t.microbrewery==='yes'},
-  {k:'bar',t:'drink',e:'🍸',l:'Bar',w:/cocktail|bar|gin|rum|wine/,q:['"amenity"="bar"'],m:t=>t.amenity==='bar'}
+  {k:'bar',t:'drink',e:'🍸',l:'Bar',w:/cocktail|bar|gin|rum|wine/,q:['"amenity"="bar"'],m:t=>t.amenity==='bar'},
+  // Any other restaurant (the backup source doesn't know cuisines)
+  {k:'food',t:'food',e:'🍽️',l:'Food',w:/food|eat|dinner|restaurant/,q:[],m:t=>t.amenity==='restaurant'}
 ];
 // Public Overpass servers are free but often busy: start the next one if the first is slow, keep whichever answers first
 const OVERPASS=['https://overpass-api.de/api/interpreter','https://overpass.private.coffee/api/interpreter','https://overpass.kumi.systems/api/interpreter'];
 const freePool={},seenFree={};
+let mapStage='';
 const freeMsg=t=>$('free-msg').innerText=t;
 function overpass(q){
   return new Promise((resolve,reject)=>{
@@ -842,20 +874,37 @@ function bbox(cs,km){
   cs.forEach(p=>{const dl=km/111,dn=km/(111*Math.cos(p.lat*Math.PI/180));b[0]=Math.min(b[0],p.lat-dl);b[1]=Math.min(b[1],p.lon-dn);b[2]=Math.max(b[2],p.lat+dl);b[3]=Math.max(b[3],p.lon+dn)});
   return b.map(x=>x.toFixed(4)).join(',');
 }
+// Backup when the Overpass servers are down: Photon (komoot's free OSM search), one small request per place type
+async function photonPlaces(cs,cats,vibe){
+  // Vibe matches first, capped so we stay a polite user of a free service
+  const v=vibe.toLowerCase(),ordered=[...cats.filter(c=>c.w.test(v)),...shuffle(cats.filter(c=>!c.w.test(v)))];
+  const pairs=[...new Set(ordered.flatMap(c=>c.q).map(f=>(f.match(/^"([^"]+)"="([^"]+)"/)||[]).slice(1,3).join(':')).filter(Boolean))].slice(0,14);
+  if(!pairs.includes('amenity:restaurant'))pairs.push('amenity:restaurant');if(!pairs.includes('amenity:bar'))pairs.push('amenity:bar');
+  const out=[],c=cs[0];let i=0,ok=0;
+  const work=async()=>{while(i<pairs.length){const tag=pairs[i++];
+    try{const r=await fetch(`https://photon.komoot.io/api/?q=${encodeURIComponent(c.name)}&osm_tag=${tag}&lat=${c.lat}&lon=${c.lon}&limit=10&lang=en`);if(!r.ok)continue;ok++;
+      ((await r.json()).features||[]).forEach(f=>{const p=f.properties||{},[lon,lat]=f.geometry?.coordinates||[];
+        if(p.name&&lat!=null)out.push({type:p.osm_type,id:p.osm_id,lat,lon,tags:{name:p.name,[p.osm_key]:p.osm_value,'addr:street':p.street,'addr:town':p.city||p.district||p.county}})})}catch(e){}}};
+  await Promise.all([work(),work(),work(),work()]);
+  if(!ok)throw new Error('the backup map service is busy too');
+  return out.filter(e=>miles(c,e)<=12);
+}
 async function fetchPlaces(where,vibe){
   const cs=await centresFor(where);if(!cs.length)throw new Error(`Couldn't find "${where}" on the map`);
-  const hit=c=>c.w.test(vibe.toLowerCase()),pickC=t=>{const all=CATS.filter(c=>c.t===t),m=all.filter(hit);return m.length?m:all};
+  const hit=c=>c.w.test(vibe.toLowerCase()),pickC=t=>{const all=CATS.filter(c=>c.t===t&&c.q.length),m=all.filter(hit);return m.length?m:all};
   const acts=CATS.filter(c=>c.t==='act'),eats=[...pickC('food'),...CATS.filter(c=>c.t==='drink')];
   const st=cats=>osmFilters(cats).map(f=>`nwr[${f}]["name"];`).join('');
   let places=[];
   for(const km of [5,12]){
-    const els=await overpass(`[out:json][timeout:20][bbox:${bbox(cs,km)}];(${st(acts)})->.a;.a out center tags 300;(${st(eats)})->.f;.f out center tags 300;`);
+    let els,backup=0;
+    try{els=await overpass(`[out:json][timeout:20][bbox:${bbox(cs,km)}];(${st(acts)})->.a;.a out center tags 300;(${st(eats)})->.f;.f out center tags 300;`)}
+    catch(e){mapStage='Main map servers are busy – trying the backup';freeMsg('🗺️ '+mapStage+'...');els=await photonPlaces(cs,[...acts,...eats],vibe);backup=1}
     const seen=new Set();places=[];
     els.forEach(e=>{const t=e.tags||{},c=CATS.find(c=>c.m(t)),lat=e.lat??e.center?.lat,lon=e.lon??e.center?.lon;
       // Chains (OSM "brand") are exactly the default we're avoiding, at least for food and drink
       if(!c||!t.name||lat==null||banned(t.name)||(c.t!=='act'&&t.brand)||seen.has(normName(t.name)))return;
       seen.add(normName(t.name));places.push({id:e.type+e.id,name:t.name,lat,lon,c,t,hit:hit(c)})});
-    if(places.filter(p=>p.c.t==='act').length>=4)break;
+    if(backup||places.filter(p=>p.c.t==='act').length>=4)break;
   }
   return{places,cs};
 }
@@ -901,7 +950,7 @@ async function rollFree(){
   try{
     if(!freePool[key])freePool[key]=cachedPool(key,vibe);
     if(!freePool[key]){
-      const t0=Date.now(),tick=setInterval(()=>freeMsg(`🗺️ Searching the map around ${where}... ${Math.round((Date.now()-t0)/1000)}s`),1000);
+      const t0=Date.now(),tick=setInterval(()=>freeMsg(`🗺️ ${mapStage||'Searching the map around '+where}... ${Math.round((Date.now()-t0)/1000)}s`),1000);mapStage='';
       freeMsg(`🗺️ Searching the map around ${where}...`);
       try{freePool[key]=await fetchPlaces(where,vibe)}finally{clearInterval(tick)}
       savePool(key,freePool[key]);
