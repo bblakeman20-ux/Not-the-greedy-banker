@@ -1,7 +1,8 @@
 import React, { useState, useEffect, useRef, useMemo } from 'react';
-import { BanItem, OutingEvent, User, Venue } from '../types';
+import { BanItem, OutingEvent, User, Venue, VenueStop } from '../types';
 import { fetchPlaces, makeIdeas, PlacesPool, CATS, miles, placeName } from '../utils/osm';
 import { isBanned, normName, safeUrl } from '../utils/storage';
+import { LeafletMapView } from './LeafletMapView';
 import {
   Search,
   MapPin,
@@ -41,6 +42,7 @@ export interface DiscoveredCard {
   desc: string;
   kind?: 'spot' | 'combo';
   steps?: string[];
+  stops?: VenueStop[];
   url?: string;
   category?: string;
   emoji?: string;
@@ -50,17 +52,17 @@ export interface DiscoveredCard {
 }
 
 const CATEGORY_CHIPS = [
-  { label: 'All', vibe: '', icon: '🎯' },
-  { label: 'Axe & Darts', vibe: 'axe throwing darts competitive', icon: '🪓' },
-  { label: 'Craft Beer', vibe: 'craft beer taproom brewery microbrewery', icon: '🍺' },
-  { label: 'Curry & Spice', vibe: 'curry indian grill smokehouse', icon: '🍛' },
-  { label: 'Arcade & Games', vibe: 'arcade retro gaming pinball bowling', icon: '🕹️' },
-  { label: 'Burgers & BBQ', vibe: 'burger bbq wings steak ribs', icon: '🍔' },
-  { label: 'Escape Rooms', vibe: 'escape room puzzle challenge', icon: '🔐' },
-  { label: 'Cocktails & Bars', vibe: 'cocktail bar speakeasy gin lounge', icon: '🍸' },
-  { label: 'Live Music', vibe: 'live music gig comedy club band', icon: '🎶' },
-  { label: 'Pizza & Italian', vibe: 'pizza sourdough italian neapolitan', icon: '🍕' },
-  { label: 'Asian & Street Food', vibe: 'asian ramen korean bao street food thai', icon: '🍜' },
+  { label: 'All', vibe: '' },
+  { label: 'Axe & Darts', vibe: 'axe throwing darts competitive' },
+  { label: 'Craft Beer', vibe: 'craft beer taproom brewery microbrewery' },
+  { label: 'Curry & Spice', vibe: 'curry indian grill smokehouse' },
+  { label: 'Arcade & Games', vibe: 'arcade retro gaming pinball bowling' },
+  { label: 'Burgers & BBQ', vibe: 'burger bbq wings steak ribs' },
+  { label: 'Escape Rooms', vibe: 'escape room puzzle challenge' },
+  { label: 'Cocktails & Bars', vibe: 'cocktail bar speakeasy gin lounge' },
+  { label: 'Live Music', vibe: 'live music gig comedy club band' },
+  { label: 'Pizza & Italian', vibe: 'pizza sourdough italian neapolitan' },
+  { label: 'Asian & Street Food', vibe: 'asian ramen korean bao street food thai' },
 ];
 
 export const VenueExplorer: React.FC<VenueExplorerProps> = ({
@@ -112,23 +114,35 @@ export const VenueExplorer: React.FC<VenueExplorerProps> = ({
       setPool(placesPool);
 
       const center = placesPool.cs[0];
-      const seen = new Set<string>();
-      // Generate combo ideas and spots
-      const rawIdeas = makeIdeas(placesPool, cleanArea, event, seen);
 
-      // Also parse standalone places into cards
+      // Strictly parse standalone real venues with accurate street-level locations
       const standaloneCards: DiscoveredCard[] = placesPool.places
-        .filter((p) => !isBanned(p.name, banList))
+        .filter((p) => p.name && !isBanned(p.name, banList))
         .map((p) => {
           const dist = center ? miles(center, p) : undefined;
           const street = p.t['addr:street'];
-          const town = p.t['addr:town'] || p.t['addr:city'] || cleanArea;
-          const fullLoc = street ? `${street}, ${town}` : town;
+          const house = p.t['addr:housenumber'] || p.t['addr:housename'];
+          const postcode = p.t['addr:postcode'];
+          const town = p.t['addr:town'] || p.t['addr:city'] || p.t['addr:suburb'] || cleanArea;
+          const streetPart = house && street ? `${house} ${street}` : (street || '');
+          const fullLoc = [streetPart, town, postcode].filter(Boolean).join(', ') || cleanArea;
+
+          const details = [
+            p.c.l,
+            p.t.brewery ? `Brewery: ${p.t.brewery}` : '',
+            p.t.cuisine ? `Cuisine: ${p.t.cuisine.replace(/;/g, ', ')}` : '',
+            p.t.outdoor_seating === 'yes' ? 'Beer garden' : '',
+            dist != null ? `${dist.toFixed(1)} mi from ${cleanArea}` : '',
+          ]
+            .filter(Boolean)
+            .join(' • ');
+
           return {
             id: p.id,
             name: p.name,
             loc: fullLoc,
-            desc: `${p.c.e} ${p.c.l}${dist != null ? ` • ${dist.toFixed(1)} mi from ${cleanArea}` : ''}`,
+            desc: `${p.c.e} ${details}`,
+            kind: 'spot' as const,
             category: p.c.l,
             emoji: p.c.e,
             lat: p.lat,
@@ -138,26 +152,10 @@ export const VenueExplorer: React.FC<VenueExplorerProps> = ({
           };
         });
 
-      // Combine structured combo ideas with individual real venues
-      const comboCards: DiscoveredCard[] = rawIdeas
-        .filter((idea) => idea.kind === 'combo')
-        .map((idea, idx) => ({
-          id: 'combo_' + Date.now() + '_' + idx,
-          name: idea.name || 'Combo Night',
-          loc: idea.loc || cleanArea,
-          desc: idea.desc || 'Multi-stop outing',
-          kind: 'combo',
-          steps: idea.steps || [],
-          emoji: '🔀',
-          category: 'Combo Night',
-          url: idea.url,
-        }));
-
-      // Combine: high quality combos first, then varied spots
-      const combined = [...comboCards, ...standaloneCards];
-      setCards(combined);
+      // Strictly standalone individual venues for map explorer
+      setCards(standaloneCards);
       setCardIndex(0);
-      setProgressMsg(`✨ Found ${combined.length} venue ideas in ${cleanArea}!`);
+      setProgressMsg(`✨ Found ${standaloneCards.length} verified venues in ${cleanArea}!`);
     } catch (err: any) {
       setProgressMsg(`❌ ${err.message || "Couldn't reach map servers"}`);
       onShowToast(`Map lookup error: ${err.message}`);
@@ -165,6 +163,19 @@ export const VenueExplorer: React.FC<VenueExplorerProps> = ({
       setLoading(false);
     }
   };
+
+  // Synchronize inputs when parent updates location or vibe
+  useEffect(() => {
+    if (defaultArea && defaultArea !== areaInput) {
+      setAreaInput(defaultArea);
+    }
+  }, [defaultArea]);
+
+  useEffect(() => {
+    if (defaultVibe !== undefined && defaultVibe !== queryInput) {
+      setQueryInput(defaultVibe);
+    }
+  }, [defaultVibe]);
 
   // Initial load if area is provided and no cards yet
   useEffect(() => {
@@ -188,6 +199,9 @@ export const VenueExplorer: React.FC<VenueExplorerProps> = ({
       desc: card.desc,
       kind: card.kind || 'spot',
       steps: card.steps,
+      stops: card.stops,
+      lat: card.lat,
+      lon: card.lon,
       url: card.url,
       src: 'osm',
       votes: { [currentUser.id]: 'k' },
@@ -393,7 +407,6 @@ export const VenueExplorer: React.FC<VenueExplorerProps> = ({
                   : 'border-[#2b2b2f] bg-[#212124] text-[#8d8d94] hover:text-[#f4f4f5]'
               }`}
             >
-              <span>{chip.icon}</span>
               <span>{chip.label}</span>
             </button>
           ))}
@@ -473,20 +486,20 @@ export const VenueExplorer: React.FC<VenueExplorerProps> = ({
                     style={{ opacity: likeOpacity }}
                     className="absolute top-4 right-4 border-2 border-[#c6ff3d] text-[#c6ff3d] font-display font-black text-xs px-2.5 py-1 rounded-lg rotate-12 bg-black/40 backdrop-blur-sm pointer-events-none tracking-wider"
                   >
-                    👍 PITCH (KEEN)
+                    PITCH (KEEN)
                   </div>
                   <div
                     style={{ opacity: passOpacity }}
                     className="absolute top-4 left-4 border-2 border-[#ff6b57] text-[#ff6b57] font-display font-black text-xs px-2.5 py-1 rounded-lg -rotate-12 bg-black/40 backdrop-blur-sm pointer-events-none tracking-wider"
                   >
-                    👎 PASS
+                    PASS
                   </div>
 
                   {/* Card Content Top */}
                   <div>
                     <div className="flex items-center justify-between gap-2 mb-1.5">
                       <span className="text-[11px] font-bold px-2 py-0.5 rounded-full bg-[#17171a] border border-[#2b2b2f] text-[#ff6b57] flex items-center gap-1">
-                        <span>{currentCard.emoji || '📍'}</span>
+                        <MapPin className="w-3 h-3 text-[#ff6b57]" />
                         <span>{currentCard.category || 'Spot'}</span>
                       </span>
                       {currentCard.distMiles != null && (
@@ -511,8 +524,8 @@ export const VenueExplorer: React.FC<VenueExplorerProps> = ({
                     {/* Multi-step combo preview */}
                     {currentCard.steps && currentCard.steps.length > 0 && (
                       <div className="mt-2.5 bg-[#17171a] p-2.5 rounded-xl border border-[#2b2b2f]">
-                        <span className="text-[10px] font-bold text-[#ff6b57] block mb-1">
-                          🔀 COMBO ROUTE:
+                        <span className="text-[10px] font-bold text-[#c6ff3d] block mb-1">
+                          COMBO ROUTE:
                         </span>
                         <ul className="text-[11px] text-[#cfcfd4] space-y-1">
                           {currentCard.steps.slice(0, 3).map((s, idx) => (
@@ -553,7 +566,7 @@ export const VenueExplorer: React.FC<VenueExplorerProps> = ({
                       </a>
                     )}
                     <span className="text-[#8d8d94] text-[10px]">
-                      Swipe Right 👉 to Pitch
+                      Swipe Right to Pitch
                     </span>
                   </div>
                 </div>
@@ -590,7 +603,7 @@ export const VenueExplorer: React.FC<VenueExplorerProps> = ({
           ) : (
             /* Empty Deck State */
             <div className="text-center py-8 px-4 bg-[#212124] rounded-2xl border border-[#2b2b2f]">
-              <div className="text-2xl mb-1">🎉</div>
+              <Sparkles className="w-6 h-6 text-[#ff6b57] mx-auto mb-1.5" />
               <h4 className="font-bold text-sm text-[#f4f4f5]">
                 You've swiped all nearby ideas!
               </h4>
@@ -601,16 +614,18 @@ export const VenueExplorer: React.FC<VenueExplorerProps> = ({
                 <button
                   type="button"
                   onClick={() => setCardIndex(0)}
-                  className="cursor-pointer text-xs font-semibold px-3 py-2 rounded-xl bg-[#ff6b57] text-[#1a0703] hover:brightness-105 transition"
+                  className="cursor-pointer text-xs font-semibold px-3 py-2 rounded-xl bg-[#ff6b57] text-[#1a0703] hover:brightness-105 transition flex items-center gap-1.5"
                 >
-                  🔄 Re-swipe Deck
+                  <RotateCw className="w-3.5 h-3.5" />
+                  <span>Re-swipe Deck</span>
                 </button>
                 <button
                   type="button"
                   onClick={() => executeSearch(areaInput, queryInput)}
-                  className="cursor-pointer text-xs font-semibold px-3 py-2 rounded-xl border border-[#2b2b2f] bg-[#17171a] text-[#f4f4f5] hover:border-[#3b3b40] transition"
+                  className="cursor-pointer text-xs font-semibold px-3 py-2 rounded-xl border border-[#2b2b2f] bg-[#17171a] text-[#f4f4f5] hover:border-[#3b3b40] transition flex items-center gap-1.5"
                 >
-                  🎲 Roll Wider Map Search
+                  <Search className="w-3.5 h-3.5" />
+                  <span>Roll Wider Map Search</span>
                 </button>
               </div>
             </div>
@@ -633,7 +648,7 @@ export const VenueExplorer: React.FC<VenueExplorerProps> = ({
               >
                 <div className="flex-1 min-w-0">
                   <div className="flex items-center gap-1.5 font-bold text-xs text-[#f4f4f5] truncate">
-                    <span>{card.emoji || '📍'}</span>
+                    <MapPin className="w-3.5 h-3.5 text-[#ff6b57] shrink-0" />
                     <span className="truncate">{card.name}</span>
                     {card.distMiles != null && (
                       <span className="text-[10px] font-normal text-[#8d8d94]">
@@ -641,8 +656,9 @@ export const VenueExplorer: React.FC<VenueExplorerProps> = ({
                       </span>
                     )}
                   </div>
-                  <div className="text-[11px] text-[#8d8d94] truncate mt-0.5">
-                    📍 {card.loc}
+                  <div className="text-[11px] text-[#8d8d94] truncate mt-0.5 flex items-center gap-1">
+                    <MapPin className="w-3 h-3 text-[#a1a1aa] shrink-0" />
+                    <span>{card.loc}</span>
                   </div>
                   <div className="text-[11px] text-[#cfcfd4] mt-1 line-clamp-2">
                     {card.desc}
@@ -654,13 +670,13 @@ export const VenueExplorer: React.FC<VenueExplorerProps> = ({
                     type="button"
                     disabled={isAlreadyOnList}
                     onClick={() => handlePitchCard(card)}
-                    className={`cursor-pointer px-2.5 py-1.5 rounded-lg text-xs font-bold transition ${
+                    className={`cursor-pointer px-2.5 py-1.5 rounded-lg text-xs font-bold transition flex items-center gap-1 ${
                       isAlreadyOnList
                         ? 'bg-[#17171a] text-[#8d8d94] border border-[#2b2b2f] cursor-default'
                         : 'bg-[#ff6b57] text-[#1a0703] hover:brightness-105 active:scale-95'
                     }`}
                   >
-                    {isAlreadyOnList ? 'On List' : '⭐ Pitch'}
+                    <span>{isAlreadyOnList ? 'On List' : 'Pitch'}</span>
                   </button>
                   {card.url && (
                     <a
@@ -680,81 +696,34 @@ export const VenueExplorer: React.FC<VenueExplorerProps> = ({
         </div>
       )}
 
-      {/* MAP EMBED MODE */}
+      {/* INTERACTIVE LEAFLET MAP MODE */}
       {viewMode === 'map' && (
-        <div>
-          {mapCenter ? (
-            <div>
-              {/* Responsive OpenStreetMap Interactive Embed */}
-              <div className="rounded-xl overflow-hidden border border-[#2b2b2f] h-64 w-full relative mb-2">
-                <iframe
-                  title="OpenStreetMap Search View"
-                  width="100%"
-                  height="100%"
-                  frameBorder="0"
-                  scrolling="no"
-                  marginHeight={0}
-                  marginWidth={0}
-                  src={`https://www.openstreetmap.org/export/embed.html?bbox=${(
-                    mapCenter.lon - 0.04
-                  ).toFixed(4)},${(mapCenter.lat - 0.025).toFixed(4)},${(
-                    mapCenter.lon + 0.04
-                  ).toFixed(4)},${(mapCenter.lat + 0.025).toFixed(
-                    4
-                  )}&layer=mapnik&marker=${mapCenter.lat.toFixed(
-                    4
-                  )},${mapCenter.lon.toFixed(4)}`}
-                  className="w-full h-full filter contrast-125"
-                />
-              </div>
-
-              <div className="flex items-center justify-between text-[11px] text-[#8d8d94] mb-2 px-1">
-                <span>
-                  📍 Map centered on <b>{mapCenter.name}</b>
-                </span>
-                <a
-                  href={`https://www.openstreetmap.org/?mlat=${mapCenter.lat}&mlon=${mapCenter.lon}#map=14/${mapCenter.lat}/${mapCenter.lon}`}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="text-[#ff6b57] hover:underline flex items-center gap-1"
-                >
-                  <span>Open Full Map</span>
-                  <ExternalLink className="w-3 h-3" />
-                </a>
-              </div>
-
-              {/* Horizontal Scroll of Top Places on Map */}
-              <div className="flex gap-2 overflow-x-auto pb-1 scrollbar-none">
-                {cards.slice(0, 10).map((card) => (
-                  <div
-                    key={card.id}
-                    className="min-w-[200px] max-w-[220px] bg-[#212124] border border-[#2b2b2f] rounded-xl p-2.5 flex flex-col justify-between"
-                  >
-                    <div>
-                      <div className="font-bold text-xs text-[#f4f4f5] truncate">
-                        {card.emoji} {card.name}
-                      </div>
-                      <div className="text-[10px] text-[#8d8d94] truncate">
-                        {card.loc}
-                      </div>
-                      <div className="text-[10px] text-[#cfcfd4] mt-1 line-clamp-2">
-                        {card.desc}
-                      </div>
-                    </div>
-                    <button
-                      type="button"
-                      onClick={() => handlePitchCard(card)}
-                      className="mt-2 w-full cursor-pointer bg-[#ff6b57] text-[#1a0703] font-bold text-[11px] py-1 rounded-lg hover:brightness-105 transition"
-                    >
-                      ⭐ Pitch Venue
-                    </button>
-                  </div>
-                ))}
-              </div>
-            </div>
+        <div className="pt-1">
+          {cards.length > 0 ? (
+            <LeafletMapView
+              items={cards}
+              center={mapCenter}
+              onPitchItem={(item) => {
+                const matchingCard = cards.find((c) => c.id === item.id);
+                if (matchingCard) {
+                  handlePitchCard(matchingCard);
+                } else {
+                  handlePitchCard({
+                    id: item.id,
+                    name: item.name,
+                    loc: item.loc,
+                    desc: item.desc || '',
+                    kind: 'spot',
+                    lat: item.lat,
+                    lon: item.lon,
+                    url: item.url,
+                  });
+                }
+              }}
+            />
           ) : (
             <div className="text-center py-8 text-xs text-[#8d8d94]">
-              Search an area above to view the interactive map.
+              Search an area above to view pinned places on the interactive map.
             </div>
           )}
         </div>

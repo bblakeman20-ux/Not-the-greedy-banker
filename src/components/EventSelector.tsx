@@ -1,7 +1,20 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { OutingEvent, User } from '../types';
-import { copyStr } from '../utils/storage';
-import { fmtWhen, parseWhen, whenOf } from '../utils/dates';
+import { fmtWhen, whenOf } from '../utils/dates';
+import {
+  MapPin,
+  Sparkles,
+  Calendar,
+  Lock,
+  Unlock,
+  ChevronDown,
+  ChevronUp,
+  Plus,
+  Trash2,
+  Coins,
+  Check,
+  X,
+} from 'lucide-react';
 
 interface EventSelectorProps {
   events: OutingEvent[];
@@ -11,27 +24,27 @@ interface EventSelectorProps {
   onLockEvent: (id: string) => void;
   onUnlockEvent: (id: string) => void;
   onDeleteEvent: (id: string) => void;
+  onUpdateEvent?: (ev: OutingEvent) => void;
   squad: User[];
   currentUser: User | null;
   configDb: string;
   configRm: string;
+  onOpenProfileModal?: () => void;
 }
 
 const VIBES = [
-  '🪓 Competitive',
-  '🍛 Curry',
-  '🍺 Taproom',
-  '🎤 Karaoke',
-  '🎳 Bowling',
-  '🔐 Escape room',
-  '🎭 Comedy',
-  '🎶 Live music',
-  '🕹️ Arcade',
-  '🏎️ Karting',
-  '🧗 Climbing',
-  '⛳ Crazy golf',
-  '🍕 Pizza',
-  '🍸 Cocktails',
+  'Craft beer & darts',
+  'Curry',
+  'Taproom',
+  'Karaoke',
+  'Bowling',
+  'Escape room',
+  'Comedy',
+  'Live music',
+  'Arcade',
+  'Crazy golf',
+  'Cocktails',
+  'Pizza',
 ];
 
 export const EventSelector: React.FC<EventSelectorProps> = ({
@@ -42,23 +55,39 @@ export const EventSelector: React.FC<EventSelectorProps> = ({
   onLockEvent,
   onUnlockEvent,
   onDeleteEvent,
+  onUpdateEvent,
   squad,
   currentUser,
-  configDb,
-  configRm,
+  onOpenProfileModal,
 }) => {
-  const [isNewOpen, setIsNewOpen] = useState(false);
-  const [name, setName] = useState('');
-  const [where, setWhere] = useState('');
-  const [vibe, setVibe] = useState('');
-  const [when, setWhen] = useState('');
-  const [rollFree, setRollFree] = useState(true);
-  const [newMsg, setNewMsg] = useState('');
-  const [shareMsg, setShareMsg] = useState('');
+  const [isExpanded, setIsExpanded] = useState(false);
+  const [isCreatingNew, setIsCreatingNew] = useState(false);
+  const [confirmDelete, setConfirmDelete] = useState(false);
 
-  const winVenue = currentEvent
-    ? currentEvent.venues.find((v) => v.id === currentEvent.win) || currentEvent.venues[0]
-    : null;
+  // New event form state
+  const [newName, setNewName] = useState('');
+  const [newWhere, setNewWhere] = useState('');
+  const [newVibe, setNewVibe] = useState('');
+  const [newWhen, setNewWhen] = useState('');
+  const [newRollFree, setNewRollFree] = useState(true);
+  const [newMsg, setNewMsg] = useState('');
+
+  // Editable parameters for current event
+  const [editWhere, setEditWhere] = useState(currentEvent?.where || '');
+  const [editVibe, setEditVibe] = useState(currentEvent?.vibe || '');
+  const [editWhen, setEditWhen] = useState(currentEvent?.when || '');
+  const [editBudget, setEditBudget] = useState(currentEvent?.budget || '35');
+  const [savedSuccess, setSavedSuccess] = useState(false);
+
+  // Synchronize edit fields when currentEvent changes
+  useEffect(() => {
+    if (currentEvent) {
+      setEditWhere(currentEvent.where || '');
+      setEditVibe(currentEvent.vibe || '');
+      setEditWhen(currentEvent.when || '');
+      setEditBudget(currentEvent.budget || '35');
+    }
+  }, [currentEvent?.id, currentEvent?.where, currentEvent?.vibe, currentEvent?.when, currentEvent?.budget]);
 
   const evWhen = (e: OutingEvent): string => {
     const s = e.slots.find(
@@ -71,246 +100,426 @@ export const EventSelector: React.FC<EventSelectorProps> = ({
     return e.when || '';
   };
 
+  const whenStr = currentEvent ? evWhen(currentEvent) : '';
+  const displayWhere = currentEvent?.where || 'Local';
+  const displayVibe = currentEvent?.vibe || 'Craft beer & darts';
+  const displayWhen = whenStr || currentEvent?.when || 'Sat 7pm';
+  const displayBudget = currentEvent?.budget
+    ? currentEvent.budget.startsWith('£')
+      ? currentEvent.budget
+      : `£${currentEvent.budget}`
+    : '£35';
+
+  const winVenue = currentEvent
+    ? currentEvent.venues.find((v) => v.id === currentEvent.win) || currentEvent.venues[0]
+    : null;
+
+  const handleSaveParameters = () => {
+    if (!currentEvent || !onUpdateEvent) return;
+    onUpdateEvent({
+      ...currentEvent,
+      where: editWhere.trim(),
+      vibe: editVibe.trim(),
+      when: editWhen.trim(),
+      budget: editBudget.trim().replace(/^£/, ''),
+    });
+    setSavedSuccess(true);
+    setTimeout(() => setSavedSuccess(false), 2000);
+  };
+
   const handleOpenNew = () => {
     if (!currentUser) {
-      alert('👆 Tap your profile first (or + New Profile)');
+      if (onOpenProfileModal) onOpenProfileModal();
       return;
     }
-    setWhere(where || currentUser.loc || '');
-    setIsNewOpen(true);
+    setNewWhere(currentUser.loc || editWhere || '');
+    setIsCreatingNew(true);
     setNewMsg('');
   };
 
-  const handleAddVibe = (v: string) => {
-    const label = v.split(' ').slice(1).join(' ');
-    if (!vibe.toLowerCase().includes(label.toLowerCase())) {
-      setVibe(vibe.trim() ? `${vibe.trim()}, ${label}` : label);
-    }
-  };
-
   const handleCreate = () => {
-    if (!name.trim()) {
-      setNewMsg('⚠️ Give the event a name');
+    if (!newName.trim()) {
+      setNewMsg('Give the outing plan a name first');
       return;
     }
     onNewEvent({
-      name: name.trim(),
-      where: where.trim(),
-      vibe: vibe.trim(),
-      when: when.trim(),
-      rollFree,
+      name: newName.trim(),
+      where: newWhere.trim(),
+      vibe: newVibe.trim(),
+      when: newWhen.trim(),
+      rollFree: newRollFree,
     });
-    setName('');
-    setVibe('');
-    setWhen('');
-    setIsNewOpen(false);
+    setNewName('');
+    setNewVibe('');
+    setNewWhen('');
+    setIsCreatingNew(false);
+    setIsExpanded(false);
   };
 
-  const handleShare = async () => {
-    if (!currentEvent) return;
-    const link =
-      `${window.location.origin}${window.location.pathname}` +
-      (configDb
-        ? `?db=${encodeURIComponent(configDb)}&room=${encodeURIComponent(
-            configRm
-          )}&ev=${encodeURIComponent(currentEvent.id)}`
-        : '');
-
-    const text = `🍻 ${currentEvent.name} – come and vote on the plan`;
-
-    if (navigator.share) {
-      try {
-        await navigator.share({ title: 'Not The Greedy Banker', text, url: link });
-        setShareMsg('✅ Shared event link!');
-        return;
-      } catch (e: any) {
-        if (e.name === 'AbortError') return;
+  const handleAddVibeToEdit = (v: string) => {
+    const label = v.trim();
+    if (!editVibe.toLowerCase().includes(label.toLowerCase())) {
+      const next = editVibe.trim() ? `${editVibe.trim()}, ${label}` : label;
+      setEditVibe(next);
+      if (currentEvent && onUpdateEvent) {
+        onUpdateEvent({ ...currentEvent, vibe: next });
       }
     }
-
-    const copied = await copyStr(`${text}\n${link}`);
-    setShareMsg(copied ? '📋 Event link copied to clipboard!' : "❌ Couldn't copy link");
   };
 
-  const whenStr = currentEvent ? evWhen(currentEvent) : '';
-
   return (
-    <div className="bg-[#17171a] border border-[#ff6b57] rounded-2xl p-3.5 mb-3">
-      <div className="flex items-center gap-2">
-        <select
-          value={currentEvent?.id || ''}
-          onChange={(e) => onSelectEvent(e.target.value)}
-          disabled={!events.length}
-          className="flex-1 bg-[#212124] text-[#f4f4f5] px-3 py-2 rounded-xl text-sm font-bold font-display cursor-pointer outline-none border border-transparent focus:border-[#ff6b57]"
+    <div className="space-y-2.5">
+      {/* Compact Clickable Pill Bar */}
+      {currentEvent ? (
+        <div
+          role="button"
+          tabIndex={0}
+          onClick={() => setIsExpanded(!isExpanded)}
+          onKeyDown={(e) => {
+            if (e.key === 'Enter' || e.key === ' ') {
+              e.preventDefault();
+              setIsExpanded(!isExpanded);
+            }
+          }}
+          className={`cursor-pointer w-full bg-[#17171a] border rounded-2xl px-4 py-2.5 transition-all flex items-center justify-between gap-3 text-xs sm:text-sm select-none shadow-md ${
+            isExpanded
+              ? 'border-[#ff6b57] bg-[#1e1e22] shadow-[0_0_16px_rgba(255,107,87,0.15)]'
+              : 'border-[#2b2b2f] hover:border-[#3b3b40] hover:bg-[#1c1c20]'
+          }`}
+          title="Click to edit outing parameters or switch plans"
         >
-          {events.length ? (
-            events.map((e) => (
-              <option key={e.id} value={e.id}>
-                {e.locked ? '🔒' : '🟡'} {e.name}
-                {e.locked ? ' – locked in' : ''}
-              </option>
-            ))
-          ) : (
-            <option>No events yet</option>
-          )}
-        </select>
-        <button
-          type="button"
-          onClick={handleOpenNew}
-          className="cursor-pointer bg-[#ff6b57] text-[#1a0703] font-semibold text-xs px-3.5 py-2 rounded-xl hover:brightness-105 active:scale-95 transition whitespace-nowrap"
-        >
-          ➕ New event
-        </button>
-      </div>
-
-      {currentEvent && (
-        <div className="mt-2">
-          {/* Metadata badges */}
-          <div className="flex flex-wrap items-center gap-1.5 text-xs text-[#cfcfd4]">
-            {currentEvent.where && <span>📍 {currentEvent.where}</span>}
-            {currentEvent.where && (currentEvent.vibe || whenStr) && <span>•</span>}
-            {currentEvent.vibe && <span>✨ {currentEvent.vibe}</span>}
-            {currentEvent.vibe && whenStr && <span>•</span>}
-            {whenStr && <span>🗓️ {whenStr}</span>}
-          </div>
-
-          {/* Locked state banner */}
-          {currentEvent.locked && (
-            <div className="bg-[rgba(198,255,61,0.12)] border border-[#c6ff3d] rounded-xl p-2.5 mt-2">
-              <div className="font-bold text-[#c6ff3d] text-xs">
-                🔒 Locked in: {winVenue ? winVenue.name : 'TBC'}
-                {whenStr ? ` – ${whenStr}` : ''}
-              </div>
-              <div className="text-[11px] text-[#8d8d94] mt-0.5">
-                Voting's closed. The kitty stays open for settling up.
-              </div>
-            </div>
-          )}
-
-          {/* Event action buttons */}
-          <div className="flex flex-wrap items-center gap-2 mt-2">
-            {currentEvent.locked ? (
-              <button
-                type="button"
-                onClick={() => onUnlockEvent(currentEvent.id)}
-                className="cursor-pointer border border-[#2b2b2f] bg-[#212124] text-[#f4f4f5] font-semibold text-xs px-3 py-1.5 rounded-xl hover:border-[#3b3b40] transition"
-              >
-                🔓 Unlock
-              </button>
-            ) : (
-              <button
-                type="button"
-                onClick={() => onLockEvent(currentEvent.id)}
-                className="cursor-pointer bg-[#c6ff3d] text-[#141a03] font-semibold text-xs px-3 py-1.5 rounded-xl hover:brightness-105 transition"
-              >
-                🔒 Lock it in
-              </button>
+          <div className="flex items-center gap-1.5 sm:gap-2 truncate text-[#f4f4f5] font-semibold min-w-0 flex-1">
+            <span className="truncate flex items-center gap-1 text-[#ff6b57]">
+              <MapPin className="w-3.5 h-3.5 shrink-0" />
+              <span className="truncate">{displayWhere}</span>
+            </span>
+            <span className="text-[#52525b] shrink-0">•</span>
+            <span className="truncate flex items-center gap-1 text-[#f59e0b]">
+              <Sparkles className="w-3.5 h-3.5 shrink-0" />
+              <span className="truncate">{displayVibe}</span>
+            </span>
+            <span className="text-[#52525b] shrink-0">•</span>
+            <span className="truncate flex items-center gap-1 text-[#c6ff3d]">
+              <Calendar className="w-3.5 h-3.5 shrink-0" />
+              <span className="truncate">{displayWhen}</span>
+            </span>
+            <span className="text-[#52525b] shrink-0 hidden xs:inline">•</span>
+            <span className="text-[#f4f4f5] font-bold shrink-0 hidden xs:inline">
+              {displayBudget}
+            </span>
+            {currentEvent.locked && (
+              <span className="ml-1 text-[11px] font-bold text-[#c6ff3d] bg-[#c6ff3d]/15 border border-[#c6ff3d]/30 px-2 py-0.5 rounded shrink-0 flex items-center gap-1">
+                <Lock className="w-2.5 h-2.5" />
+                <span className="hidden sm:inline">{winVenue ? winVenue.name : 'Winner Picked'}</span>
+              </span>
             )}
-            <button
-              type="button"
-              onClick={handleShare}
-              className="cursor-pointer border border-[#2b2b2f] bg-[#212124] text-[#f4f4f5] font-semibold text-xs px-3 py-1.5 rounded-xl hover:border-[#3b3b40] transition"
-            >
-              💬 Share event
-            </button>
-            <button
-              type="button"
-              onClick={() => onDeleteEvent(currentEvent.id)}
-              className="cursor-pointer bg-[rgba(255,107,87,0.13)] text-[#ff6b57] font-semibold text-xs px-3 py-1.5 rounded-xl hover:bg-[rgba(255,107,87,0.2)] transition"
-            >
-              🗑️ Delete event
-            </button>
           </div>
 
-          {shareMsg && <div className="text-xs text-[#c6ff3d] mt-1.5">{shareMsg}</div>}
+          <div className="flex items-center gap-1.5 shrink-0 text-[#ff6b57] font-bold text-xs bg-[#212124] border border-[#2b2b2f] hover:border-[#ff6b57]/40 px-2.5 py-1 rounded-xl">
+            <span>Edit</span>
+            {isExpanded ? (
+              <ChevronUp className="w-3.5 h-3.5 text-[#ff6b57]" />
+            ) : (
+              <ChevronDown className="w-3.5 h-3.5 text-[#ff6b57]" />
+            )}
+          </div>
+        </div>
+      ) : (
+        <div
+          role="button"
+          tabIndex={0}
+          onClick={() => setIsExpanded(!isExpanded)}
+          onKeyDown={(e) => {
+            if (e.key === 'Enter' || e.key === ' ') {
+              e.preventDefault();
+              setIsExpanded(!isExpanded);
+            }
+          }}
+          className="cursor-pointer w-full bg-[#17171a] border border-dashed border-[#ff6b57]/40 hover:border-[#ff6b57] rounded-2xl px-4 py-3 transition flex items-center justify-between gap-3 text-xs sm:text-sm select-none"
+        >
+          <div className="flex items-center gap-2 text-[#f4f4f5] font-bold">
+            <Sparkles className="w-4 h-4 text-[#ff6b57]" />
+            <span>Blank Canvas · No Outing Plan Selected</span>
+          </div>
+          <div className="flex items-center gap-1 text-[#ff6b57] font-bold text-xs bg-[#ff6b57]/15 px-3 py-1 rounded-xl">
+            <span>+ Create Plan</span>
+          </div>
         </div>
       )}
 
-      {/* New Event Drawer */}
-      {isNewOpen && (
-        <div className="mt-3 bg-[#212124] border border-[#2b2b2f] rounded-2xl p-4">
-          <div className="flex items-center justify-between mb-2">
-            <div className="text-xs font-bold text-[#ff6b57]">➕ New event</div>
-            <button
-              type="button"
-              onClick={() => setIsNewOpen(false)}
-              className="text-xs text-[#8d8d94] hover:text-[#f4f4f5] cursor-pointer"
-            >
-              ✕
-            </button>
+      {/* Expandable Clean Drawer / Panel */}
+      {isExpanded && (
+        <div className="bg-[#17171a] border border-[#2b2b2f] rounded-2xl p-4 sm:p-5 space-y-4 animate-in fade-in slide-in-from-top-2 duration-150 shadow-xl">
+          {/* Header & Plan Switcher */}
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-3 border-b border-[#2b2b2f]">
+            <div className="flex-1 min-w-0">
+              <label className="block text-[11px] font-semibold text-[#8d8d94] uppercase tracking-wider mb-1">
+                Active Outing Plan
+              </label>
+              <select
+                value={currentEvent?.id || ''}
+                onChange={(e) => {
+                  setConfirmDelete(false);
+                  onSelectEvent(e.target.value);
+                }}
+                disabled={!events.length}
+                className="w-full bg-[#212124] text-[#ffffff] h-10 px-3 rounded-xl text-xs sm:text-sm font-bold cursor-pointer outline-none border border-[#2b2b2f] focus:border-[#ff6b57] transition"
+              >
+                {events.length ? (
+                  events.map((e) => (
+                    <option key={e.id} value={e.id}>
+                      {e.locked ? '[Locked] ' : ''}{e.name}
+                      {e.locked ? ' – winner decided' : ''}
+                    </option>
+                  ))
+                ) : (
+                  <option>Blank Canvas (0 outing plans)</option>
+                )}
+              </select>
+            </div>
+
+            <div className="flex items-center gap-2 shrink-0 self-end sm:self-auto pt-2 sm:pt-0">
+              <button
+                type="button"
+                onClick={handleOpenNew}
+                className="cursor-pointer bg-[#ff6b57] text-[#1a0703] font-bold text-xs h-10 px-3.5 rounded-xl hover:brightness-105 active:scale-95 transition whitespace-nowrap flex items-center gap-1 shadow-[0_0_12px_rgba(255,107,87,0.2)]"
+              >
+                <Plus className="w-3.5 h-3.5" />
+                <span>New Plan</span>
+              </button>
+
+              {currentEvent && (
+                <>
+                  {currentEvent.locked ? (
+                    <button
+                      type="button"
+                      onClick={() => onUnlockEvent(currentEvent.id)}
+                      className="cursor-pointer border border-[#2b2b2f] bg-[#212124] text-[#f4f4f5] hover:text-[#ffffff] font-bold text-xs h-10 px-3 rounded-xl hover:border-[#3b3b40] transition whitespace-nowrap active:scale-95 flex items-center gap-1"
+                    >
+                      <Unlock className="w-3.5 h-3.5" />
+                      <span>Unlock</span>
+                    </button>
+                  ) : (
+                    <button
+                      type="button"
+                      onClick={() => onLockEvent(currentEvent.id)}
+                      className="cursor-pointer bg-[#c6ff3d] text-[#141a03] font-bold text-xs h-10 px-3.5 rounded-xl hover:brightness-105 transition whitespace-nowrap active:scale-95 shadow-[0_0_12px_rgba(198,255,61,0.2)] flex items-center gap-1"
+                    >
+                      <Lock className="w-3.5 h-3.5" />
+                      <span>Lock Winner</span>
+                    </button>
+                  )}
+
+                  {confirmDelete ? (
+                    <div className="flex items-center gap-1">
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setConfirmDelete(false);
+                          onDeleteEvent(currentEvent.id);
+                        }}
+                        className="cursor-pointer bg-[#ff6b57] text-[#1a0703] font-bold text-xs h-10 px-2.5 rounded-xl whitespace-nowrap"
+                      >
+                        Confirm Delete
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => setConfirmDelete(false)}
+                        className="cursor-pointer bg-[#212124] border border-[#2b2b2f] text-[#cfcfd4] text-xs h-10 px-2 rounded-xl whitespace-nowrap"
+                      >
+                        Cancel
+                      </button>
+                    </div>
+                  ) : (
+                    <button
+                      type="button"
+                      onClick={() => setConfirmDelete(true)}
+                      className="cursor-pointer text-[#8d8d94] hover:text-[#ff6b57] p-2 rounded-xl border border-transparent hover:border-[#2b2b2f] transition"
+                      title="Delete this outing plan"
+                    >
+                      <Trash2 className="w-4 h-4" />
+                    </button>
+                  )}
+                </>
+              )}
+            </div>
           </div>
 
-          <div className="space-y-2">
-            <input
-              value={name}
-              onChange={(e) => setName(e.target.value)}
-              placeholder="What's the occasion? (e.g. Ben's birthday, Payday bash)"
-              className="w-full bg-[#17171a] border border-transparent focus:border-[#ff6b57] text-[#f4f4f5] px-3 py-2 rounded-xl text-xs outline-none"
-            />
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
-              <input
-                value={where}
-                onChange={(e) => setWhere(e.target.value)}
-                placeholder="Where (e.g. Rochester, Chatham)"
-                className="w-full bg-[#17171a] border border-transparent focus:border-[#ff6b57] text-[#f4f4f5] px-3 py-2 rounded-xl text-xs outline-none"
-              />
-              <input
-                value={vibe}
-                onChange={(e) => setVibe(e.target.value)}
-                placeholder="Vibe (e.g. competitive, curry, live music)"
-                className="w-full bg-[#17171a] border border-transparent focus:border-[#ff6b57] text-[#f4f4f5] px-3 py-2 rounded-xl text-xs outline-none"
-              />
-            </div>
-            <input
-              value={when}
-              onChange={(e) => setWhen(e.target.value)}
-              placeholder="When, roughly (optional, e.g. Sat 14 Nov 7pm)"
-              className="w-full bg-[#17171a] border border-transparent focus:border-[#ff6b57] text-[#f4f4f5] px-3 py-2 rounded-xl text-xs outline-none"
-            />
+          {/* Outing Parameters Form */}
+          {currentEvent && !isCreatingNew && (
+            <div className="space-y-3">
+              <div className="text-xs font-bold text-[#cfcfd4] uppercase tracking-wider flex items-center gap-1.5">
+                <Sparkles className="w-3.5 h-3.5 text-[#ff6b57]" />
+                <span>Outing Parameters</span>
+              </div>
 
-            {/* Quick vibe tags */}
-            <div className="flex flex-wrap gap-1.5 pt-1">
-              {VIBES.map((v) => (
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-2.5">
+                <div>
+                  <label className="block text-[11px] font-semibold text-[#a1a1aa] mb-1 flex items-center gap-1">
+                    <MapPin className="w-3 h-3 text-[#ff6b57]" />
+                    <span>Where (Town / Area)</span>
+                  </label>
+                  <input
+                    value={editWhere}
+                    onChange={(e) => setEditWhere(e.target.value)}
+                    placeholder="e.g. Rochester, Soho"
+                    className="w-full bg-[#212124] border border-[#2b2b2f] focus:border-[#ff6b57] text-[#f4f4f5] px-3 py-2 rounded-xl text-xs outline-none transition"
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-[11px] font-semibold text-[#a1a1aa] mb-1 flex items-center gap-1">
+                    <Sparkles className="w-3 h-3 text-[#c6ff3d]" />
+                    <span>Vibe / Activity</span>
+                  </label>
+                  <input
+                    value={editVibe}
+                    onChange={(e) => setEditVibe(e.target.value)}
+                    placeholder="e.g. Craft beer, darts"
+                    className="w-full bg-[#212124] border border-[#2b2b2f] focus:border-[#ff6b57] text-[#f4f4f5] px-3 py-2 rounded-xl text-xs outline-none transition"
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-[11px] font-semibold text-[#a1a1aa] mb-1 flex items-center gap-1">
+                    <Calendar className="w-3 h-3 text-[#38bdf8]" />
+                    <span>When (Date / Time)</span>
+                  </label>
+                  <input
+                    value={editWhen}
+                    onChange={(e) => setEditWhen(e.target.value)}
+                    placeholder="e.g. Sat 7pm"
+                    className="w-full bg-[#212124] border border-[#2b2b2f] focus:border-[#ff6b57] text-[#f4f4f5] px-3 py-2 rounded-xl text-xs outline-none transition"
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-[11px] font-semibold text-[#a1a1aa] mb-1 flex items-center gap-1">
+                    <Coins className="w-3 h-3 text-[#f59e0b]" />
+                    <span>Budget (£ / head)</span>
+                  </label>
+                  <input
+                    inputMode="numeric"
+                    value={editBudget}
+                    onChange={(e) => setEditBudget(e.target.value)}
+                    placeholder="e.g. 35"
+                    className="w-full bg-[#212124] border border-[#2b2b2f] focus:border-[#ff6b57] text-[#f4f4f5] px-3 py-2 rounded-xl text-xs outline-none transition"
+                  />
+                </div>
+              </div>
+
+              {/* Quick vibe tags */}
+              <div className="flex flex-wrap gap-1.5 pt-1">
+                {VIBES.map((v) => (
+                  <button
+                    key={v}
+                    type="button"
+                    onClick={() => handleAddVibeToEdit(v)}
+                    className="cursor-pointer border border-[#2b2b2f] bg-[#212124] text-[#cfcfd4] text-[11px] px-2.5 py-1 rounded-lg hover:border-[#ff6b57]/40 hover:text-[#f4f4f5] transition whitespace-nowrap active:scale-95"
+                  >
+                    + {v}
+                  </button>
+                ))}
+              </div>
+
+              <div className="flex items-center justify-between pt-2">
+                <div className="text-xs text-[#c6ff3d] font-semibold">
+                  {savedSuccess && '✓ Parameters updated!'}
+                </div>
+                <div className="flex items-center gap-2">
+                  <button
+                    type="button"
+                    onClick={handleSaveParameters}
+                    className="cursor-pointer bg-[#c6ff3d] text-[#141a03] font-bold text-xs h-9 px-4 rounded-xl hover:brightness-105 active:scale-95 transition flex items-center gap-1 shadow-[0_0_12px_rgba(198,255,61,0.2)]"
+                  >
+                    <Check className="w-3.5 h-3.5 stroke-[3]" />
+                    <span>Save Parameters</span>
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setIsExpanded(false)}
+                    className="cursor-pointer border border-[#2b2b2f] bg-[#212124] text-[#8d8d94] hover:text-[#f4f4f5] font-semibold text-xs h-9 px-3.5 rounded-xl transition"
+                  >
+                    Close
+                  </button>
+                </div>
+              </div>
+            </div>
+          )}
+
+          {/* New Event Form */}
+          {isCreatingNew && (
+            <div className="bg-[#212124] border border-[#2b2b2f] rounded-xl p-4 space-y-3">
+              <div className="flex items-center justify-between pb-2 border-b border-[#2b2b2f]">
+                <div className="text-xs font-bold text-[#f4f4f5] uppercase tracking-wider">
+                  Create New Outing Plan
+                </div>
                 <button
-                  key={v}
                   type="button"
-                  onClick={() => handleAddVibe(v)}
-                  className="cursor-pointer border border-[#2b2b2f] bg-[#17171a] text-[#cfcfd4] text-[11px] px-2.5 py-1 rounded-full hover:border-[#3b3b40] transition"
+                  onClick={() => setIsCreatingNew(false)}
+                  className="text-xs text-[#8d8d94] hover:text-[#f4f4f5] cursor-pointer p-1"
                 >
-                  {v}
+                  <X className="w-4 h-4" />
                 </button>
-              ))}
+              </div>
+
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
+                <input
+                  value={newName}
+                  onChange={(e) => setNewName(e.target.value)}
+                  placeholder="Plan name (e.g. Payday Drinks, Saturday Crawl)"
+                  className="sm:col-span-2 w-full bg-[#17171a] border border-[#2b2b2f] focus:border-[#ff6b57] text-[#f4f4f5] h-9 px-3 rounded-xl text-xs outline-none"
+                />
+                <input
+                  value={newWhere}
+                  onChange={(e) => setNewWhere(e.target.value)}
+                  placeholder="Where (e.g. Rochester, Soho)"
+                  className="w-full bg-[#17171a] border border-[#2b2b2f] focus:border-[#ff6b57] text-[#f4f4f5] h-9 px-3 rounded-xl text-xs outline-none"
+                />
+                <input
+                  value={newVibe}
+                  onChange={(e) => setNewVibe(e.target.value)}
+                  placeholder="Vibe (e.g. Craft beer, darts)"
+                  className="w-full bg-[#17171a] border border-[#2b2b2f] focus:border-[#ff6b57] text-[#f4f4f5] h-9 px-3 rounded-xl text-xs outline-none"
+                />
+                <input
+                  value={newWhen}
+                  onChange={(e) => setNewWhen(e.target.value)}
+                  placeholder="When (e.g. Sat 7pm)"
+                  className="sm:col-span-2 w-full bg-[#17171a] border border-[#2b2b2f] focus:border-[#ff6b57] text-[#f4f4f5] h-9 px-3 rounded-xl text-xs outline-none"
+                />
+              </div>
+
+              <label className="flex items-center gap-2 text-xs text-[#8d8d94] cursor-pointer">
+                <input
+                  type="checkbox"
+                  checked={newRollFree}
+                  onChange={(e) => setNewRollFree(e.target.checked)}
+                  className="accent-[#ff6b57]"
+                />
+                <span>Seed plan with initial spots</span>
+              </label>
+
+              {newMsg && <div className="text-xs text-[#ff6b57]">{newMsg}</div>}
+
+              <div className="flex items-center gap-2 pt-1">
+                <button
+                  type="button"
+                  onClick={handleCreate}
+                  className="cursor-pointer bg-[#ff6b57] text-[#1a0703] font-bold text-xs h-9 px-4 rounded-xl hover:brightness-105 active:scale-95 transition"
+                >
+                  Create Plan
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setIsCreatingNew(false)}
+                  className="cursor-pointer border border-[#2b2b2f] bg-transparent text-[#8d8d94] font-semibold text-xs h-9 px-3.5 rounded-xl hover:text-[#f4f4f5] transition"
+                >
+                  Cancel
+                </button>
+              </div>
             </div>
-
-            <label className="flex items-center gap-2 text-xs text-[#8d8d94] pt-1 cursor-pointer">
-              <input
-                type="checkbox"
-                checked={rollFree}
-                onChange={(e) => setRollFree(e.target.checked)}
-                className="accent-[#ff6b57]"
-              />
-              <span>🎲 Start with free ideas from the map (no AI key needed)</span>
-            </label>
-
-            {newMsg && <div className="text-xs text-[#ff6b57]">{newMsg}</div>}
-
-            <div className="flex items-center gap-2 pt-2">
-              <button
-                type="button"
-                onClick={handleCreate}
-                className="cursor-pointer bg-[rgba(198,255,61,0.12)] text-[#c6ff3d] font-semibold text-xs px-3.5 py-2 rounded-xl hover:bg-[rgba(198,255,61,0.2)] active:scale-95 transition"
-              >
-                🚀 Create event
-              </button>
-              <button
-                type="button"
-                onClick={() => setIsNewOpen(false)}
-                className="cursor-pointer border border-[#2b2b2f] bg-transparent text-[#8d8d94] font-semibold text-xs px-3 py-2 rounded-xl hover:text-[#f4f4f5] transition"
-              >
-                Cancel
-              </button>
-            </div>
-          </div>
+          )}
         </div>
       )}
     </div>

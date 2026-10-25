@@ -40,56 +40,35 @@ export const newEvent = (o: Partial<OutingEvent> = {}): OutingEvent => ({
   ...o,
 });
 
-export const getInitialDemoState = (): AppState => ({
-  ver: APP_VER,
-  squad: [
-    { id: 'u1', name: 'Ben', emo: '🧬', loc: 'Medway', mode: 'Train', pay: 'Monzo Link', tx: 'Axe Deposit (-£64)', payLink: 'https://monzo.me/ben' },
-    { id: 'u2', name: 'Sherlock', emo: '🕵️‍♂️', loc: 'Chatham', mode: 'Uber Split', pay: 'Revolut', tx: '🚨 The Greedy Banker (-£42.50 TRAITOR)', payLink: 'https://revolut.me/sherlock' },
-    { id: 'u3', name: 'Mate 3', emo: '🍻', loc: 'Rochester', mode: 'Train', pay: 'PayPal', tx: 'Loaded Fries (-£28)', payLink: 'https://paypal.me/mate3' },
-  ],
-  ban: [{ id: 'b1', name: 'The Greedy Banker', lock: 1 }],
-  board: {},
-  events: [
-    newEvent({
-      id: 'evdemo',
-      name: 'Demo night out',
-      where: 'Rochester, Chatham or Maidstone',
-      vibe: 'Axe throwing, taproom, or proper curry',
-      win: 'v1',
-      venues: [
-        {
-          id: 'v1',
-          name: 'Timber & Steel Axe Throwing + Brews',
-          loc: 'Chatham Dockyard',
-          desc: 'Private axe lanes, darts & local cider.',
-          votes: { u1: 'k', u2: 'k' },
-        },
-        {
-          id: 'v2',
-          name: 'Dead Pigeon Craft Taproom',
-          loc: 'Rochester High St',
-          desc: '14 craft lines, Detroit pizza & retro arcades.',
-          votes: { u1: 'k', u3: 'k' },
-        },
-        {
-          id: 'v3',
-          name: 'Bombay Coal & Craft Smokehouse',
-          loc: 'Rainham Station',
-          desc: 'Charcoal lamb chops & railway curry by the station.',
-          votes: { u1: 'k', u2: 'k', u3: 'k' },
-        },
-      ],
-      slots: [
-        { id: 's1', lbl: 'Fri 6:30 PM', av: { u1: 1, u2: 1 } },
-        { id: 's2', lbl: 'Sat 2:00 PM', av: { u1: 1, u2: 1, u3: 1 } },
-        { id: 's3', lbl: 'Sat 7:30 PM', av: { u1: 1, u3: 1 } },
-      ],
-      exp: [
-        { id: 'e1', ttl: 'Axe Throwing Deposit', amt: 64, by: 'Ben', byId: 'u1' },
-      ],
-    }),
-  ],
-});
+export const getSavedUserProfile = (): User | null => {
+  try {
+    const raw = getStorage('user_profile', '');
+    if (raw) {
+      const parsed = JSON.parse(raw);
+      if (parsed && parsed.name) return parsed;
+    }
+  } catch (e) {}
+  return null;
+};
+
+export const saveUserProfile = (user: User): void => {
+  try {
+    setStorage('user_profile', JSON.stringify(user));
+  } catch (e) {}
+};
+
+export const getInitialDemoState = (): AppState => {
+  const profile = getSavedUserProfile();
+  const squad: User[] = profile ? [{ ...profile, id: profile.id || 'u1' }] : [];
+
+  return {
+    ver: APP_VER,
+    squad,
+    ban: [],
+    board: {},
+    events: [],
+  };
+};
 
 export const DEFAULT_FIREBASE_DB = (
   typeof import.meta !== 'undefined' && import.meta.env
@@ -133,40 +112,28 @@ export const saveRecentRoom = (room: string): void => {
   setStorage('recent_rooms', JSON.stringify(updated));
 };
 
-export const freshRoomState = (): AppState => ({
-  ver: APP_VER,
-  squad: [
-    { id: 'u1', name: 'Ben', emo: '🧬', loc: 'Medway', mode: 'Train', pay: 'Monzo Link', payLink: 'https://monzo.me/' },
-    { id: 'u2', name: 'Sherlock', emo: '🕵️‍♂️', loc: 'Chatham', mode: 'Uber Split', pay: 'Revolut' },
-  ],
-  ban: [{ id: 'b1', name: 'The Greedy Banker', lock: 1 }],
-  board: {},
-  events: [
-    newEvent({
-      id: 'ev_' + Date.now(),
-      name: 'Squad Night Out',
-      where: 'Medway & High St',
-      vibe: 'Craft beer, darts & good food',
-      when: 'Saturday 7:00 PM',
-      venues: [
-        {
-          id: 'v_axe',
-          name: 'Timber & Steel Axe Throwing + Brews',
-          loc: 'Chatham Dockyard',
-          desc: 'Private axe lanes, darts & local cider.',
-          votes: { u1: 'k' },
-        },
-      ],
-      slots: [
-        {
-          id: 's_' + Date.now(),
-          lbl: 'Saturday 7:00 PM',
-          av: { u1: 1 },
-        },
-      ],
-    }),
-  ],
-});
+export const removeRecentRoom = (room: string): string[] => {
+  const current = getRecentRooms().filter((r) => r !== room);
+  setStorage('recent_rooms', JSON.stringify(current));
+  return current;
+};
+
+export const clearRecentRooms = (): void => {
+  setStorage('recent_rooms', JSON.stringify([]));
+};
+
+export const freshRoomState = (creator?: User | null): AppState => {
+  const profile = creator || getSavedUserProfile();
+  const squad: User[] = profile ? [{ ...profile, id: profile.id || 'u1' }] : [];
+
+  return {
+    ver: APP_VER,
+    squad,
+    ban: [],
+    board: {},
+    events: [],
+  };
+};
 
 export const loadInitialConfig = (): AppConfig => {
   const p = typeof window !== 'undefined' ? new URLSearchParams(window.location.search) : new URLSearchParams();
@@ -195,7 +162,8 @@ export const loadInitialConfig = (): AppConfig => {
     setStorage('md', md);
   }
   const key = getStorage('key', DEFAULT_GEMINI_KEY);
-  const u = getStorage('u', '');
+  const savedProfile = getSavedUserProfile();
+  const u = getStorage('u', savedProfile ? (savedProfile.id || 'u1') : '');
   const evKey = 'ev:' + (db ? rm.replace(/\W/g, '') : 'local');
   const ev = p.get('ev') || getStorage(evKey, '');
 
@@ -225,11 +193,14 @@ export const words = (n: string): string =>
     .trim() +
   ' ';
 
-export const isBanned = (name: string, banList: BanItem[]): boolean =>
-  banList.some((b) => {
+export const isBanned = (name: string, banList: BanItem[]): boolean => {
+  if (/greedy\s*banker/i.test(name)) return false;
+  return banList.some((b) => {
+    if (/greedy\s*banker/i.test(b.name)) return false;
     const w = words(b.name);
     return Boolean(w.trim() && (words(name).includes(w) || normName(name) === normName(b.name)));
   });
+};
 
 export const safeUrl = (u?: string | null): string => {
   if (!u) return '';

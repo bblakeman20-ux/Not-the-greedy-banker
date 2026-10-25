@@ -1,13 +1,15 @@
 import React, { useState } from 'react';
 import { AppConfig } from '../types';
 import {
+  clearRecentRooms,
   copyStr,
   DEFAULT_FIREBASE_DB,
   generateRoomCode,
   getRecentRooms,
+  removeRecentRoom,
   saveRecentRoom,
 } from '../utils/storage';
-import { Sparkles, Share2, Copy, Check, RotateCw, PlusCircle, Database } from 'lucide-react';
+import { Sparkles, Share2, Copy, Check, RotateCw, PlusCircle, Database, Trash2, ShieldCheck } from 'lucide-react';
 
 interface SetupModalProps {
   isOpen: boolean;
@@ -80,6 +82,18 @@ export const SetupModal: React.FC<SetupModalProps> = ({
     setMsg(`⚡ Switched to room "${roomCode}"`);
   };
 
+  const handleRemoveRoom = (roomCode: string, e: React.MouseEvent) => {
+    e.stopPropagation();
+    const updated = removeRecentRoom(roomCode);
+    setRecentRooms(updated);
+  };
+
+  const handleClearRooms = () => {
+    clearRecentRooms();
+    setRecentRooms([]);
+    setMsg('🧹 Cleared recent room history from this device.');
+  };
+
   const handleSave = () => {
     const cleanDb = db.trim().replace(/\/$/, '');
     const cleanRm = rm.trim() || 'medway-squad';
@@ -124,8 +138,8 @@ export const SetupModal: React.FC<SetupModalProps> = ({
     if (navigator.share) {
       try {
         await navigator.share({
-          title: 'Not The Greedy Banker',
-          text: `🍻 Join our plan on Not The Greedy Banker (Room: ${cleanRm})`,
+          title: 'Pintdr',
+          text: `🍻 Join our squad plan on Pintdr (Room: ${cleanRm})`,
           url: link,
         });
         setMsg('✅ Shared squad link!');
@@ -135,7 +149,7 @@ export const SetupModal: React.FC<SetupModalProps> = ({
       }
     }
 
-    const copied = await copyStr(`🍻 Join our plan on Not The Greedy Banker\n${link}`);
+    const copied = await copyStr(`🍻 Join our squad plan on Pintdr\n${link}`);
     setMsg(
       copied
         ? '📋 Link copied – paste it into WhatsApp or Messenger!'
@@ -212,25 +226,59 @@ export const SetupModal: React.FC<SetupModalProps> = ({
             </button>
           </div>
 
-          {/* Recent Rooms Switcher */}
-          {recentRooms.length > 1 && (
-            <div className="mt-2">
-              <span className="text-[10px] text-[#8d8d94] block mb-1">Recent Rooms:</span>
+          {/* Recent Rooms Switcher with Privacy Notice & Clear */}
+          {recentRooms.length > 0 && (
+            <div className="mt-2.5 pt-2 border-t border-[#2b2b2f]/60 space-y-2">
+              <div className="flex items-center justify-between">
+                <span className="text-[11px] text-[#8d8d94] font-medium flex items-center gap-1">
+                  <span>Recent Rooms on this device:</span>
+                </span>
+                <button
+                  type="button"
+                  onClick={handleClearRooms}
+                  className="text-[10px] text-[#8d8d94] hover:text-[#ff6b57] cursor-pointer transition flex items-center gap-1"
+                  title="Clear room history from this device"
+                >
+                  <Trash2 className="w-2.5 h-2.5" />
+                  <span>Clear History</span>
+                </button>
+              </div>
+
               <div className="flex flex-wrap gap-1.5">
                 {recentRooms.map((r) => (
-                  <button
+                  <div
                     key={r}
-                    type="button"
-                    onClick={() => handleSelectRecentRoom(r)}
-                    className={`text-[10px] font-mono px-2 py-1 rounded-lg border transition cursor-pointer ${
+                    className={`group flex items-center rounded-lg border text-[10px] font-mono transition ${
                       r === rm
                         ? 'border-[#ff6b57] bg-[rgba(255,107,87,0.15)] text-[#ff6b57]'
-                        : 'border-[#2b2b2f] bg-[#17171a] text-[#8d8d94] hover:text-[#f4f4f5]'
+                        : 'border-[#2b2b2f] bg-[#17171a] text-[#8d8d94] hover:border-[#3b3b40] hover:text-[#f4f4f5]'
                     }`}
                   >
-                    {r}
-                  </button>
+                    <button
+                      type="button"
+                      onClick={() => handleSelectRecentRoom(r)}
+                      className="px-2 py-1 cursor-pointer truncate max-w-[170px]"
+                      title={`Switch to ${r}`}
+                    >
+                      {r}
+                    </button>
+                    <button
+                      type="button"
+                      onClick={(e) => handleRemoveRoom(r, e)}
+                      title={`Remove ${r} from recent history`}
+                      className="px-1.5 py-1 text-[#8d8d94] hover:text-[#ff6b57] cursor-pointer transition opacity-70 hover:opacity-100 border-l border-[#2b2b2f]/60"
+                    >
+                      ✕
+                    </button>
+                  </div>
                 ))}
+              </div>
+
+              <div className="flex items-center gap-1.5 text-[10px] text-[#8d8d94] bg-[#17171a] p-2 rounded-lg border border-[#2b2b2f]/50">
+                <ShieldCheck className="w-3.5 h-3.5 text-[#c6ff3d] shrink-0" />
+                <span>
+                  <b>Device-only privacy:</b> These rooms are remembered in your personal browser only. Other squad members cannot see your previous rooms.
+                </span>
               </div>
             </div>
           )}
@@ -284,17 +332,19 @@ export const SetupModal: React.FC<SetupModalProps> = ({
             </div>
           </div>
 
-          <div>
-            <label className="text-[11px] font-semibold text-[#8d8d94] block mb-1">
-              Gemini API Key <span className="text-[#8d8d94] font-normal">(for Gerg AI)</span>
-            </label>
-            <input
-              type="password"
-              value={key}
-              onChange={(e) => setKey(e.target.value)}
-              placeholder="AIzaSy... (optional)"
-              className="w-full bg-[#17171a] border border-transparent focus:border-[#ff6b57] text-[#f4f4f5] px-3 py-2 rounded-xl text-xs outline-none transition"
-            />
+          <div className="bg-[#17171a] border border-[#2b2b2f] rounded-xl p-3 flex items-center justify-between">
+            <div>
+              <div className="text-xs font-semibold text-[#f4f4f5] flex items-center gap-1.5">
+                <span>🤖 Gerg AI Status</span>
+                <span className="w-2 h-2 rounded-full bg-[#c6ff3d]"></span>
+              </div>
+              <div className="text-[11px] text-[#8d8d94] mt-0.5">
+                Powered by <span className="text-[#c6ff3d] font-mono">gemini-flash-latest</span>
+              </div>
+            </div>
+            <span className="text-[10px] bg-[#c6ff3d]/10 text-[#c6ff3d] border border-[#c6ff3d]/20 px-2 py-0.5 rounded-full font-mono">
+              Ready
+            </span>
           </div>
         </div>
 

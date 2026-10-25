@@ -3,6 +3,7 @@ import { AppConfig, BanItem, OutingEvent, User, Venue } from '../types';
 import { fetchPlaces, makeIdeas, miles } from '../utils/osm';
 import { askGergAI, MODES } from '../utils/gemini';
 import { isBanned, normName, safeUrl } from '../utils/storage';
+import { getLocalCuratedIdeas } from '../utils/localPlaces';
 import {
   Flame,
   X,
@@ -143,13 +144,44 @@ export const PintdrOverlay: React.FC<PintdrOverlayProps> = ({
       isFetchingRef.current = true;
       setIsLoadingMore(true);
 
-      const targetArea = area.trim() || 'London';
+      if (resetDeck) {
+        seenIdsRef.current.clear();
+        event.venues.forEach((v) => seenIdsRef.current.add(normName(v.name)));
+      }
+
+      const targetArea = area.trim() || 'Rochester';
       setStatusMessage(`🔥 Scouting fresh ideas around ${targetArea}...`);
 
       const newBatch: PintdrCard[] = [];
 
+      // 0. Instantly seed initial cards from curated UK registry for zero-delay UX
+      const instantSpots = getLocalCuratedIdeas(targetArea, vibe, banList, seenIdsRef.current, 3);
+      if (instantSpots.length > 0) {
+        const instantCards: PintdrCard[] = instantSpots.map((item, idx) => {
+          seenIdsRef.current.add(normName(item.name || ''));
+          return {
+            id: `instant_${Date.now()}_${idx}`,
+            name: item.name || 'Local Spot',
+            loc: item.loc || targetArea,
+            desc: item.desc || '',
+            kind: item.kind || 'spot',
+            category: item.kind === 'combo' ? 'Combo Route' : 'Curated Spot',
+            emoji: item.kind === 'combo' ? '🔀' : '🎯',
+            cost: item.cost,
+            when: item.when,
+            steps: item.steps,
+            url: item.url,
+            source: 'ai',
+          };
+        });
+
+        setDeck((prev) => (resetDeck || prev.length === 0 ? instantCards : [...prev, ...instantCards]));
+        setIsLoadingMore(false);
+        setStatusMessage(`✨ Ideas ready! Scouting more in the background...`);
+      }
+
       try {
-        const canUseAI = Boolean(config.key) && (sourceFilter === 'mixed' || sourceFilter === 'ai');
+        const canUseAI = sourceFilter === 'mixed' || sourceFilter === 'ai';
         const canUseOSM = sourceFilter === 'mixed' || sourceFilter === 'osm';
 
         // 1. Fetch from OpenStreetMap if enabled
@@ -293,6 +325,47 @@ export const PintdrOverlay: React.FC<PintdrOverlayProps> = ({
         for (let i = 0; i < maxLen; i++) {
           if (i < aiCards.length) newBatch.push(aiCards[i]);
           if (i < osmCards.length) newBatch.push(osmCards[i]);
+        }
+
+        if (newBatch.length === 0 && deck.length === 0) {
+          const fallbackSpots: PintdrCard[] = [
+            {
+              id: `fallback_1_${Date.now()}`,
+              name: 'Social Darts & Craft Pint Showdown',
+              loc: targetArea,
+              desc: 'High-tech interactive darts with craft beers and sharing platters. Fast and fun.',
+              kind: 'spot',
+              category: 'Activity Bar',
+              emoji: '🎯',
+              source: 'ai',
+            },
+            {
+              id: `fallback_2_${Date.now()}`,
+              name: 'Secret Underground Arcade & Pinball',
+              loc: targetArea,
+              desc: 'Retro Japanese arcade cabinets, multiplayer pinball, and rotating guest taps.',
+              kind: 'spot',
+              category: 'Retro Gaming',
+              emoji: '🕹️',
+              source: 'ai',
+            },
+            {
+              id: `fallback_3_${Date.now()}`,
+              name: 'Axe Throwing & Smoked BBQ Combo',
+              loc: targetArea,
+              desc: 'Tournament-style axe throwing followed by pitmaster brisket platters.',
+              kind: 'combo',
+              category: 'Combo Night',
+              emoji: '🔀',
+              steps: ['6:30pm Axe throwing tournament', '8:00pm Low-and-slow BBQ platter'],
+              source: 'ai',
+            },
+          ];
+          fallbackSpots.forEach((f) => {
+            if (!seenIdsRef.current.has(normName(f.name))) {
+              newBatch.push(f);
+            }
+          });
         }
 
         if (newBatch.length === 0) {
@@ -544,7 +617,10 @@ export const PintdrOverlay: React.FC<PintdrOverlayProps> = ({
       {showFilters && (
         <div className="w-full max-w-md bg-[#17171a] border border-[#2b2b2f] rounded-2xl p-3.5 my-2 shrink-0 shadow-2xl animate-in slide-in-from-top-3 duration-150">
           <div className="flex items-center justify-between text-xs font-bold text-[#cfcfd4] mb-2">
-            <span>⚙️ Radar Settings</span>
+            <span className="flex items-center gap-1.5">
+              <SlidersHorizontal className="w-3.5 h-3.5 text-[#ff6b57]" />
+              <span>Radar Settings</span>
+            </span>
             <span className="text-[10px] text-[#8d8d94]">Updates generative deck</span>
           </div>
 
@@ -600,13 +676,7 @@ export const PintdrOverlay: React.FC<PintdrOverlayProps> = ({
             </button>
             <button
               type="button"
-              onClick={() => {
-                if (!config.key) {
-                  onOpenSetup();
-                  onShowToast('⚠️ Add Gemini API key in Setup for AI mode');
-                }
-                setSourceFilter('ai');
-              }}
+              onClick={() => setSourceFilter('ai')}
               className={`flex-1 py-1 rounded-lg font-semibold flex items-center justify-center gap-1 transition cursor-pointer ${
                 sourceFilter === 'ai'
                   ? 'bg-[#ff6b57] text-[#1a0703]'
@@ -715,19 +785,19 @@ export const PintdrOverlay: React.FC<PintdrOverlayProps> = ({
                 style={{ opacity: likeOpacity }}
                 className="absolute top-5 right-5 border-3 border-[#c6ff3d] text-[#c6ff3d] font-display font-black text-sm px-3.5 py-1 rounded-xl rotate-12 bg-black/60 backdrop-blur-md pointer-events-none tracking-wider shadow-lg"
               >
-                👍 KEEN / PITCH
+                KEEN / PITCH
               </div>
               <div
                 style={{ opacity: passOpacity }}
                 className="absolute top-5 left-5 border-3 border-[#ff6b57] text-[#ff6b57] font-display font-black text-sm px-3.5 py-1 rounded-xl -rotate-12 bg-black/60 backdrop-blur-md pointer-events-none tracking-wider shadow-lg"
               >
-                👎 PASS / BIN
+                PASS / BIN
               </div>
               <div
                 style={{ opacity: superOpacity }}
                 className="absolute top-8 inset-x-0 mx-auto w-fit border-3 border-[#ffd700] text-[#ffd700] font-display font-black text-sm px-4 py-1.5 rounded-xl bg-black/70 backdrop-blur-md pointer-events-none tracking-wider shadow-xl"
               >
-                ⭐ SUPERLIKE
+                SUPERLIKE
               </div>
 
               {/* Card Header & Badges */}
@@ -735,13 +805,17 @@ export const PintdrOverlay: React.FC<PintdrOverlayProps> = ({
                 <div className="flex items-center justify-between gap-2 mb-2">
                   <div className="flex items-center gap-1.5 flex-wrap">
                     <span
-                      className={`text-[11px] font-bold px-2.5 py-0.5 rounded-full border flex items-center gap-1 ${
+                      className={`text-[11px] font-bold px-2.5 py-0.5 rounded-full border flex items-center gap-1.5 ${
                         currentCard.source === 'ai'
                           ? 'bg-[rgba(255,107,87,0.15)] text-[#ff6b57] border-[#ff6b57]/30'
                           : 'bg-[rgba(198,255,61,0.15)] text-[#c6ff3d] border-[#c6ff3d]/30'
                       }`}
                     >
-                      <span>{currentCard.emoji || (currentCard.source === 'ai' ? '🤖' : '🗺️')}</span>
+                      {currentCard.source === 'ai' ? (
+                        <Sparkles className="w-3 h-3 text-[#ff6b57]" />
+                      ) : (
+                        <MapIcon className="w-3 h-3 text-[#c6ff3d]" />
+                      )}
                       <span>
                         {currentCard.source === 'ai'
                           ? currentCard.category || 'Gerg AI'
@@ -750,7 +824,7 @@ export const PintdrOverlay: React.FC<PintdrOverlayProps> = ({
                     </span>
                     {currentCard.live ? (
                       <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-blue-500/20 text-blue-400 border border-blue-500/30">
-                        🎟️ Live Event
+                        Live Event
                       </span>
                     ) : null}
                   </div>
@@ -774,8 +848,8 @@ export const PintdrOverlay: React.FC<PintdrOverlayProps> = ({
                 {/* Meta details if available */}
                 {(currentCard.when || currentCard.cost) && (
                   <div className="flex items-center gap-2 text-xs text-[#cfcfd4] mt-2 font-mono">
-                    {currentCard.when && <span>🗓️ {currentCard.when}</span>}
-                    {currentCard.cost && <span>💷 {currentCard.cost}</span>}
+                    {currentCard.when && <span>{currentCard.when}</span>}
+                    {currentCard.cost && <span>{currentCard.cost}</span>}
                   </div>
                 )}
 
@@ -788,7 +862,7 @@ export const PintdrOverlay: React.FC<PintdrOverlayProps> = ({
                 {currentCard.steps && currentCard.steps.length > 0 && (
                   <div className="mt-3 bg-[#17171a]/80 p-2.5 rounded-2xl border border-[#2b2b2f]">
                     <span className="text-[10px] font-bold text-[#ff6b57] block mb-1">
-                      🔀 COMBO ROUTE:
+                      COMBO ROUTE:
                     </span>
                     <ul className="text-[11px] text-[#cfcfd4] space-y-1">
                       {currentCard.steps.map((st, i) => (
@@ -832,7 +906,7 @@ export const PintdrOverlay: React.FC<PintdrOverlayProps> = ({
                 </div>
 
                 <div className="text-[10px] text-[#8d8d94] font-medium hidden sm:block">
-                  Swipe 👉 Pitch • 👈 Pass • 👆 Star
+                  Swipe Right to Pitch • Left to Pass • Up to Star
                 </div>
               </div>
             </div>
@@ -841,7 +915,7 @@ export const PintdrOverlay: React.FC<PintdrOverlayProps> = ({
           /* Empty Deck State */
           <div className="w-full bg-[#17171a] border border-[#2b2b2f] rounded-3xl p-6 text-center shadow-2xl flex flex-col items-center justify-center">
             <div className="w-14 h-14 rounded-2xl bg-[rgba(255,107,87,0.15)] text-[#ff6b57] flex items-center justify-center text-2xl mb-3 shadow-inner">
-              🍺
+              <Flame className="w-7 h-7 fill-current" />
             </div>
             <h4 className="font-display font-black text-lg text-[#f4f4f5]">
               You've Swiped All Cached Ideas!
@@ -863,9 +937,10 @@ export const PintdrOverlay: React.FC<PintdrOverlayProps> = ({
                 <button
                   type="button"
                   onClick={handleUndo}
-                  className="cursor-pointer border border-[#2b2b2f] bg-[#212124] text-[#f4f4f5] font-semibold text-xs py-2.5 px-4 rounded-xl hover:border-[#3b3b40] transition"
+                  className="cursor-pointer border border-[#2b2b2f] bg-[#212124] text-[#f4f4f5] font-semibold text-xs py-2.5 px-4 rounded-xl hover:border-[#3b3b40] transition flex items-center justify-center gap-1.5"
                 >
-                  ↩️ Undo Last Pass
+                  <RotateCcw className="w-3.5 h-3.5" />
+                  <span>Undo Last Pass</span>
                 </button>
               )}
             </div>

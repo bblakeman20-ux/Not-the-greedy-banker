@@ -84,24 +84,32 @@ export const SummaryModal: React.FC<SummaryModalProps> = ({
 
   const calSlot = allInSlots.find((s) => whenOf(s));
 
+  const groupLink =
+    `${window.location.origin}${window.location.pathname}` +
+    (config.db
+      ? `?db=${encodeURIComponent(config.db)}&room=${encodeURIComponent(config.rm)}&ev=${encodeURIComponent(
+          event.id
+        )}`
+      : '');
+
+  const fullShareText = config.db ? `${summaryText}\n\n🔗 Live Room: ${groupLink}` : summaryText;
+  const whatsappUrl = `https://wa.me/?text=${encodeURIComponent(fullShareText)}`;
+
   const handleCopy = async () => {
-    const ok = await copyStr(summaryText);
-    setMsg(ok ? '📋 Copied summary text to clipboard!' : "❌ Couldn't copy");
+    const ok = await copyStr(fullShareText);
+    setMsg(ok ? '📋 Copied full summary & link to clipboard!' : "❌ Couldn't copy");
   };
 
-  const handleShareMessenger = async () => {
-    const groupLink =
-      `${window.location.origin}${window.location.pathname}` +
-      (config.db
-        ? `?db=${encodeURIComponent(config.db)}&room=${encodeURIComponent(config.rm)}&ev=${encodeURIComponent(
-            event.id
-          )}`
-        : '');
+  const handleMessengerShare = async () => {
+    await copyStr(fullShareText);
+    setMsg('📋 Copied summary & link! Paste it into your Messenger chat.');
+  };
 
+  const handleNativeShare = async () => {
     if (navigator.share) {
       try {
         await navigator.share({
-          title: 'Not The Greedy Banker',
+          title: 'Pintdr',
           text: summaryText,
           url: config.db ? groupLink : '',
         });
@@ -111,25 +119,14 @@ export const SummaryModal: React.FC<SummaryModalProps> = ({
         if (e.name === 'AbortError') return;
       }
     }
-
-    const copied = await copyStr(
-      config.db ? summaryText + '\n' + groupLink : summaryText
-    );
-    setMsg(
-      copied
-        ? '📋 Copied – paste it into the Messenger chat!'
-        : "❌ Couldn't copy"
-    );
-    if (copied) {
-      window.open('https://www.messenger.com/', '_blank', 'noopener');
-    }
+    await handleCopy();
   };
 
   return (
-    <div className="mt-3 bg-[#212124] border border-[#2b2b2f] rounded-2xl p-4 transition-all">
-      <div className="flex items-center justify-between mb-2">
+    <div className="mt-4 bg-[#212124] border border-[#2b2b2f] rounded-2xl p-5 transition-all space-y-3">
+      <div className="flex items-center justify-between">
         <div className="text-xs font-bold text-[#c6ff3d]">
-          📋 Outing Summary & Debts
+          📋 Outing Summary & Settle-Up Sheet
         </div>
         <button
           type="button"
@@ -144,43 +141,53 @@ export const SummaryModal: React.FC<SummaryModalProps> = ({
         rows={9}
         readOnly
         value={summaryText}
-        className="w-full bg-[#17171a] border border-[#2b2b2f] text-[#f4f4f5] p-3 rounded-xl text-xs font-mono leading-relaxed outline-none"
+        className="w-full bg-[#17171a] border border-[#2b2b2f] text-[#f4f4f5] p-3.5 rounded-xl text-xs font-mono leading-relaxed outline-none"
       />
 
-      <div className="flex flex-wrap items-center gap-2 mt-2">
+      <div className="flex flex-wrap items-center gap-2">
+        <a
+          href={whatsappUrl}
+          target="_blank"
+          rel="noopener noreferrer"
+          className="cursor-pointer bg-[#c6ff3d] text-[#141a03] font-semibold text-xs px-3.5 py-2 rounded-xl hover:brightness-105 active:scale-95 transition whitespace-nowrap"
+        >
+          🟢 Share to WhatsApp
+        </a>
+        <a
+          href="https://www.messenger.com/"
+          target="_blank"
+          rel="noopener noreferrer"
+          onClick={handleMessengerShare}
+          className="cursor-pointer border border-[#60a5fa]/40 bg-[#17171a] text-[#60a5fa] font-semibold text-xs px-3.5 py-2 rounded-xl hover:border-[#60a5fa] active:scale-95 transition whitespace-nowrap"
+        >
+          💬 Share to Messenger
+        </a>
         <button
           type="button"
-          onClick={handleShareMessenger}
-          className="cursor-pointer border border-[#2b2b2f] bg-[#17171a] text-[#f4f4f5] font-semibold text-xs px-3.5 py-2 rounded-xl hover:border-[#3b3b40] active:scale-95 transition"
+          onClick={handleNativeShare}
+          className="cursor-pointer border border-[#2b2b2f] bg-[#17171a] text-[#f4f4f5] font-semibold text-xs px-3.5 py-2 rounded-xl hover:border-[#3b3b40] active:scale-95 transition whitespace-nowrap"
         >
-          💬 Send to Messenger
-        </button>
-        <button
-          type="button"
-          onClick={handleCopy}
-          className="cursor-pointer bg-[rgba(198,255,61,0.12)] text-[#c6ff3d] font-semibold text-xs px-3.5 py-2 rounded-xl hover:bg-[rgba(198,255,61,0.2)] active:scale-95 transition"
-        >
-          Copy Text
+          📤 Share / Copy
         </button>
         {calSlot && (
           <button
             type="button"
             onClick={() => downloadIcs(calSlot, winVenue, config)}
-            className="cursor-pointer bg-[#ff6b57] text-[#1a0703] font-semibold text-xs px-3.5 py-2 rounded-xl hover:brightness-105 active:scale-95 transition"
+            className="cursor-pointer bg-[#ff6b57] text-[#1a0703] font-semibold text-xs px-3.5 py-2 rounded-xl hover:brightness-105 active:scale-95 transition whitespace-nowrap"
           >
-            📅 Add to Calendar
+            📅 Download .ics
           </button>
         )}
         <button
           type="button"
           onClick={onClose}
-          className="cursor-pointer border border-[#2b2b2f] bg-transparent text-[#8d8d94] font-semibold text-xs px-3 py-2 rounded-xl hover:text-[#f4f4f5] transition"
+          className="cursor-pointer border border-[#2b2b2f] bg-transparent text-[#8d8d94] font-semibold text-xs px-3 py-2 rounded-xl hover:text-[#f4f4f5] transition whitespace-nowrap"
         >
           Close
         </button>
       </div>
 
-      {msg && <div className="text-xs text-[#c6ff3d] mt-2">{msg}</div>}
+      {msg && <div className="text-xs text-[#c6ff3d]">{msg}</div>}
     </div>
   );
 };

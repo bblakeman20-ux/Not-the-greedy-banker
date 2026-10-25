@@ -1,89 +1,111 @@
-# Modern Gemini Model Migration (gemini-flash-latest & Gemini 3 Family)
+# Pass-Through Pill Styling, Compact Header Logo Lockup & Bespoke Vector Iconography
 
-Upgrade the entire Gemini engine configuration to default to `gemini-flash-latest` with current Gemini 3 series fallbacks (`gemini-3.8-flash` and `gemini-3.1-flash-lite`), while actively purging deprecated legacy models (1.5/2.0/2.5) across state storage and UI selectors.
+Refine the application's visual polish by implementing a horizontal logo-and-title lockup that eliminates dead space, redesigning the two-tier mode pills with solid hot-coral pass-through stencil styling, and replacing all emojis across the entire UI with minimalist Lucide vector outline icons in matching theme colors.
 
-### User Review & Critical Decisions
+## User Review & Critical Decisions
 
 > [!IMPORTANT]
-> The confirmed choices from your clarification answers have been incorporated into this plan:
+> The user confirmed the following two choices in Phase 1:
+> 1. **Pass-Through Pill Styling**: Solid hot-coral pill (`#ff6b57`) with dark background cutout text and icon, creating a bold, high-contrast stencil effect when active.
+> 2. **Vector Icon Set**: Minimalist Lucide vector outline icons in matching theme colors (replacing all emojis across header, tabs, parameters, discovery pills, and shortlist cards).
 
-- **Confirmed Model Default**: `gemini-flash-latest` is set as the primary default model across initial loads, new rooms, and the Setup modal, ensuring the app continuously tracks the latest Flash production release.
-- **Confirmed Fallback Architecture**: All fallback arrays, dynamic model sorting regexes, and backup chains are modernized to Gemini 3 (`gemini-3.8-flash` and `gemini-3.1-flash-lite`). Deprecated models (`gemini-1.5-*`, `gemini-2.0-*`, and `gemini-2.5-*`) are completely retired.
-- **Automatic Legacy Migration**: Stored browser cache/localStorage values referencing obsolete models are automatically sanitized and upgraded to `gemini-flash-latest` on app mount.
-
----
-
-### 1. Overview & Core Concept
-
-- **What It Does**: Upgrades Gerg AI generation to use `gemini-flash-latest` as the primary engine. In case of localized rate limits or network issues, the fallback pipeline cascades smoothly to `gemini-3.8-flash` and `gemini-3.1-flash-lite`.
-- **Target Audience / Persona**: Squad members organizing outings who require instantaneous, creative venue and activity suggestions with real-time SSE token streaming and live search verification.
-- **Key Value**: Guarantees peak speed, freshness, and adherence to the latest Google Gemini platform capabilities with zero lag or legacy model errors.
+- **Confirmed Decision 1**: The large flagship pill will read cleanly as **`Pintdr mode`** with a minimalist `Flame` icon. When active, it displays a solid hot coral fill (`bg-[#ff6b57]`) with dark container background cutout text and icon (`text-[#17171a]`). The 3 sub-pills (`Interactive Map`, `Gerg AI`, `Pitch Custom`) follow the same pass-through stencil design when active.
+- **Confirmed Decision 2**: The top header title **Pintdr** and subline **squad outing matcher** sit directly adjacent to the pint logo in a horizontal layout (`flex items-center gap-3.5`), color-matched to the app's hot coral theme (`#ff6b57`), eliminating the vertical dead space.
+- **Confirmed Decision 3**: Complete emoji eradication across the app—all emojis in tabs (`🎯 Activities`, `📅 Dates`, `🚆 Travel`, `💷 Kitty`), parameters, mode chips, voting buttons, and shortlist cards are replaced with crisp, bespoke Lucide vector outline icons.
 
 ---
 
-### 2. User Experience & Visual Design
+## 1. Overview & Core Concept
 
-- **Key User Flows**:
-  1. **One-Tap Generation**: User taps "Gerg AI" or "🎲 Pintdr" in the Activities tab. Requests immediately stream from `gemini-flash-latest` with sub-second time-to-first-card.
-  2. **Model Transparency**: The status ticker and completion pill display the exact active model (e.g., `⚡ Gerg AI delivered 3 ideas in 1.4s (via gemini-flash-latest)`).
-  3. **Setup Modal Management**: When opening Backend & Room Sync (Setup), the model input suggests `gemini-flash-latest` as standard, with quick-select pills for `gemini-3.8-flash` and `gemini-3.1-flash-lite`.
-- **Visual Identity & Theme**:
-  - Maintains the existing dark graphite aesthetic (`#17171a`, `#212124`) with warm neon accents (`#ff6b57` Coral, `#c6ff3d` Lime for speed metrics).
-  - Clean monospace typography for model identifiers and latency stats.
-- **Interactive Feedback & Motion**:
-  - Live token streaming ticker with incremental JSON decoding keeps cards flowing without waiting for the full response.
+- **What It Does**:
+  - Replaces the vertically stacked logo and header text with an integrated horizontal lockup where the "Pintdr" title and "squad outing matcher" subtitle sit cleanly to the right of the pint glass mark in the brand's hot coral color.
+  - Updates the flagship PINTDR mode pill to say strictly `Pintdr mode` with a simple flame icon using a solid hot-coral pass-through stencil effect, and applies the same unified design language to the three mode pills below.
+  - Converts every remaining emoji across navigation tabs, search inputs, AI mode buttons, shortlist actions, and bounty banners into uniform, theme-colored vector icons.
+- **Target Audience**: Squad members seeking a sleek, modern, professional web app that feels like a bespoke product rather than a casual toy.
+- **Key Value**: Crisp typographic hierarchy, purposeful color theory with pass-through button depth, and cohesive iconography without generic or amateur emojis.
 
 ---
 
-### 3. Key Product Decisions & Trade-Offs
+## 2. User Experience & Visual Design
 
-- **Decision 1: Model Hierarchy & Fallbacks**
-  - *Chosen Approach*: `gemini-flash-latest` (Primary) → `gemini-3.8-flash` (First Backup) → `gemini-3.1-flash-lite` (High-Throughput Backup).
-  - *Why*: Provides the ideal balance between tracking the newest features while guaranteeing robust, tested fallbacks if an API quota is reached.
-  - *Alternatives Considered*: Legacy 2.5/1.5 models were discarded because they are deprecated and prohibited under current guidelines.
-- **Decision 2: Thinking & Latency Optimization**
-  - *Chosen Approach*: Enforce `{ thinkingLevel: 'minimal' }` for all Gemini 3 series requests, ensuring instant generation with zero reasoning delays.
-  - *Why*: Outing recommendations rely on concise JSON arrays, where excessive reasoning adds unnecessary seconds to the user experience.
-- **Decision 3: Transparent LocalStorage Upgrade**
-  - *Chosen Approach*: In `loadInitialConfig()`, detect if `md` matches obsolete models (e.g. `1.5`, `2.0`, `2.5`) and immediately upgrade to `gemini-flash-latest`.
-  - *Why*: Prevents returning users with stale localStorage data from continuing to hit deprecated model endpoints.
+### Key User Flows
+
+1. **Header & Brand Presence**:
+   - The user opens the app and sees the pint logo icon seamlessly paired side-by-side with the hot coral `Pintdr` title and `squad outing matcher` subtitle on the left.
+   - Action controls (`QR Join`, `Rooms & Setup`, `Dark/Light`) sit compactly on the right with uniform vector icons (`QrCode`, `Settings`, `Sun`/`Moon`).
+2. **Flagship Mode Selector**:
+   - In the idea discovery section, the user sees the prominent Tier 1 pill: `Pintdr mode` with a simple `Flame` icon.
+   - When active, it fills with solid hot coral (`#ff6b57`), and the icon and text are styled in the dark container surface color (`#17171a`), producing a clean cutout stencil appearance.
+   - Tier 2 sits directly underneath with 3 pills of equal 1/3 width:
+     - `Interactive Map` with a minimalist `Map` icon.
+     - `Gerg AI` with a minimalist `Sparkles` icon.
+     - `Pitch Custom` with a minimalist `PenTool` or `Plus` icon.
+   - When any Tier 2 pill is active, it takes the pass-through stencil styling in its designated theme accent.
+3. **Bespoke Vector Iconography Across the App**:
+   - **Navigation Tabs**: `Target` (Activities), `Calendar` (Dates), `Train` (Travel), `Coins` (Kitty).
+   - **Parameter Fields**: `Compass` (Parameters), `MapPin` (Where), `Sparkles` (Vibe), `Clock` (When), `PoundSterling` (Budget).
+   - **Voting & Shortlist**: `ThumbsUp` (Keen), `ThumbsDown` (Veto), `Star` (Winner), `Ban` (Ban List), `Dices` (Roll Spots), `Home` (Host Outing).
 
 ---
 
-### 4. Technical Architecture & Data Strategy
+## 3. Key Product Decisions & Trade-Offs
+
+| Decision | Chosen Approach | Why | Rejected Alternatives |
+| :--- | :--- | :--- | :--- |
+| **Pass-Through Pill Styling** | Solid hot-coral background with `#17171a` cutout text and icon | Delivers immediate visual weight, crisp contrast, and a distinct stencil tactile feel without blurry outer glows. | Outlined pill with colored text (blends into dark cards) or multicolor gradients. |
+| **Header Logo Alignment** | Horizontal lockup (`flex items-center gap-3.5`) | Eliminates vertical dead space and creates a balanced, compact header row on mobile and desktop. | Stacking title under the logo (wasted 40px+ of vertical screen space). |
+| **Iconography Standard** | Lucide React outline icons with uniform stroke-width (1.75px) | Ensures visual cohesion, crisp rendering at all DPIs, and professional aesthetic without emoji rendering discrepancies across Android/iOS/Desktop. | Retaining Unicode emojis (looks amateur and inconsistent across platforms). |
+
+---
+
+## 4. Technical Architecture & Component Mapping
+
+### Component Modification Scope
 
 ```
 ┌─────────────────────────────────────────────────────────────┐
-│                       ActivitiesTab                         │
-│  ┌───────────────────────┐       ┌────────────────────────┐ │
-│  │ Fast Mode / AI Deck   │       │ SetupModal (Model Cfg) │ │
-│  └───────────┬───────────┘       └───────────┬────────────┘ │
-└──────────────┼───────────────────────────────┼──────────────┘
-               │                               │
-               ▼                               ▼
-┌─────────────────────────────────────────────────────────────┐
-│                 storage.ts (State & Sanitize)               │
-│  - loadInitialConfig(): auto-upgrade legacy model cache     │
-│  - Default model: 'gemini-flash-latest'                     │
-└──────────────────────────────┬──────────────────────────────┘
-                               │
-                               ▼
-┌─────────────────────────────────────────────────────────────┐
-│                   gemini.ts (Engine Client)                 │
-│  - DEFAULT_FAST_MODELS: ['gemini-flash-latest',             │
-│                          'gemini-3.8-flash',                │
-│                          'gemini-3.1-flash-lite']           │
-│  - thinkCfg(): { thinkingLevel: 'minimal' } for 3.x/latest  │
-│  - backups(): prioritize 3.8-flash and 3.1-flash-lite       │
-│  - SSE stream reader + extractCompletedObjects parser       │
+│                    App Layout & Navigation                  │
+│                                                             │
+│  ┌───────────────────────────────────────────────────────┐  │
+│  │ Header.tsx & PintdrLogo.tsx                           │  │
+│  │ [Logo Box] ──► [ Pintdr (Coral) / squad matcher ]     │  │
+│  │ (Horizontal lockup, no dead space, theme matched)     │  │
+│  └───────────────────────────────────────────────────────┘  │
+│                                                             │
+│  ┌───────────────────────────────────────────────────────┐  │
+│  │ App.tsx: Navigation Tabs                              │  │
+│  │ [ <Target/> Activities ]  [ <Calendar/> Dates ]       │  │
+│  │ [ <Train/> Travel ]       [ <Coins/> Kitty ]          │  │
+│  └───────────────────────────────────────────────────────┘  │
+│                                                             │
+│  ┌───────────────────────────────────────────────────────┐  │
+│  │ ActivitiesTab.tsx: Two-Tier Pass-Through Pills        │  │
+│  │ Tier 1: [ 🔥 Pintdr mode (Solid Coral + Cutout Text) ]│  │
+│  │ Tier 2: [ 🗺️ Map ]   [ ✨ Gerg AI ]   [ ✏️ Pitch ]    │  │
+│  │                                                       │  │
+│  │ Replaced all emojis in parameters, votes & bounties:  │  │
+│  │ • MapPin, Sparkles, Clock, PoundSterling              │  │
+│  │ • ThumbsUp, ThumbsDown, Trophy, Ban, Dices, Home      │  │
+│  └───────────────────────────────────────────────────────┘  │
 └─────────────────────────────────────────────────────────────┘
 ```
 
-- **Data Model & State Updates**:
-  - `AppConfig.md`: Defaults to `'gemini-flash-latest'`.
-  - `DEFAULT_FAST_MODELS`: Updated to `['gemini-flash-latest', 'gemini-3.8-flash', 'gemini-3.1-flash-lite']`.
-  - `thinkCfg(model)`: Returns `{ thinkingLevel: 'minimal' }` for all `gemini-3.*` and `gemini-flash-latest`.
-- **Interactive Component Mapping**:
-  - `ActivitiesTab.tsx`: Continues driving fast-mode streaming via `askGergAI`.
-  - `PintdrOverlay.tsx`: Displays streaming cards dynamically with real-time generation times.
-  - `SetupModal.tsx`: Lists modern models with clear badges in the settings interface.
+### Key Implementation Steps
+
+1. **Update `src/components/PintdrLogo.tsx` & `src/components/Header.tsx`**:
+   - Change `PintdrLogo` default orientation to `'horizontal'` with `items-center gap-3.5`.
+   - Update "Pintdr" brand title color to hot coral (`#ff6b57`) with subtle warm contrast, color-matched to the app flame theme.
+   - Adjust icon container size to a compact `w-14 h-14` or `w-12 h-12` so the entire header is balanced and slim.
+2. **Refactor Two-Tier Pills in `src/components/Tabs/ActivitiesTab.tsx`**:
+   - Change label to strictly `Pintdr mode`.
+   - Render `Flame` Lucide icon.
+   - Implement pass-through styling:
+     - Active: `bg-[#ff6b57] text-[#17171a] font-extrabold shadow-md`.
+     - Inactive: `bg-[#212124] text-[#f4f4f5] border border-[#ff6b57]/30 hover:border-[#ff6b57]`.
+   - Apply pass-through logic to the 3 sub-pills (`Map`, `Gerg AI`, `Pitch Custom`).
+3. **Replace All Emojis with Lucide Vector Icons**:
+   - In `src/App.tsx`: Navigation tab labels, room status, empty states.
+   - In `src/components/Tabs/ActivitiesTab.tsx`: Shared parameters, Gerg AI modes, roulette, shortlist cards, Keen/Veto buttons, and ban list.
+   - In `src/components/ProfileBar.tsx` / `ProfileModal.tsx`: User profile avatar fallbacks with clean geometric badges.
+4. **Verification**:
+   - Run `lint_applet` and `compile_applet` to verify clean build with zero TypeScript errors.

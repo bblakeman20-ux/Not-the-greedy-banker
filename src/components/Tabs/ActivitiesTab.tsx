@@ -1,13 +1,46 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { AppConfig, BanItem, Bounty, OutingEvent, User, Venue } from '../../types';
 import { gbp, isBanned, MAX_VETOES, normName, safeUrl } from '../../utils/storage';
 import { who } from '../../utils/kitty';
-import { fetchPlaces, makeIdeas } from '../../utils/osm';
+import { fetchPlaces, makeIdeas, miles } from '../../utils/osm';
 import { askGergAI, MODES } from '../../utils/gemini';
+import { getLocalCuratedIdeas } from '../../utils/localPlaces';
 import confetti from 'canvas-confetti';
 import { VenueExplorer } from '../VenueExplorer';
 import { PintdrOverlay } from '../PintdrOverlay';
-import { Flame, Sparkles } from 'lucide-react';
+import {
+  Flame,
+  Sparkles,
+  Map as MapIcon,
+  Compass,
+  Plus,
+  ExternalLink,
+  Clock,
+  MapPin,
+  Sliders,
+  Calendar,
+  Coins,
+  ThumbsUp,
+  ThumbsDown,
+  Star,
+  Crown,
+  RotateCcw,
+  Dices,
+  Trophy,
+  Home,
+  Ban,
+  X,
+  Zap,
+  Route,
+  Check,
+  CheckCircle2,
+  AlertTriangle,
+  Search,
+  ShieldAlert,
+  Send,
+  Ticket,
+  Gem,
+} from 'lucide-react';
 
 interface ActivitiesTabProps {
   event: OutingEvent;
@@ -22,12 +55,8 @@ interface ActivitiesTabProps {
   boardTally: Record<string, { r: number; m: number }>;
   onOpenSetup: () => void;
   onShowToast?: (msg: string) => void;
+  onPitchHouse?: (user: User) => void;
 }
-
-const KIND_ICON: Record<string, string> = {
-  event: '🎟️ ',
-  combo: '🔀 ',
-};
 
 export const ActivitiesTab: React.FC<ActivitiesTabProps> = ({
   event,
@@ -42,8 +71,11 @@ export const ActivitiesTab: React.FC<ActivitiesTabProps> = ({
   boardTally,
   onOpenSetup,
   onShowToast,
+  onPitchHouse,
 }) => {
   const [isPintdrOpen, setIsPintdrOpen] = useState(false);
+  const [subTab, setSubTab] = useState<'shortlist' | 'discover' | 'ban'>('shortlist');
+  const [discoverTool, setDiscoverTool] = useState<'ai' | 'map' | 'manual'>('ai');
   const [newBan, setNewBan] = useState('');
   const [pitchName, setPitchName] = useState('');
   const [pitchLoc, setPitchLoc] = useState('');
@@ -55,6 +87,13 @@ export const ActivitiesTab: React.FC<ActivitiesTabProps> = ({
   const [aiVib, setAiVib] = useState(event.vibe || '');
   const [aiWhen, setAiWhen] = useState(event.when || '');
   const [aiBud, setAiBud] = useState('');
+
+  // Keep search inputs synchronized when switching events or receiving a Travel Midpoint hand-off
+  useEffect(() => {
+    setAiLoc(event.where || '');
+    setAiVib(event.vibe || '');
+    setAiWhen(event.when || '');
+  }, [event.id, event.where, event.vibe, event.when]);
   const [aiMode, setAiMode] = useState('gems');
   const [freeMsg, setFreeMsg] = useState('');
   const [aiMsg, setAiMsg] = useState('');
@@ -64,6 +103,7 @@ export const ActivitiesTab: React.FC<ActivitiesTabProps> = ({
   const [isAiStreaming, setIsAiStreaming] = useState(false);
   const [spinningId, setSpinningId] = useState<string | null>(null);
   const [spinMsg, setSpinMsg] = useState('');
+  const [preSpinWinId, setPreSpinWinId] = useState<string | null | undefined>(undefined);
 
   const isLocked = Boolean(event.locked);
   const me = currentUser;
@@ -149,7 +189,17 @@ export const ActivitiesTab: React.FC<ActivitiesTabProps> = ({
 
   const handleLockIn = (id: string) => {
     if (isLocked) return;
+    if (event.win === id) {
+      onUpdateEvent({ ...event, win: null });
+      setSpinMsg('');
+      setPreSpinWinId(undefined);
+      const winVenue = event.venues.find((v) => v.id === id);
+      if (winVenue) notify(`↩️ Unpicked "${winVenue.name}"`);
+      return;
+    }
     onUpdateEvent({ ...event, win: id });
+    setSpinMsg('');
+    setPreSpinWinId(undefined);
     const winVenue = event.venues.find((v) => v.id === id);
     if (winVenue) notify(`⭐ Selected "${winVenue.name}" as winning venue`);
   };
@@ -285,28 +335,55 @@ export const ActivitiesTab: React.FC<ActivitiesTabProps> = ({
     try {
       const pool = await fetchPlaces(where, vibe, banList, (msg) => setFreeMsg(`🗺️ ${msg}`));
       const area = where.split(/\s*(?:,|\bor\b|&)\s*/i)[0].replace(/\b\w/g, (c) => c.toUpperCase());
-      const seen = new Set<string>();
-      const ideas = makeIdeas(pool, area, event, seen);
+      const center = pool.cs[0];
 
-      if (!ideas.length) {
+      // Strictly filter individual real venues that are not already on the shortlist
+      const existingNames = new Set(event.venues.map((v) => normName(v.name)));
+      const validPlaces = pool.places.filter(
+        (p) => p.name && !isBanned(p.name, banList) && !existingNames.has(normName(p.name))
+      );
+
+      const picked = validPlaces.slice(0, 3);
+      if (!picked.length) {
         setFreeMsg(`🤷 That's everything nearby for "${vibe || 'any vibe'}" – try another vibe or wider area`);
         return;
       }
 
       const pend = myBounties.map((b) => b.id);
-      const won = ideas.length ? redeemBounties(pend, ideas[ideas.length - 1].name || '') : 0;
+      const won = picked.length ? redeemBounties(pend, picked[0].name) : 0;
 
-      const newVenues: Venue[] = ideas.reverse().map((x, i) => ({
-        id: 'v' + Date.now() + i,
-        name: x.name || 'Venue',
-        loc: x.loc || 'Local',
-        desc: x.desc || '',
-        kind: x.kind || 'spot',
-        steps: x.steps,
-        url: x.url,
-        src: 'osm',
-        votes: {},
-      }));
+      const newVenues: Venue[] = picked.map((p, i) => {
+        const street = p.t['addr:street'];
+        const house = p.t['addr:housenumber'] || p.t['addr:housename'];
+        const postcode = p.t['addr:postcode'];
+        const town = p.t['addr:town'] || p.t['addr:city'] || p.t['addr:suburb'] || area;
+        const streetPart = house && street ? `${house} ${street}` : (street || '');
+        const fullLoc = [streetPart, town, postcode].filter(Boolean).join(', ') || area;
+        const dist = center ? miles(center, p) : undefined;
+
+        const details = [
+          p.c.l,
+          p.t.brewery ? `Brewery: ${p.t.brewery}` : '',
+          p.t.cuisine ? `Cuisine: ${p.t.cuisine.replace(/;/g, ', ')}` : '',
+          p.t.outdoor_seating === 'yes' ? 'Beer garden' : '',
+          dist != null ? `${dist.toFixed(1)} mi from ${area}` : '',
+        ]
+          .filter(Boolean)
+          .join(' • ');
+
+        return {
+          id: 'v' + Date.now() + i,
+          name: p.name,
+          loc: fullLoc,
+          desc: `${p.c.e} ${details}`,
+          kind: 'spot' as const,
+          url: safeUrl(p.t.website || p.t['contact:website']),
+          lat: p.lat,
+          lon: p.lon,
+          src: 'osm',
+          votes: {},
+        };
+      });
 
       onUpdateEvent({
         ...event,
@@ -315,21 +392,39 @@ export const ActivitiesTab: React.FC<ActivitiesTabProps> = ({
       });
 
       setFreeMsg(
-        `✅ Rolled ${ideas.length} real places near ${where}${
+        `✅ Added ${picked.length} real venues near ${where}${
           won ? ' • 🎯 Veto Bounty redeemed!' : ''
-        } • 🎲 roll again for more • Map data © OpenStreetMap`
+        } • 🎲 roll again for more • OpenStreetMap verified`
       );
-    } catch (e: any) {
-      setFreeMsg(`❌ Couldn't reach the map: ${e.message}. Try again or use Gerg AI.`);
+    } catch {
+      // Offline / rate-limit fallback: Instantly load curated UK spots
+      const fallbackIdeas = getLocalCuratedIdeas(where, vibe, banList, new Set(event.venues.map((v) => normName(v.name))), 3);
+      if (fallbackIdeas.length) {
+        const newVenues: Venue[] = fallbackIdeas.map((x, i) => ({
+          id: 'v' + Date.now() + i,
+          name: x.name || 'Venue',
+          loc: x.loc || 'Local',
+          desc: x.desc || '',
+          kind: x.kind || 'spot',
+          steps: x.steps,
+          url: x.url,
+          src: 'osm',
+          votes: {},
+        }));
+
+        onUpdateEvent({
+          ...event,
+          venues: [...newVenues, ...event.venues],
+        });
+
+        setFreeMsg(`✅ Rolled ${fallbackIdeas.length} curated anti-default spots near ${where}`);
+        return;
+      }
+      setFreeMsg(`❌ Couldn't reach the map – try another area or use Gerg AI.`);
     }
   };
 
   const handleAskGergAI = async () => {
-    if (!config.key) {
-      onOpenSetup();
-      setAiMsg('⚠️ Paste Gemini API Key in Setup first!');
-      return;
-    }
     if (isLocked || !me) {
       if (!me) notify('👆 Tap your profile first in the squad bar above (or + New Profile)');
       return;
@@ -418,6 +513,9 @@ export const ActivitiesTab: React.FC<ActivitiesTabProps> = ({
       return;
     }
 
+    const previousWin = preSpinWinId !== undefined ? preSpinWinId : (event.win ?? null);
+    setPreSpinWinId(previousWin);
+
     const winner = okVenues[Math.floor(Math.random() * okVenues.length)];
     const steps = okVenues.length > 1 ? 16 : 1;
 
@@ -439,10 +537,40 @@ export const ActivitiesTab: React.FC<ActivitiesTabProps> = ({
     });
   };
 
-  const winVenue = event.venues.find((v) => v.id === event.win) || event.venues[0];
+  const handleUndoRoulette = () => {
+    if (isLocked) return;
+    const restoredWin =
+      preSpinWinId !== undefined && preSpinWinId !== event.win ? preSpinWinId : null;
+    onUpdateEvent({ ...event, win: restoredWin });
+    setSpinMsg('');
+    setSpinningId(null);
+    setPreSpinWinId(undefined);
+    notify('↩️ Roulette result undone');
+  };
+
+  // Auto-rank venues: Pinned winner first -> Zero vetoes -> Net Keen score descending
+  const sortedVenues = [...event.venues].sort((a, b) => {
+    const aWin = event.win === a.id ? 1 : 0;
+    const bWin = event.win === b.id ? 1 : 0;
+    if (aWin !== bWin) return bWin - aWin;
+
+    const aVotes = a.votes || {};
+    const bVotes = b.votes || {};
+    const aVetoes = squad.filter((u) => aVotes[u.id] === 'v').length;
+    const bVetoes = squad.filter((u) => bVotes[u.id] === 'v').length;
+    const aClean = aVetoes === 0 ? 1 : 0;
+    const bClean = bVetoes === 0 ? 1 : 0;
+    if (aClean !== bClean) return bClean - aClean;
+
+    const aKeen = squad.filter((u) => aVotes[u.id] === 'k').length;
+    const bKeen = squad.filter((u) => bVotes[u.id] === 'k').length;
+    return bKeen - bVetoes - (aKeen - aVetoes);
+  });
+
+  const winVenue = event.venues.find((v) => v.id === event.win) || sortedVenues[0];
   const displayedVenues = isLocked
-    ? event.venues.filter((v) => winVenue && v.id === winVenue.id)
-    : event.venues;
+    ? sortedVenues.filter((v) => winVenue && v.id === winVenue.id)
+    : sortedVenues;
 
   const boardEntries = Object.entries(boardTally)
     .filter(([id, t]) => who(id, squad) && (t.r || t.m))
@@ -452,543 +580,963 @@ export const ActivitiesTab: React.FC<ActivitiesTabProps> = ({
     'https://www.google.com/maps/search/?api=1&query=' + encodeURIComponent(q);
 
   return (
-    <div className="space-y-3">
-      {/* Ban List */}
-      <div className="bg-[#17171a] border border-[#2b2b2f] rounded-2xl p-3.5">
-        <div className="text-xs font-bold text-[#ff6b57]">
-          🚫 The Ban List (No Default Planning)
-        </div>
-        <div className="my-2 space-y-1">
-          {banList.map((b) => (
-            <div
-              key={b.id}
-              className="flex items-center justify-between bg-[#212124] text-xs px-2.5 py-1.5 rounded-lg"
-            >
-              <span>
-                🔒 <b>{b.name}</b>
-              </span>
-              {b.lock ? (
-                <span className="text-[11px] text-[#8d8d94]">Eternal</span>
-              ) : (
-                <button
-                  type="button"
-                  onClick={() => onRemoveBan(b.id)}
-                  className="cursor-pointer text-[#8d8d94] hover:text-[#ff6b57] text-xs px-1"
-                >
-                  ✕
-                </button>
-              )}
-            </div>
-          ))}
-        </div>
-        <div className="flex items-center gap-1.5">
-          <input
-            value={newBan}
-            onChange={(e) => setNewBan(e.target.value)}
-            onKeyDown={(e) => e.key === 'Enter' && handleAddBan()}
-            placeholder="Ban another pub..."
-            className="flex-1 bg-[#212124] border border-transparent focus:border-[#ff6b57] text-[#f4f4f5] px-3 py-2 rounded-xl text-xs outline-none"
-          />
-          <button
-            type="button"
-            onClick={handleAddBan}
-            className="cursor-pointer bg-[rgba(255,107,87,0.13)] text-[#ff6b57] font-semibold text-xs px-3 py-2 rounded-xl hover:bg-[rgba(255,107,87,0.2)] transition"
-          >
-            Ban
-          </button>
-        </div>
+    <div className="space-y-4">
+      {/* 3-Way Segmented Control for Activities */}
+      <div className="grid grid-cols-3 gap-1.5 bg-[#17171a] border border-[#2b2b2f] p-1.5 rounded-2xl shadow-md">
+        <button
+          type="button"
+          onClick={() => setSubTab('shortlist')}
+          className={`cursor-pointer py-2.5 px-2 text-xs sm:text-sm font-bold rounded-xl transition flex items-center justify-center gap-1.5 truncate ${
+            subTab === 'shortlist'
+              ? 'bg-[#212124] text-[#ffffff] shadow-[inset_0_0_0_1.5px_#ff6b57,0_0_12px_rgba(255,107,87,0.18)]'
+              : 'text-[#8d8d94] hover:text-[#f4f4f5]'
+          }`}
+        >
+          <CheckCircle2 className={`w-4 h-4 shrink-0 ${subTab === 'shortlist' ? 'text-[#c6ff3d]' : 'text-[#8d8d94]'}`} />
+          <span className="truncate">Shortlist ({event.venues.length})</span>
+        </button>
+        <button
+          type="button"
+          onClick={() => setSubTab('discover')}
+          className={`cursor-pointer py-2.5 px-2 text-xs sm:text-sm font-bold rounded-xl transition flex items-center justify-center gap-1.5 truncate ${
+            subTab === 'discover'
+              ? 'bg-[#212124] text-[#ffffff] shadow-[inset_0_0_0_1.5px_#ff6b57,0_0_12px_rgba(255,107,87,0.18)]'
+              : 'text-[#8d8d94] hover:text-[#f4f4f5]'
+          }`}
+        >
+          <Sparkles className={`w-4 h-4 shrink-0 ${subTab === 'discover' ? 'text-[#ff6b57]' : 'text-[#8d8d94]'}`} />
+          <span className="truncate">Discover / Gerg AI</span>
+        </button>
+        <button
+          type="button"
+          onClick={() => setSubTab('ban')}
+          className={`cursor-pointer py-2.5 px-2 text-xs sm:text-sm font-bold rounded-xl transition flex items-center justify-center gap-1.5 truncate ${
+            subTab === 'ban'
+              ? 'bg-[#212124] text-[#ffffff] shadow-[inset_0_0_0_1.5px_#ff6b57,0_0_12px_rgba(255,107,87,0.18)]'
+              : 'text-[#8d8d94] hover:text-[#f4f4f5]'
+          }`}
+        >
+          <ShieldAlert className={`w-4 h-4 shrink-0 ${subTab === 'ban' ? 'text-[#ff6b57]' : 'text-[#8d8d94]'}`} />
+          <span className="truncate">Ban List ({banList.length})</span>
+        </button>
       </div>
 
-      {/* Veto Bounty (My Active Veto) */}
+      {/* Sub-Tab 1: Shortlist View */}
+      {subTab === 'shortlist' && (
+        <div className="space-y-4">
       {!isLocked && mine && (
-        <div className="bg-[rgba(255,107,87,0.13)] border border-[#ff6b57] rounded-2xl p-3.5">
+        <div className="bg-[rgba(255,107,87,0.1)] border border-[#ff6b57]/50 rounded-2xl p-5 space-y-3">
           <div className="flex items-center justify-between">
-            <div className="text-xs font-bold text-[#ff6b57]">🎯 Veto Bounty</div>
+            <div className="text-sm font-bold text-[#ff6b57] flex items-center gap-1.5">
+              <AlertTriangle className="w-4 h-4 text-[#ff6b57]" />
+              <span>Active Veto Bounty</span>
+            </div>
             <span className="cd text-lg">{clock(mine.until - now)}</span>
           </div>
-          <div className="text-xs text-[#cfcfd4] my-1.5">
+          <div className="text-xs text-[#cfcfd4] leading-relaxed">
             You vetoed <b>{mine.vname}</b>. Pitch a replacement before the clock hits zero or
-            it's default-planning inertia — and you owe the first round 🍺
+            it's default-planning inertia — and you owe the squad a round!
           </div>
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 my-2">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
             <input
               value={bountyName}
               onChange={(e) => setBountyName(e.target.value)}
               placeholder="Your replacement venue / activity"
-              className="bg-[#17171a] border border-transparent focus:border-[#ff6b57] text-[#f4f4f5] px-3 py-2 rounded-xl text-xs outline-none"
+              className="bg-[#17171a] border border-[#2b2b2f] focus:border-[#ff6b57] text-[#f4f4f5] px-3.5 py-2.5 rounded-xl text-xs outline-none"
             />
             <input
               value={bountyLoc}
               onChange={(e) => setBountyLoc(e.target.value)}
               placeholder="Town / Station"
-              className="bg-[#17171a] border border-transparent focus:border-[#ff6b57] text-[#f4f4f5] px-3 py-2 rounded-xl text-xs outline-none"
+              className="bg-[#17171a] border border-[#2b2b2f] focus:border-[#ff6b57] text-[#f4f4f5] px-3.5 py-2.5 rounded-xl text-xs outline-none"
             />
           </div>
-          <div className="flex flex-wrap items-center gap-2">
+          <div className="flex flex-wrap items-center gap-3">
             <button
               type="button"
               onClick={() => handlePitchVenue(bountyName, bountyLoc, true)}
-              className="flex-1 cursor-pointer bg-[#ff6b57] text-[#1a0703] font-semibold text-xs px-3.5 py-2 rounded-xl hover:brightness-105 active:scale-95 transition"
+              className="flex-1 cursor-pointer bg-[#ff6b57] text-[#1a0703] font-semibold text-xs px-4 py-2.5 rounded-xl hover:brightness-105 active:scale-95 transition flex items-center justify-center gap-1.5"
             >
-              🚀 Pitch Replacement
+              <Send className="w-3.5 h-3.5" />
+              <span>Pitch Replacement</span>
             </button>
             <button
               type="button"
               onClick={handleAskGergAI}
-              className="cursor-pointer border border-[#2b2b2f] bg-[#212124] text-[#f4f4f5] font-semibold text-xs px-3.5 py-2 rounded-xl hover:border-[#3b3b40] transition"
+              className="cursor-pointer border border-[#2b2b2f] bg-[#212124] text-[#f4f4f5] font-semibold text-xs px-4 py-2.5 rounded-xl hover:border-[#3b3b40] transition flex items-center gap-1.5"
             >
-              🤖 Gerg AI, bail me out
+              <Sparkles className="w-3.5 h-3.5 text-[#ff6b57]" />
+              <span>Gerg AI Bailout</span>
             </button>
           </div>
         </div>
       )}
 
-      {/* Squad Bounties list */}
-      {!isLocked && (
-        <div className="space-y-1.5">
-          {(event.bounties || [])
-            .filter(
-              (b) =>
-                (!b.done && now < b.until && b.uid !== me?.id) ||
-                (!b.done && now >= b.until && !b.hide)
-            )
-            .map((b) => {
-              const u = who(b.uid, squad);
-              const isLive = !b.done && now < b.until;
-              return isLive ? (
-                <div
-                  key={b.id}
-                  className="flex items-center justify-between bg-[#17171a] border border-[#ff6b57] rounded-xl px-3 py-2 text-xs"
-                >
-                  <span className="text-[#8d8d94]">
-                    ⏱️ <b>{u?.name || 'Someone'}</b> vetoed <b>{b.vname}</b> – must pitch a
-                    replacement
-                  </span>
-                  <span className="cd">{clock(b.until - now)}</span>
-                </div>
-              ) : (
-                <div
-                  key={b.id}
-                  className="flex items-center justify-between bg-[#17171a] border border-[#2b2b2f] rounded-xl px-3 py-2 text-xs"
-                >
-                  <span className="text-[#ff6b57]">
-                    💀 <b>{u?.name || 'Someone'}</b> vetoed <b>{b.vname}</b> and pitched nothing –
-                    owes the first round 🍺
-                  </span>
-                  <button
-                    type="button"
-                    onClick={() => handleHideBounty(b.id)}
-                    className="cursor-pointer text-xs bg-[#212124] hover:bg-[#2b2b2f] text-[#f4f4f5] px-2 py-1 rounded-lg"
+      {/* Squad Bounties & Bounty Board */}
+      {!isLocked &&
+        ((event.bounties || []).some(
+          (b) =>
+            (!b.done && now < b.until && b.uid !== me?.id) ||
+            (!b.done && now >= b.until && !b.hide)
+        ) ||
+          boardEntries.length > 0) && (
+          <div className="bg-[#17171a] border border-[#2b2b2f] rounded-2xl p-4 space-y-2.5">
+            {(event.bounties || [])
+              .filter(
+                (b) =>
+                  (!b.done && now < b.until && b.uid !== me?.id) ||
+                  (!b.done && now >= b.until && !b.hide)
+              )
+              .map((b) => {
+                const u = who(b.uid, squad);
+                const isLive = !b.done && now < b.until;
+                return isLive ? (
+                  <div
+                    key={b.id}
+                    className="flex items-center justify-between bg-[#212124] border border-[#ff6b57]/50 rounded-xl px-3.5 py-2.5 text-xs"
                   >
-                    🍺 Bought it
-                  </button>
-                </div>
-              );
-            })}
-        </div>
-      )}
+                    <span className="text-[#cfcfd4] flex items-center gap-1.5">
+                      <Clock className="w-3.5 h-3.5 text-[#ff6b57] shrink-0" />
+                      <span>
+                        <b>{u?.emo ? `${u.emo} ` : ''}{u?.name || 'Someone'}</b> vetoed <b>{b.vname}</b> · must pitch a replacement
+                      </span>
+                    </span>
+                    <span className="cd">{clock(b.until - now)}</span>
+                  </div>
+                ) : (
+                  <div
+                    key={b.id}
+                    className="flex items-center justify-between bg-[#212124] border border-[#2b2b2f] rounded-xl px-3.5 py-2.5 text-xs"
+                  >
+                    <span className="text-[#ff6b57] flex items-center gap-1.5">
+                      <AlertTriangle className="w-3.5 h-3.5 text-[#ff6b57] shrink-0" />
+                      <span>
+                        <b>{u?.emo ? `${u.emo} ` : ''}{u?.name || 'Someone'}</b> vetoed <b>{b.vname}</b> and pitched nothing · owes the first round
+                      </span>
+                    </span>
+                    <button
+                      type="button"
+                      onClick={() => handleHideBounty(b.id)}
+                      className="cursor-pointer text-xs bg-[#17171a] hover:bg-[#2b2b2f] text-[#f4f4f5] px-2.5 py-1 rounded-lg border border-[#2b2b2f] flex items-center gap-1"
+                    >
+                      <Check className="w-3 h-3 text-[#c6ff3d]" />
+                      <span>Bought it</span>
+                    </button>
+                  </div>
+                );
+              })}
 
-      {/* Bounty Board */}
-      {boardEntries.length > 0 && (
-        <div className="text-xs text-[#8d8d94] px-1">
-          🏆 Bounty Board:{' '}
-          {boardEntries.map(([id, t], idx) => {
-            const u = who(id, squad);
-            return (
-              <span key={id}>
-                {idx > 0 && ' • '}
-                {u?.emo} {u?.name} {t.r ? `✅${t.r}` : ''} {t.m ? `💀${t.m}` : ''}
-              </span>
-            );
-          })}
-        </div>
-      )}
-
-      {/* PINTDR™ Mode Hero Launcher */}
-      {!isLocked && (
-        <div className="bg-gradient-to-r from-[#1f1716] via-[#241a18] to-[#1a171a] border-2 border-[#ff6b57]/40 rounded-2xl p-4 shadow-xl flex flex-col sm:flex-row items-center justify-between gap-3 relative overflow-hidden">
-          <div className="absolute top-0 right-0 translate-x-4 -translate-y-4 w-28 h-28 bg-[#ff6b57]/10 rounded-full blur-2xl pointer-events-none" />
-          
-          <div className="flex items-center gap-3.5 z-10">
-            <div className="w-12 h-12 rounded-2xl bg-gradient-to-tr from-[#ff6b57] to-[#ff8f7d] flex items-center justify-center text-[#1a0703] shadow-lg shadow-[#ff6b57]/30 shrink-0">
-              <Flame className="w-7 h-7 fill-current" />
-            </div>
-            <div>
-              <div className="flex items-center gap-2">
-                <span className="font-display font-black text-sm text-[#f4f4f5]">
-                  PINTDR™: The Anti-Banker Matchmaker
+            {boardEntries.length > 0 && (
+              <div className="text-xs text-[#8d8d94] flex flex-wrap items-center gap-x-2 gap-y-1">
+                <span className="font-semibold text-[#cfcfd4] flex items-center gap-1">
+                  <Trophy className="w-3.5 h-3.5 text-[#f59e0b]" />
+                  <span>Bounty Tally:</span>
                 </span>
-                <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-[#ff6b57] text-[#1a0703] uppercase tracking-wider animate-pulse">
-                  Swipe Mode
-                </span>
+                {boardEntries.map(([id, t], idx) => {
+                  const u = who(id, squad);
+                  return (
+                    <span key={id} className="flex items-center gap-1">
+                      {idx > 0 && <span className="text-[#3b3b40]">·</span>}
+                      <span className="text-[#f4f4f5] font-medium">{u?.emo ? `${u.emo} ` : ''}{u?.name}</span>
+                      {t.r > 0 && (
+                        <span className="text-[10px] text-[#c6ff3d] bg-[#c6ff3d]/10 px-1.5 py-0.2 rounded font-bold">
+                          +{t.r} saved
+                        </span>
+                      )}
+                      {t.m > 0 && (
+                        <span className="text-[10px] text-[#ff6b57] bg-[#ff6b57]/10 px-1.5 py-0.2 rounded font-bold">
+                          -{t.m} owed
+                        </span>
+                      )}
+                    </span>
+                  );
+                })}
               </div>
-              <p className="text-xs text-[#cfcfd4] mt-0.5">
-                Swipe right to pitch to the squad • Live AI wildcards + mapped venues served hot
-              </p>
-            </div>
-          </div>
-
-          <button
-            type="button"
-            onClick={() => setIsPintdrOpen(true)}
-            className="w-full sm:w-auto cursor-pointer bg-gradient-to-r from-[#ff6b57] to-[#ff8f7d] hover:brightness-110 active:scale-95 text-[#1a0703] font-display font-black text-xs py-3 px-5 rounded-xl transition flex items-center justify-center gap-2 shadow-lg shadow-[#ff6b57]/25 shrink-0 z-10"
-          >
-            <Flame className="w-4 h-4 fill-current" />
-            <span>Launch PINTDR Overlay 🔥</span>
-          </button>
-        </div>
-      )}
-
-      {/* Interactive Map Venue Explorer & Tinder Swipe Deck */}
-      {!isLocked && (
-        <VenueExplorer
-          event={event}
-          squad={squad}
-          currentUser={currentUser}
-          banList={banList}
-          defaultArea={event.where || (event.mid && event.mid.name) || (currentUser?.loc) || 'Rochester'}
-          defaultVibe={event.vibe || ''}
-          onAddVenue={handleExplorerAddVenue}
-          onAddBan={onAddBan}
-          onShowToast={notify}
-          onOpenPintdr={() => setIsPintdrOpen(true)}
-        />
-      )}
-
-      {/* Find Ideas Panel */}
-      {!isLocked && (
-        <div className="bg-[#17171a] border border-[#2b2b2f] rounded-2xl p-4">
-          <strong className="text-xs text-[#cfcfd4] block">💡 Find ideas</strong>
-          <div className="text-xs text-[#8d8d94]">
-            Where & vibe come from the event – tweak them here
-          </div>
-          <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 my-2">
-            <input
-              value={aiLoc}
-              onChange={(e) => setAiLoc(e.target.value)}
-              placeholder="Where (town/station)"
-              className="bg-[#212124] border border-transparent focus:border-[#ff6b57] text-[#f4f4f5] px-3 py-2 rounded-xl text-xs outline-none"
-            />
-            <input
-              value={aiVib}
-              onChange={(e) => setAiVib(e.target.value)}
-              placeholder="Vibe (e.g. curry)"
-              className="bg-[#212124] border border-transparent focus:border-[#ff6b57] text-[#f4f4f5] px-3 py-2 rounded-xl text-xs outline-none"
-            />
-            <input
-              value={aiWhen}
-              onChange={(e) => setAiWhen(e.target.value)}
-              placeholder="When (blank = agreed date)"
-              className="bg-[#212124] border border-transparent focus:border-[#ff6b57] text-[#f4f4f5] px-3 py-2 rounded-xl text-xs outline-none"
-            />
-            <input
-              inputMode="numeric"
-              value={aiBud}
-              onChange={(e) => setAiBud(e.target.value)}
-              placeholder="Budget £ / head"
-              className="bg-[#212124] border border-transparent focus:border-[#ff6b57] text-[#f4f4f5] px-3 py-2 rounded-xl text-xs outline-none"
-            />
-          </div>
-
-          <button
-            type="button"
-            onClick={handleRollFree}
-            className="w-full cursor-pointer bg-[#ff6b57] text-[#1a0703] font-semibold text-xs px-3.5 py-2.5 rounded-xl hover:brightness-105 active:scale-95 transition"
-          >
-            🎲 Roll free ideas (real places from the map)
-          </button>
-          {freeMsg && <div className="text-xs text-[#cfcfd4] mt-1.5">{freeMsg}</div>}
-
-          <div className="border-t border-[#2b2b2f] my-3"></div>
-
-          {/* Gerg AI Section */}
-          <strong className="text-xs text-[#cfcfd4] block">🤖 Gerg AI</strong>
-          <div className="text-xs text-[#8d8d94]">
-            Smarter ideas, live events and combos (needs Gemini key in ⚙️ Setup)
-          </div>
-
-          <div className="grid grid-cols-2 gap-2 my-2">
-            {Object.entries(MODES).map(([k, m]) => (
-              <button
-                key={k}
-                type="button"
-                onClick={() => setAiMode(k)}
-                className={`cursor-pointer text-xs font-semibold px-3 py-2 rounded-xl border transition ${
-                  aiMode === k
-                    ? 'border-[#ff6b57] bg-[#212124] text-[#f4f4f5]'
-                    : 'border-[#2b2b2f] bg-[#212124] text-[#8d8d94] hover:text-[#f4f4f5]'
-                }`}
-              >
-                {m.lbl}
-              </button>
-            ))}
-          </div>
-
-          <div className="flex items-center justify-between gap-2 mb-2">
-            <span className="text-xs text-[#cfcfd4]">{MODES[aiMode]?.sub}</span>
-            <button
-              type="button"
-              onClick={() => setFastMode(!fastMode)}
-              className={`cursor-pointer text-[11px] font-bold px-2.5 py-1 rounded-full border transition flex items-center gap-1 shrink-0 ${
-                fastMode
-                  ? 'bg-[rgba(198,255,61,0.12)] text-[#c6ff3d] border-[#c6ff3d]/40'
-                  : 'bg-[#212124] text-[#8d8d94] border-[#2b2b2f]'
-              }`}
-            >
-              <span>{fastMode ? '⚡ Fast Mode: ON' : '🔍 Deep Mode'}</span>
-            </button>
-          </div>
-
-          <button
-            type="button"
-            onClick={handleAskGergAI}
-            disabled={isAiStreaming}
-            className={`w-full cursor-pointer border font-semibold text-xs px-3.5 py-2.5 rounded-xl transition flex items-center justify-center gap-2 ${
-              isAiStreaming
-                ? 'border-[#ff6b57] bg-[#2a1a17] text-[#ff6b57] animate-pulse cursor-wait'
-                : 'border-[#2b2b2f] bg-[#212124] text-[#f4f4f5] hover:border-[#3b3b40]'
-            }`}
-          >
-            {isAiStreaming ? (
-              <>
-                <span className="w-2.5 h-2.5 rounded-full bg-[#ff6b57] animate-ping"></span>
-                <span>⚡ Streaming ideas in real-time...</span>
-              </>
-            ) : (
-              <span>✨ Ask Gerg AI: {MODES[aiMode]?.lbl.replace(/^\S+\s/, '')}</span>
             )}
-          </button>
+          </div>
+        )}
 
-          {/* Real-time Streaming Rack */}
-          {streamingIdeas.length > 0 && (
-            <div className="mt-3 p-3 bg-[#1e1a17] border border-[#ff6b57]/40 rounded-xl space-y-2 animate-fadeIn">
-              <div className="flex items-center justify-between text-xs font-bold text-[#ff6b57]">
-                <span className="flex items-center gap-1.5">
-                  <span className="w-2 h-2 rounded-full bg-[#ff6b57] animate-ping" />
-                  ⚡ Streaming ideas in real-time ({streamingIdeas.length} of 3)
-                </span>
-                <span className="text-[10px] text-[#8d8d94]">zero thinking delay</span>
-              </div>
-              <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
-                {streamingIdeas.map((idea, idx) => (
-                  <div key={idx} className="bg-[#141416] border border-[#ff6b57]/20 rounded-lg p-2.5 text-xs shadow-md">
-                    <div className="font-bold text-[#f4f4f5] truncate">
-                      {idea.kind === 'combo' ? '🔀 ' : idea.live ? '🎟️ ' : '🤖 '}
-                      {idea.name}
+      {/* Voted Venues & Shortlist Card */}
+      <div className="bg-[#17171a] border border-[#2b2b2f] rounded-2xl p-5 space-y-4">
+        {/* Unpitched Squad Host Offers */}
+        {!isLocked && onPitchHouse && squad.some((u) => u.offersHouse) && (
+          (() => {
+            const unpitchedHosts = squad.filter(
+              (u) =>
+                u.offersHouse &&
+                !event.venues.some((v) => normName(v.name).includes(normName(u.name)))
+            );
+            if (!unpitchedHosts.length) return null;
+            return (
+              <div className="space-y-2 pb-2 border-b border-[#2b2b2f]/70">
+                {unpitchedHosts.map((h) => (
+                  <div
+                    key={h.id}
+                    className="bg-[rgba(198,255,61,0.06)] border border-[#c6ff3d]/30 rounded-xl p-3.5 flex flex-col sm:flex-row sm:items-center justify-between gap-3 text-xs"
+                  >
+                    <div className="space-y-0.5 min-w-0">
+                      <div className="font-bold text-[#c6ff3d] flex items-center gap-1.5 flex-wrap">
+                        <Home className="w-4 h-4 text-[#c6ff3d] shrink-0" />
+                        <span>{h.emo ? `${h.emo} ` : ''}{h.name} offered to host at their place ({h.loc})</span>
+                      </div>
+                      <p className="text-[#cfcfd4] text-[11px] truncate sm:whitespace-normal">
+                        {h.houseNote || 'House outing / pre-drinks – BYOB, games & tunes with zero pub markup.'}
+                      </p>
                     </div>
-                    <div className="text-[11px] text-[#8d8d94] truncate">📍 {idea.loc}</div>
-                    <p className="text-[11px] text-[#cfcfd4] mt-1 line-clamp-2">{idea.desc}</p>
+                    <button
+                      type="button"
+                      onClick={() => onPitchHouse(h)}
+                      className="cursor-pointer bg-[#c6ff3d] text-[#141a03] font-bold text-xs px-3.5 py-1.5 rounded-lg hover:brightness-105 active:scale-95 transition whitespace-nowrap shrink-0 self-start sm:self-auto flex items-center gap-1"
+                    >
+                      <Plus className="w-3.5 h-3.5" />
+                      <span>Pitch {h.name}'s Place</span>
+                    </button>
                   </div>
                 ))}
               </div>
+            );
+          })()
+        )}
+
+        <div className="flex flex-wrap items-center justify-between gap-3">
+          <div>
+            <h3 className="text-sm font-bold text-[#f4f4f5] font-display flex items-center gap-2">
+              <CheckCircle2 className="w-4 h-4 text-[#ff6b57]" />
+              <span>Squad Shortlist & Votes ({event.venues.length})</span>
+            </h3>
+            <p className="text-xs text-[#8d8d94] mt-0.5">
+              Vote Keen or Veto on pitched spots, or spin Roulette to pick a winner
+            </p>
+          </div>
+
+          {!isLocked && event.venues.length > 0 && (
+            <div className="flex items-center gap-2">
+              {(spinMsg || preSpinWinId !== undefined) && (
+                <button
+                  type="button"
+                  onClick={handleUndoRoulette}
+                  className="cursor-pointer border border-[#2b2b2f] bg-[#212124] text-[#cfcfd4] hover:text-[#f4f4f5] hover:border-[#ff6b57]/50 font-semibold text-xs px-3 py-2 rounded-xl transition whitespace-nowrap flex items-center gap-1.5"
+                >
+                  <RotateCcw className="w-3.5 h-3.5" />
+                  <span>Undo</span>
+                </button>
+              )}
+              <button
+                type="button"
+                onClick={handleSpinRoulette}
+                className="cursor-pointer bg-[#ff6b57] text-[#1a0703] font-semibold text-xs px-3.5 py-2 rounded-xl hover:brightness-105 active:scale-95 transition whitespace-nowrap flex items-center gap-1.5"
+              >
+                <Dices className="w-4 h-4" />
+                <span>Spin Roulette</span>
+              </button>
+            </div>
+          )}
+        </div>
+
+        {spinMsg && (
+          <div className="flex flex-wrap items-center justify-between gap-2 text-xs font-bold text-[#ff6b57] bg-[#212124] border border-[#ff6b57]/40 px-3.5 py-2.5 rounded-xl">
+            <span className="flex items-center gap-1.5">
+              <Sparkles className="w-4 h-4 text-[#ff6b57]" />
+              <span>{spinMsg}</span>
+            </span>
+            {!isLocked && !spinningId && (
+              <div className="flex items-center gap-2">
+                <button
+                  type="button"
+                  onClick={handleUndoRoulette}
+                  className="cursor-pointer bg-[#17171a] border border-[#2b2b2f] hover:border-[#ff6b57] text-[#f4f4f5] font-semibold text-[11px] px-2.5 py-1 rounded-lg transition whitespace-nowrap flex items-center gap-1"
+                >
+                  <RotateCcw className="w-3 h-3" />
+                  <span>Undo Roulette</span>
+                </button>
+                <button
+                  type="button"
+                  title="Remove message"
+                  onClick={() => setSpinMsg('')}
+                  className="cursor-pointer text-[#8d8d94] hover:text-[#f4f4f5] p-1 rounded transition"
+                >
+                  <X className="w-3.5 h-3.5" />
+                </button>
+              </div>
+            )}
+          </div>
+        )}
+
+        {displayedVenues.length === 0 ? (
+          <div className="bg-[#212124] border border-[#2b2b2f] rounded-2xl p-8 text-center text-sm text-[#8d8d94]">
+            No ideas on the shortlist yet. Roll free map spots, ask Gerg AI, or launch Pintdr mode below.
+          </div>
+        ) : (
+          <div className="space-y-4">
+            {displayedVenues.map((v) => {
+              const vt = v.votes || {};
+              const keenList = squad.filter((u) => vt[u.id] === 'k').map((u) => `${u.emo || '👤'} ${u.name}`);
+              const vetoList = squad.filter((u) => vt[u.id] === 'v').map((u) => `${u.emo || '👤'} ${u.name}`);
+              const isWinner = event.win === v.id;
+              const isSpinning = spinningId === v.id;
+
+              return (
+                <div
+                  key={v.id}
+                  className={`border-2 rounded-2xl p-5 sm:p-6 transition-all space-y-4 ${
+                    isWinner
+                      ? 'border-[#f59e0b] bg-[#22242b] shadow-[0_0_24px_rgba(245,158,11,0.22)] ring-1 ring-[#f59e0b]/50'
+                      : 'border-[#2b2b2f] bg-[#212124] hover:border-[#3b3b40]'
+                  } ${isSpinning ? 'roulette-spin' : ''}`}
+                >
+                  <div className="flex flex-col sm:flex-row sm:items-start justify-between gap-3">
+                    <div className="min-w-0">
+                      <div className="font-extrabold text-base sm:text-xl text-[#ffffff] flex items-center gap-2 flex-wrap font-display">
+                        {v.kind === 'combo' && <Route className="w-4 h-4 text-[#c6ff3d] shrink-0" />}
+                        {v.kind === 'event' && <Ticket className="w-4 h-4 text-[#ff6b57] shrink-0" />}
+                        <span>{v.name}</span>
+                        {isWinner && (
+                          <span className="text-xs font-bold text-[#f59e0b] bg-[#f59e0b]/15 border border-[#f59e0b]/30 px-2.5 py-0.5 rounded-md flex items-center gap-1">
+                            <Crown className="w-3.5 h-3.5 fill-current" />
+                            <span>Outing Winner Picked</span>
+                          </span>
+                        )}
+                        <span className="text-xs sm:text-sm font-semibold text-[#a1a1aa] flex items-center gap-1">
+                          <MapPin className="w-3.5 h-3.5 text-[#ff6b57]" />
+                          <span>{v.loc}</span>
+                        </span>
+                      </div>
+                      
+                      {/* Meta chips */}
+                      <div className="flex flex-wrap items-center gap-2 mt-1.5 text-xs text-[#cfcfd4]">
+                        {v.when && (
+                          <span className="inline-flex items-center gap-1 bg-[#17171a] px-2 py-0.5 rounded border border-[#2b2b2f]">
+                            <Clock className="w-3 h-3 text-[#38bdf8]" />
+                            <span>{v.when}</span>
+                          </span>
+                        )}
+                        {v.cost && (
+                          <span className="inline-flex items-center gap-1 bg-[#17171a] px-2 py-0.5 rounded border border-[#2b2b2f]">
+                            <Coins className="w-3 h-3 text-[#f59e0b]" />
+                            <span>{v.cost} pp</span>
+                          </span>
+                        )}
+                        {v.live && (
+                          <span className="inline-flex items-center gap-1 bg-[#17171a] px-2 py-0.5 rounded border border-[#2b2b2f] text-[#c6ff3d]">
+                            <CheckCircle2 className="w-3 h-3" />
+                            <span>Live verified</span>
+                          </span>
+                        )}
+                        {v.src === 'osm' && (
+                          <span className="inline-flex items-center gap-1 bg-[#17171a] px-2 py-0.5 rounded border border-[#2b2b2f]">
+                            <MapIcon className="w-3 h-3 text-[#ff6b57]" />
+                            <span>Map spot</span>
+                          </span>
+                        )}
+                      </div>
+                    </div>
+
+                    <div className="flex items-center gap-1.5 shrink-0 self-start">
+                      {safeUrl(v.url) && (
+                        <a
+                          href={safeUrl(v.url)}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          title="Venue Info"
+                          className="w-8 h-8 rounded-xl border border-[#2b2b2f] bg-[#17171a] text-[#8d8d94] hover:text-[#f4f4f5] hover:border-[#3b3b40] flex items-center justify-center transition"
+                        >
+                          <ExternalLink className="w-3.5 h-3.5" />
+                        </a>
+                      )}
+                      <a
+                        href={mapsUrl((v.kind === 'combo' ? '' : v.name + ', ') + v.loc)}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        title="Open in Google Maps"
+                        className="w-8 h-8 rounded-xl border border-[#2b2b2f] bg-[#17171a] text-[#8d8d94] hover:text-[#ff6b57] hover:border-[#ff6b57]/40 flex items-center justify-center transition"
+                      >
+                        <MapIcon className="w-3.5 h-3.5" />
+                      </a>
+                      {!isLocked && (
+                        <>
+                          <button
+                            type="button"
+                            onClick={() => handleLockIn(v.id)}
+                            title={isWinner ? 'Winner picked' : 'Pick as winner'}
+                            className={`w-8 h-8 rounded-xl transition flex items-center justify-center cursor-pointer ${
+                              isWinner
+                                ? 'bg-[#f59e0b] text-[#141a03] shadow-[0_0_12px_rgba(245,158,11,0.3)]'
+                                : 'border border-[#2b2b2f] bg-[#17171a] text-[#8d8d94] hover:text-[#f59e0b] hover:border-[#f59e0b]/40'
+                            }`}
+                          >
+                            <Star className={`w-3.5 h-3.5 ${isWinner ? 'fill-current' : ''}`} />
+                          </button>
+                          <button
+                            type="button"
+                            title="Remove spot"
+                            onClick={() => handleDeleteVenue(v.id)}
+                            className="w-8 h-8 rounded-xl border border-transparent hover:border-[#2b2b2f] text-[#8d8d94] hover:text-[#ff6b57] flex items-center justify-center transition cursor-pointer"
+                          >
+                            <X className="w-4 h-4" />
+                          </button>
+                        </>
+                      )}
+                    </div>
+                  </div>
+
+                  {/* Multi-Stop Timeline or Ordered Steps */}
+                  {v.stops && v.stops.length > 0 ? (
+                    <div className="bg-[#17171a] p-4 sm:p-5 rounded-xl border border-[#2b2b2f] space-y-3.5">
+                      <div className="flex flex-wrap items-center justify-between gap-2 border-b border-[#2b2b2f]/80 pb-3">
+                        <div className="text-xs sm:text-sm font-bold text-[#c6ff3d] flex items-center gap-1.5">
+                          <Route className="w-4 h-4 text-[#c6ff3d]" />
+                          <span>Multi-Stop Timeline ({v.stops.length} Venues)</span>
+                        </div>
+                        <a
+                          href={`https://www.google.com/maps/dir/${v.stops
+                            .map((s) => encodeURIComponent(s.name + ', ' + (s.loc || v.loc)))
+                            .join('/')}`}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="text-xs font-semibold text-[#ff6b57] hover:underline flex items-center gap-1 transition"
+                        >
+                          <ExternalLink className="w-3.5 h-3.5" />
+                          <span>Full Walking Route (Google Maps)</span>
+                        </a>
+                      </div>
+
+                      <div className="relative pl-6 space-y-3.5 before:absolute before:left-2.5 before:top-2 before:bottom-2 before:w-0.5 before:bg-[#2b2b2f]">
+                        {v.stops.map((stop, sIdx) => {
+                          const stopMapUrl = `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(
+                            stop.name + ', ' + (stop.loc || v.loc)
+                          )}`;
+                          return (
+                            <div key={sIdx} className="relative group">
+                              <div className="absolute -left-6 top-1 w-5 h-5 rounded-full bg-[#ff6b57] text-[#1a0703] text-[10px] font-black flex items-center justify-center ring-4 ring-[#17171a]">
+                                {sIdx + 1}
+                              </div>
+                              <div className="bg-[#212124] border border-[#2b2b2f] rounded-xl p-3 space-y-1.5">
+                                <div className="flex flex-wrap items-center justify-between gap-2">
+                                  <div className="font-bold text-xs sm:text-sm text-[#ffffff] flex items-center gap-2">
+                                    <span>{stop.name}</span>
+                                    {stop.url && (
+                                      <a
+                                        href={safeUrl(stop.url)}
+                                        target="_blank"
+                                        rel="noopener noreferrer"
+                                        className="text-[#8d8d94] hover:text-[#f4f4f5] text-xs"
+                                        title="Venue Website"
+                                      >
+                                        <ExternalLink className="w-3 h-3 inline" />
+                                      </a>
+                                    )}
+                                  </div>
+                                  <div className="flex items-center gap-1.5">
+                                    {stop.time && (
+                                      <span className="text-[10px] font-bold text-[#c6ff3d] bg-[#c6ff3d]/10 px-2 py-0.5 rounded border border-[#c6ff3d]/20 flex items-center gap-1">
+                                        <Clock className="w-2.5 h-2.5" />
+                                        <span>{stop.time}</span>
+                                      </span>
+                                    )}
+                                    {stop.category && (
+                                      <span className="text-[10px] text-[#cfcfd4] bg-[#17171a] px-2 py-0.5 rounded border border-[#2b2b2f]">
+                                        {stop.category}
+                                      </span>
+                                    )}
+                                  </div>
+                                </div>
+                                <div className="flex items-center justify-between gap-2 text-xs text-[#a1a1aa]">
+                                  <span className="truncate flex items-center gap-1">
+                                    <MapPin className="w-3 h-3 text-[#ff6b57]" />
+                                    <span>{stop.loc || v.loc}</span>
+                                  </span>
+                                  <a
+                                    href={stopMapUrl}
+                                    target="_blank"
+                                    rel="noopener noreferrer"
+                                    className="text-xs text-[#cfcfd4] hover:text-[#ff6b57] hover:underline whitespace-nowrap font-medium flex items-center gap-0.5"
+                                  >
+                                    <span>Map Pin</span>
+                                    <ExternalLink className="w-3 h-3" />
+                                  </a>
+                                </div>
+                              </div>
+                            </div>
+                          );
+                        })}
+                      </div>
+                    </div>
+                  ) : v.steps && v.steps.length > 0 ? (
+                    <div className="relative pl-5 space-y-2 border-l-2 border-[#ff6b57]/40 ml-2 my-2 py-0.5">
+                      {v.steps.map((st, i) => (
+                        <div key={i} className="relative text-xs sm:text-sm text-[#f4f4f5] flex items-start gap-2">
+                          <span className="absolute -left-[27px] top-0.5 w-4 h-4 rounded-full bg-[#17171a] border border-[#ff6b57] text-[#ff6b57] text-[10px] font-black flex items-center justify-center shadow-sm">
+                            {i + 1}
+                          </span>
+                          <span className="leading-snug">{st}</span>
+                        </div>
+                      ))}
+                    </div>
+                  ) : null}
+
+                  {v.desc && <div className="text-xs sm:text-sm text-[#cfcfd4] leading-relaxed">{v.desc}</div>}
+
+                  <div className="flex flex-wrap items-center justify-between gap-3 pt-3 border-t border-[#2b2b2f]/80">
+                    <span
+                      className={`text-xs sm:text-sm font-bold flex items-center gap-1.5 ${
+                        vetoList.length ? 'text-[#ff6b57]' : 'text-[#c6ff3d]'
+                      }`}
+                    >
+                      {vetoList.length ? (
+                        <>
+                          <AlertTriangle className="w-4 h-4 text-[#ff6b57]" />
+                          <span>Vetoed by {vetoList.join(', ')}</span>
+                        </>
+                      ) : (
+                        <>
+                          <ThumbsUp className="w-4 h-4 text-[#c6ff3d]" />
+                          <span>Keen ({keenList.length}): {keenList.join(', ') || 'No votes yet'}</span>
+                        </>
+                      )}
+                    </span>
+
+                    {!isLocked && me && (
+                      <div className="flex items-center gap-2.5">
+                        <button
+                          type="button"
+                          onClick={() => handleVote(v.id, 'k')}
+                          className={`cursor-pointer font-extrabold text-xs sm:text-sm h-11 px-5 rounded-xl transition-all whitespace-nowrap active:scale-95 flex items-center gap-1.5 ${
+                            vt[me.id] === 'k'
+                              ? 'bg-[#c6ff3d] text-[#141a03] shadow-[0_0_16px_rgba(198,255,61,0.35)]'
+                              : 'border border-[#2b2b2f] bg-[#17171a] text-[#cfcfd4] hover:text-[#ffffff] hover:border-[#3b3b40]'
+                          }`}
+                        >
+                          <ThumbsUp className="w-4 h-4" />
+                          <span>Keen</span>
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => handleVote(v.id, 'v')}
+                          className={`cursor-pointer font-extrabold text-xs sm:text-sm h-11 px-5 rounded-xl transition-all whitespace-nowrap active:scale-95 flex items-center gap-1.5 ${
+                            vt[me.id] === 'v'
+                              ? 'bg-[#ff6b57] text-[#1a0703] shadow-[0_0_16px_rgba(255,107,87,0.35)]'
+                              : 'border border-[#2b2b2f] bg-[#17171a] text-[#cfcfd4] hover:text-[#ffffff] hover:border-[#3b3b40]'
+                          }`}
+                        >
+                          <ThumbsDown className="w-4 h-4" />
+                          <span>Veto</span>
+                        </button>
+                      </div>
+                    )}
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        )}
+      </div>
+    </div>
+  )}
+
+  {/* Sub-Tab 2: Discover / Gerg AI View */}
+  {subTab === 'discover' && !isLocked && (
+    <div className="space-y-4">
+      {/* One Clean Pintdr Swipe Deck Hero Button */}
+      <button
+        type="button"
+        onClick={() => setIsPintdrOpen(true)}
+        className="w-full cursor-pointer bg-gradient-to-r from-[#ff6b57] to-[#ff8f7d] hover:brightness-110 active:scale-[0.99] text-[#1a0703] font-display font-black text-sm sm:text-base py-3.5 px-6 rounded-2xl transition flex items-center justify-center gap-2.5 shadow-[0_0_24px_rgba(255,107,87,0.3)]"
+      >
+        <Flame className="w-5 h-5 fill-current" />
+        <span>Launch Pintdr Swipe Deck</span>
+      </button>
+
+      {/* Discovery Tool Sub-Pills */}
+      <div className="grid grid-cols-3 gap-2">
+        <button
+          type="button"
+          onClick={() => setDiscoverTool('ai')}
+          className={`min-h-[42px] cursor-pointer text-xs sm:text-sm px-3 py-2 rounded-xl transition-all flex items-center justify-center gap-1.5 whitespace-nowrap shadow-sm font-bold ${
+            discoverTool === 'ai'
+              ? 'bg-[#f4f4f5] text-[#17171a]'
+              : 'bg-[#212124] text-[#8d8d94] hover:text-[#f4f4f5] border border-[#2b2b2f]'
+          }`}
+        >
+          <Sparkles className={`w-4 h-4 ${discoverTool === 'ai' ? 'text-[#17171a]' : 'text-[#c6ff3d]'}`} />
+          <span>Ask Gerg AI</span>
+        </button>
+        <button
+          type="button"
+          onClick={() => setDiscoverTool('map')}
+          className={`min-h-[42px] cursor-pointer text-xs sm:text-sm px-3 py-2 rounded-xl transition-all flex items-center justify-center gap-1.5 whitespace-nowrap shadow-sm font-bold ${
+            discoverTool === 'map'
+              ? 'bg-[#f4f4f5] text-[#17171a]'
+              : 'bg-[#212124] text-[#8d8d94] hover:text-[#f4f4f5] border border-[#2b2b2f]'
+          }`}
+        >
+          <MapIcon className={`w-4 h-4 ${discoverTool === 'map' ? 'text-[#17171a]' : 'text-[#ff6b57]'}`} />
+          <span>Interactive Map</span>
+        </button>
+        <button
+          type="button"
+          onClick={() => {
+            setDiscoverTool('manual');
+            if (!pitchLoc) setPitchLoc(event.where || 'Local');
+          }}
+          className={`min-h-[42px] cursor-pointer text-xs sm:text-sm px-3 py-2 rounded-xl transition-all flex items-center justify-center gap-1.5 whitespace-nowrap shadow-sm font-bold ${
+            discoverTool === 'manual'
+              ? 'bg-[#f4f4f5] text-[#17171a]'
+              : 'bg-[#212124] text-[#8d8d94] hover:text-[#f4f4f5] border border-[#2b2b2f]'
+          }`}
+        >
+          <Plus className={`w-4 h-4 ${discoverTool === 'manual' ? 'text-[#17171a] stroke-[3]' : 'text-[#f4f4f5]'}`} />
+          <span>Pitch Custom</span>
+        </button>
+      </div>
+
+          {/* Child Panel: Mode 1 - Interactive Map & Curated Spots */}
+          {activeIdeaMode === 'map' && (
+            <div className="space-y-4 pt-1">
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 bg-[#212124] border border-[#2b2b2f] rounded-xl p-3.5">
+                <div className="text-xs text-[#cfcfd4]">
+                  Browse real venues in <b>{aiLoc || event.where || 'your area'}</b> with Google Map pins, Tinder swipe cards, or grid.
+                </div>
+                <div className="flex items-center gap-2 shrink-0">
+                  <button
+                    type="button"
+                    onClick={handleRollFree}
+                    className="cursor-pointer bg-[#17171a] border border-[#2b2b2f] hover:border-[#ff6b57] text-[#f4f4f5] font-semibold text-xs px-3.5 py-2 rounded-xl active:scale-95 transition whitespace-nowrap flex items-center gap-1.5"
+                  >
+                    <Dices className="w-3.5 h-3.5 text-[#ff6b57]" />
+                    <span>Roll 3 Instant Spots</span>
+                  </button>
+                </div>
+              </div>
+              {freeMsg && (
+                <div className="text-xs text-[#cfcfd4] bg-[#212124] border border-[#2b2b2f] px-3.5 py-2.5 rounded-xl">
+                  {freeMsg}
+                </div>
+              )}
+
+              <VenueExplorer
+                event={event}
+                squad={squad}
+                currentUser={currentUser}
+                banList={banList}
+                defaultArea={
+                  aiLoc.trim() || event.where || (event.mid && event.mid.name) || currentUser?.loc || 'Rochester'
+                }
+                defaultVibe={aiVib.trim() || event.vibe || ''}
+                onAddVenue={handleExplorerAddVenue}
+                onAddBan={onAddBan}
+                onShowToast={notify}
+                onOpenPintdr={() => setIsPintdrOpen(true)}
+              />
             </div>
           )}
 
-          {aiMsg && <div className="text-xs text-[#cfcfd4] mt-2 whitespace-pre-line">{aiMsg}</div>}
-          {aiSources.length > 0 && (
-            <div className="text-xs text-[#8d8d94] mt-1.5">
-              🔎 Checked:{' '}
-              {aiSources.map((s, idx) => (
-                <span key={idx}>
-                  {idx > 0 && ', '}
-                  <a
-                    href={s.uri}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="text-[#cfcfd4] hover:underline"
+          {/* Child Panel: Mode 2 - Pintdr Mode */}
+          {activeIdeaMode === 'pintdr' && (
+            <div className="bg-[#212124] border border-[#ff6b57]/40 rounded-xl p-6 sm:p-8 text-center space-y-4">
+              <div className="inline-flex items-center justify-center w-14 h-14 rounded-2xl bg-gradient-to-br from-[#ff6b57] to-[#ff8f7d] shadow-lg shadow-[#ff6b57]/20 text-[#1a0703]">
+                <Flame className="w-8 h-8 fill-current" />
+              </div>
+              <div className="max-w-md mx-auto space-y-1.5">
+                <h4 className="text-lg font-extrabold text-[#ffffff] font-display">
+                  Pintdr Squad Matcher
+                </h4>
+                <p className="text-xs sm:text-sm text-[#cfcfd4] leading-relaxed">
+                  Rapid-fire Tinder swipe deck tuned for <b>{aiLoc || event.where || 'your area'}</b> {aiVib ? `(${aiVib})` : ''}.
+                  Swipe right on spots you fancy, left to skip, or ban duds permanently.
+                </p>
+              </div>
+
+              <div className="flex flex-wrap items-center justify-center gap-3 pt-2">
+                <button
+                  type="button"
+                  onClick={() => setIsPintdrOpen(true)}
+                  className="cursor-pointer bg-gradient-to-r from-[#ff6b57] to-[#ff8f7d] hover:brightness-110 active:scale-95 text-[#1a0703] font-display font-black text-sm px-6 py-3 rounded-xl transition flex items-center gap-2 shadow-md shadow-[#ff6b57]/25"
+                >
+                  <Flame className="w-4 h-4 fill-current" />
+                  <span>Launch Fullscreen Pintdr</span>
+                </button>
+                <button
+                  type="button"
+                  onClick={handleRollFree}
+                  className="cursor-pointer bg-[#17171a] border border-[#2b2b2f] hover:border-[#3b3b40] text-[#f4f4f5] font-semibold text-xs px-4 py-3 rounded-xl active:scale-95 transition flex items-center gap-1.5"
+                >
+                  <Dices className="w-3.5 h-3.5 text-[#ff6b57]" />
+                  <span>Roll 3 Spots to Shortlist</span>
+                </button>
+              </div>
+              {freeMsg && <div className="text-xs text-[#cfcfd4] mt-2">{freeMsg}</div>}
+            </div>
+          )}
+
+          {/* Child Panel: Mode 3 - Gerg AI */}
+          {activeIdeaMode === 'ai' && (
+            <div className="space-y-4 pt-1">
+              <div className="flex flex-wrap items-center justify-between gap-2">
+                <div>
+                  <div className="text-xs font-bold text-[#f4f4f5] flex items-center gap-1.5">
+                    <Sparkles className="w-4 h-4 text-[#ff6b57]" />
+                    <span>Gerg AI Idea Engine</span>
+                  </div>
+                  <div className="text-[11px] text-[#8d8d94]">
+                    {MODES[aiMode]?.sub || 'Tailored ideas, live events & multi-stop combos'}
+                  </div>
+                </div>
+
+                <button
+                  type="button"
+                  onClick={() => setFastMode(!fastMode)}
+                  className={`cursor-pointer text-[11px] font-bold px-3 py-1 rounded-lg border transition flex items-center gap-1.5 shrink-0 ${
+                    fastMode
+                      ? 'bg-[rgba(198,255,61,0.12)] text-[#c6ff3d] border-[#c6ff3d]/40'
+                      : 'bg-[#212124] text-[#8d8d94] border-[#2b2b2f]'
+                  }`}
+                >
+                  {fastMode ? (
+                    <>
+                      <Zap className="w-3 h-3 text-[#c6ff3d]" />
+                      <span>Fast Mode: ON</span>
+                    </>
+                  ) : (
+                    <>
+                      <Search className="w-3 h-3" />
+                      <span>Deep Web Search</span>
+                    </>
+                  )}
+                </button>
+              </div>
+
+              <div className="grid grid-cols-2 sm:grid-cols-4 gap-2.5">
+                {Object.entries(MODES).map(([k, m]) => {
+                  const ModeIcon = k === 'gems' ? Gem : k === 'events' ? Ticket : k === 'combo' ? Route : Dices;
+                  return (
+                    <button
+                      key={k}
+                      type="button"
+                      onClick={() => setAiMode(k)}
+                      className={`cursor-pointer text-xs font-semibold px-3 py-2 rounded-xl border transition whitespace-nowrap flex items-center justify-center gap-1.5 ${
+                        aiMode === k
+                          ? 'border-[#ff6b57] bg-[#212124] text-[#f4f4f5]'
+                          : 'border-[#2b2b2f] bg-[#212124] text-[#8d8d94] hover:text-[#f4f4f5]'
+                      }`}
+                    >
+                      <ModeIcon className="w-3.5 h-3.5" />
+                      <span>{m.lbl}</span>
+                    </button>
+                  );
+                })}
+              </div>
+
+              <button
+                type="button"
+                onClick={handleAskGergAI}
+                disabled={isAiStreaming}
+                className={`w-full cursor-pointer font-bold text-xs sm:text-sm px-4 py-3 rounded-xl transition flex items-center justify-center gap-2 ${
+                  isAiStreaming
+                    ? 'border border-[#ff6b57] bg-[#2a1a17] text-[#ff6b57] animate-pulse cursor-wait'
+                    : 'bg-[#ff6b57] text-[#1a0703] hover:brightness-105 active:scale-[0.99]'
+                }`}
+              >
+                {isAiStreaming ? (
+                  <>
+                    <span className="w-2.5 h-2.5 rounded-full bg-[#ff6b57] animate-ping" />
+                    <span>Generating ideas for {aiLoc || 'your area'}...</span>
+                  </>
+                ) : (
+                  <>
+                    <Sparkles className="w-4 h-4 fill-current" />
+                    <span>Ask Gerg AI ({MODES[aiMode]?.lbl})</span>
+                  </>
+                )}
+              </button>
+
+              {/* Real-time Streaming Rack */}
+              {streamingIdeas.length > 0 && (
+                <div className="p-3.5 bg-[#212124] border border-[#ff6b57]/40 rounded-xl space-y-2.5">
+                  <div className="flex items-center justify-between text-xs font-bold text-[#ff6b57]">
+                    <span className="flex items-center gap-1.5">
+                      <Zap className="w-3.5 h-3.5 text-[#ff6b57]" />
+                      <span>Incoming ideas ({streamingIdeas.length} of 3)</span>
+                    </span>
+                  </div>
+                  <div className="grid grid-cols-1 sm:grid-cols-3 gap-2.5">
+                    {streamingIdeas.map((idea, idx) => (
+                      <div
+                        key={idx}
+                        className="bg-[#17171a] border border-[#2b2b2f] rounded-lg p-3 text-xs"
+                      >
+                        <div className="font-bold text-[#f4f4f5] truncate flex items-center gap-1.5">
+                          {idea.kind === 'combo' ? (
+                            <Route className="w-3.5 h-3.5 text-[#c6ff3d] shrink-0" />
+                          ) : idea.live ? (
+                            <Ticket className="w-3.5 h-3.5 text-[#ff6b57] shrink-0" />
+                          ) : (
+                            <Sparkles className="w-3.5 h-3.5 text-[#38bdf8] shrink-0" />
+                          )}
+                          <span className="truncate">{idea.name}</span>
+                        </div>
+                        <div className="text-[11px] text-[#8d8d94] truncate mt-0.5 flex items-center gap-1">
+                          <MapPin className="w-3 h-3 text-[#ff6b57]" />
+                          <span>{idea.loc}</span>
+                        </div>
+                        <p className="text-[11px] text-[#cfcfd4] mt-1 line-clamp-2">{idea.desc}</p>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              {aiMsg && (
+                <div className="text-xs text-[#cfcfd4] whitespace-pre-line bg-[#212124] border border-[#2b2b2f] p-3 rounded-xl">
+                  {aiMsg}
+                </div>
+              )}
+              {aiSources.length > 0 && (
+                <div className="text-xs text-[#8d8d94] flex flex-wrap items-center gap-1">
+                  <Search className="w-3.5 h-3.5 mr-0.5 inline" />
+                  <span>Checked:</span>
+                  {aiSources.map((s, idx) => (
+                    <span key={idx}>
+                      {idx > 0 && ' · '}
+                      <a
+                        href={s.uri}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="text-[#cfcfd4] hover:underline"
+                      >
+                        {s.title}
+                      </a>
+                    </span>
+                  ))}
+                </div>
+              )}
+            </div>
+          )}
+
+          {/* Child Panel: Mode 4 - Manual Pitch */}
+          {activeIdeaMode === 'manual' && (
+            <div className="bg-[#212124] border border-[#2b2b2f] rounded-xl p-4 sm:p-5 space-y-4">
+              <div className="flex flex-wrap items-center justify-between gap-2">
+                <div>
+                  <div className="text-sm font-bold text-[#f4f4f5] font-display flex items-center gap-1.5">
+                    <Plus className="w-4 h-4 text-[#c6ff3d]" />
+                    <span>Pitch Custom Activity</span>
+                  </div>
+                  <div className="text-xs text-[#8d8d94]">
+                    Add your own venue or custom activity directly to the squad shortlist
+                  </div>
+                </div>
+                {currentUser && (
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setPitchName(`${currentUser.name}'s Place`);
+                      setPitchLoc(currentUser.loc || aiLoc || 'Local');
+                    }}
+                    className="cursor-pointer text-xs font-bold text-[#c6ff3d] hover:underline transition whitespace-nowrap flex items-center gap-1"
                   >
-                    {s.title}
-                  </a>
-                </span>
+                    <Home className="w-3.5 h-3.5" />
+                    <span>Pitch My Place</span>
+                  </button>
+                )}
+              </div>
+
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                <div>
+                  <label className="block text-[11px] font-medium text-[#8d8d94] mb-1">
+                    Venue or Activity Name
+                  </label>
+                  <input
+                    value={pitchName}
+                    onChange={(e) => setPitchName(e.target.value)}
+                    placeholder="e.g. Flight Club Darts"
+                    className="w-full bg-[#17171a] border border-[#2b2b2f] focus:border-[#ff6b57] text-[#f4f4f5] px-3.5 py-2.5 rounded-xl text-xs sm:text-sm outline-none"
+                  />
+                </div>
+                <div>
+                  <label className="block text-[11px] font-medium text-[#8d8d94] mb-1">
+                    Town / Station (Defaults to parent location)
+                  </label>
+                  <input
+                    value={pitchLoc || aiLoc}
+                    onChange={(e) => setPitchLoc(e.target.value)}
+                    placeholder="e.g. Rochester"
+                    className="w-full bg-[#17171a] border border-[#2b2b2f] focus:border-[#ff6b57] text-[#f4f4f5] px-3.5 py-2.5 rounded-xl text-xs sm:text-sm outline-none"
+                  />
+                </div>
+              </div>
+
+              <button
+                type="button"
+                onClick={() => handlePitchVenue(pitchName, pitchLoc || aiLoc, false)}
+                className="w-full cursor-pointer bg-[rgba(198,255,61,0.12)] border border-[#c6ff3d]/30 text-[#c6ff3d] font-bold text-xs sm:text-sm px-4 py-2.5 rounded-xl hover:bg-[rgba(198,255,61,0.2)] active:scale-95 transition flex items-center justify-center gap-1.5"
+              >
+                <Plus className="w-4 h-4" />
+                <span>Add Custom Pitch to Shortlist</span>
+              </button>
+            </div>
+          )}
+        </div>
+      )}
+
+      {/* The Squad Ban List */}
+      <div className="bg-[#17171a] border border-[#2b2b2f] rounded-2xl p-5 space-y-4">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+          <div>
+            <div className="text-sm font-bold text-[#ff6b57] font-display flex items-center gap-1.5">
+              <ShieldAlert className="w-4 h-4 text-[#ff6b57]" />
+              <span>The Ban List ({banList.length})</span>
+            </div>
+            <div className="text-xs text-[#8d8d94] mt-0.5">
+              Blacklisted chains & default pubs automatically excluded across all 4 discovery modes
+            </div>
+          </div>
+        </div>
+
+        <div className="space-y-1.5 max-h-44 overflow-y-auto pr-1">
+          {banList.length === 0 ? (
+            <div className="bg-[#212124] border border-[#2b2b2f] text-xs text-[#8d8d94] px-3.5 py-2.5 rounded-xl">
+              No pubs banned right now — add any chain or spot below to exclude it from all rolls and searches.
+            </div>
+          ) : (
+            <div className="flex flex-wrap gap-2">
+              {banList.map((b) => (
+                <div
+                  key={b.id}
+                  className="inline-flex items-center gap-1.5 bg-[#212124] border border-[#2b2b2f] text-xs px-3 py-1.5 rounded-xl"
+                >
+                  <Ban className="w-3.5 h-3.5 text-[#ff6b57] shrink-0" />
+                  <span className="text-[#f4f4f5] font-semibold">{b.name}</span>
+                  <button
+                    type="button"
+                    onClick={() => onRemoveBan(b.id)}
+                    className="cursor-pointer text-[#8d8d94] hover:text-[#ff6b57] text-xs p-1"
+                    title="Remove ban"
+                  >
+                    <X className="w-3.5 h-3.5" />
+                  </button>
+                </div>
               ))}
             </div>
           )}
         </div>
-      )}
 
-      {/* Roulette row */}
-      {!isLocked && (
-        <div className="flex items-center justify-between px-1">
-          <span className="text-xs text-[#8d8d94]">
-            💡 {event.venues.length} idea{event.venues.length === 1 ? '' : 's'} on the list
-          </span>
+        <div className="flex items-center gap-2">
+          <input
+            value={newBan}
+            onChange={(e) => setNewBan(e.target.value)}
+            onKeyDown={(e) => e.key === 'Enter' && handleAddBan()}
+            placeholder="Ban another pub or chain (e.g. Wetherspoon, Greene King)..."
+            className="flex-1 bg-[#212124] border border-[#2b2b2f] focus:border-[#ff6b57] text-[#f4f4f5] px-3.5 py-2.5 rounded-xl text-xs sm:text-sm outline-none"
+          />
           <button
             type="button"
-            onClick={handleSpinRoulette}
-            className="cursor-pointer bg-[#ff6b57] text-[#1a0703] font-semibold text-xs px-3.5 py-2 rounded-xl hover:brightness-105 active:scale-95 transition"
+            onClick={handleAddBan}
+            className="cursor-pointer bg-[rgba(255,107,87,0.13)] border border-[#ff6b57]/30 text-[#ff6b57] font-semibold text-xs sm:text-sm px-4 py-2.5 rounded-xl hover:bg-[rgba(255,107,87,0.2)] transition whitespace-nowrap"
           >
-            🎲 Roulette – let fate pick
+            Ban Venue
           </button>
         </div>
-      )}
-
-      {spinMsg && (
-        <div className="text-xs font-bold text-[#ff6b57] px-1">{spinMsg}</div>
-      )}
-
-      {/* Venues List */}
-      <div className="space-y-2">
-        {displayedVenues.map((v) => {
-          const vt = v.votes || {};
-          const keenList = squad.filter((u) => vt[u.id] === 'k').map((u) => u.name);
-          const vetoList = squad.filter((u) => vt[u.id] === 'v').map((u) => u.name);
-          const isWinner = event.win === v.id;
-          const isSpinning = spinningId === v.id;
-          const meta = [
-            v.when ? `🗓️ ${v.when}` : '',
-            v.cost ? `💷 ${v.cost} pp` : '',
-          ]
-            .filter(Boolean)
-            .join(' • ');
-
-          return (
-            <div
-              key={v.id}
-              className={`bg-[#17171a] border rounded-2xl p-3.5 transition-all ${
-                isWinner ? 'border-[#ff6b57]' : 'border-[#2b2b2f]'
-              } ${isSpinning ? 'roulette-spin' : ''}`}
-            >
-              <div className="flex items-start justify-between gap-2">
-                <div>
-                  <div className="font-bold text-sm text-[#f4f4f5]">
-                    {isWinner && '⭐ '}
-                    {v.kind ? KIND_ICON[v.kind] : ''}
-                    {v.name}
-                  </div>
-                  <div className="text-xs text-[#cfcfd4] mt-0.5">📍 {v.loc}</div>
-                  {(meta || v.src) && (
-                    <div className="text-[11px] text-[#8d8d94] mt-1">
-                      {meta}
-                      {v.live ? ' • 🔎 checked live' : ''}
-                      {v.src === 'osm' ? `${meta ? ' • ' : ''}🗺️ from the map` : ''}
-                    </div>
-                  )}
-                  {v.steps && v.steps.length > 0 && (
-                    <ol className="list-decimal list-inside text-xs text-[#f4f4f5] mt-2 space-y-0.5 pl-1">
-                      {v.steps.map((st, i) => (
-                        <li key={i}>{st}</li>
-                      ))}
-                    </ol>
-                  )}
-                </div>
-
-                <div className="flex flex-wrap items-center gap-1.5 shrink-0">
-                  {safeUrl(v.url) && (
-                    <a
-                      href={safeUrl(v.url)}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="cursor-pointer border border-[#2b2b2f] bg-[#212124] text-[#f4f4f5] font-semibold text-xs px-2.5 py-1 rounded-xl hover:border-[#3b3b40] transition"
-                    >
-                      🔗 Info
-                    </a>
-                  )}
-                  <a
-                    href={mapsUrl((v.kind === 'combo' ? '' : v.name + ', ') + v.loc)}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="cursor-pointer border border-[#2b2b2f] bg-[#212124] text-[#f4f4f5] font-semibold text-xs px-2.5 py-1 rounded-xl hover:border-[#3b3b40] transition"
-                  >
-                    🗺️ Map
-                  </a>
-                  {!isLocked && (
-                    <>
-                      <button
-                        type="button"
-                        onClick={() => handleLockIn(v.id)}
-                        className={`cursor-pointer font-semibold text-xs px-2.5 py-1 rounded-xl transition ${
-                          isWinner
-                            ? 'bg-[#ff6b57] text-[#1a0703]'
-                            : 'border border-[#2b2b2f] bg-[#212124] text-[#f4f4f5] hover:border-[#3b3b40]'
-                        }`}
-                      >
-                        {isWinner ? '⭐ Picked' : '⭐ Pick'}
-                      </button>
-                      <button
-                        type="button"
-                        title="Remove"
-                        onClick={() => handleDeleteVenue(v.id)}
-                        className="cursor-pointer text-xs text-[#8d8d94] hover:text-[#ff6b57] px-1 py-1"
-                      >
-                        🗑️
-                      </button>
-                    </>
-                  )}
-                </div>
-              </div>
-
-              {v.desc && <div className="text-xs text-[#8d8d94] my-2">{v.desc}</div>}
-
-              <div className="flex items-center justify-between pt-1">
-                <span
-                  className={`text-xs ${
-                    vetoList.length ? 'text-[#ff6b57]' : 'text-[#c6ff3d]'
-                  }`}
-                >
-                  {vetoList.length
-                    ? `⚠️ Veto: ${vetoList.join(', ')}`
-                    : `👍 Keen: ${keenList.join(', ') || '0'}`}
-                </span>
-
-                {!isLocked && me && (
-                  <div className="flex items-center gap-1.5">
-                    <button
-                      type="button"
-                      onClick={() => handleVote(v.id, 'k')}
-                      className={`cursor-pointer font-semibold text-xs px-3 py-1.5 rounded-xl transition ${
-                        vt[me.id] === 'k'
-                          ? 'bg-[rgba(198,255,61,0.2)] text-[#c6ff3d] border border-[#c6ff3d]'
-                          : 'border border-[#2b2b2f] bg-[#212124] text-[#f4f4f5] hover:border-[#3b3b40]'
-                      }`}
-                    >
-                      👍 Keen
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => handleVote(v.id, 'v')}
-                      className={`cursor-pointer font-semibold text-xs px-3 py-1.5 rounded-xl transition ${
-                        vt[me.id] === 'v'
-                          ? 'bg-[rgba(255,107,87,0.2)] text-[#ff6b57] border border-[#ff6b57]'
-                          : 'border border-[#2b2b2f] bg-[#212124] text-[#f4f4f5] hover:border-[#3b3b40]'
-                      }`}
-                    >
-                      👎 Veto
-                    </button>
-                  </div>
-                )}
-              </div>
-            </div>
-          );
-        })}
       </div>
-
-      {/* Pitch Activity Manually */}
-      {!isLocked && (
-        <div className="bg-[#17171a] border border-[#2b2b2f] rounded-2xl p-4">
-          <div className="text-xs font-bold text-[#f4f4f5]">➕ Pitch Activity Manually</div>
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 my-2">
-            <input
-              value={pitchName}
-              onChange={(e) => setPitchName(e.target.value)}
-              placeholder="Venue / Activity"
-              className="bg-[#212124] border border-transparent focus:border-[#ff6b57] text-[#f4f4f5] px-3 py-2 rounded-xl text-xs outline-none"
-            />
-            <input
-              value={pitchLoc}
-              onChange={(e) => setPitchLoc(e.target.value)}
-              placeholder="Town / Station"
-              className="bg-[#212124] border border-transparent focus:border-[#ff6b57] text-[#f4f4f5] px-3 py-2 rounded-xl text-xs outline-none"
-            />
-          </div>
-          <button
-            type="button"
-            onClick={() => handlePitchVenue(pitchName, pitchLoc, false)}
-            className="cursor-pointer bg-[rgba(198,255,61,0.12)] text-[#c6ff3d] font-semibold text-xs px-3.5 py-2 rounded-xl hover:bg-[rgba(198,255,61,0.2)] active:scale-95 transition"
-          >
-            + Add Pitch
-          </button>
-        </div>
-      )}
 
       {/* PINTDR™ Immersive Swiper Overlay Modal */}
       <PintdrOverlay

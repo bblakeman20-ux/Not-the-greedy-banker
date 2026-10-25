@@ -11,12 +11,24 @@ export interface User {
   sort?: string;
   acc?: string;
   tx?: string;
+  offersHouse?: boolean;
+  houseNote?: string;
 }
 
 export interface BanItem {
   id: string;
   name: string;
   lock?: number; // 1 for eternal lock
+}
+
+export interface VenueStop {
+  name: string;
+  loc: string;
+  time?: string;
+  category?: string;
+  lat?: number;
+  lon?: number;
+  url?: string;
 }
 
 export interface Venue {
@@ -29,6 +41,9 @@ export interface Venue {
   cost?: string;
   url?: string;
   steps?: string[];
+  stops?: VenueStop[];
+  lat?: number;
+  lon?: number;
   live?: number;
   src?: string;
   votes?: Record<string, 'k' | 'v' | null>;
@@ -87,6 +102,7 @@ export interface OutingEvent {
   where: string;
   vibe: string;
   when: string;
+  budget?: string;
   created: number;
   locked: number | null;
   win: string | null;

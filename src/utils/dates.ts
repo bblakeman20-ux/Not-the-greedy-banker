@@ -96,7 +96,7 @@ export function calInfo(s: Slot, venue: Venue | null, cfg: AppConfig) {
   const groupUrl = `${window.location.origin}${window.location.pathname}${
     cfg.db ? `?db=${encodeURIComponent(cfg.db)}&room=${encodeURIComponent(cfg.rm)}` : ''
   }`;
-  const desc = 'Planned on Not The Greedy Banker' + (cfg.db ? ' – ' + groupUrl : '');
+  const desc = 'Planned on Pintdr' + (cfg.db ? ' – ' + groupUrl : '');
   return { s, d, e, title, loc, desc };
 }
 
@@ -106,7 +106,7 @@ export function downloadIcs(s: Slot, venue: Venue | null, cfg: AppConfig): void 
   const txt = [
     'BEGIN:VCALENDAR',
     'VERSION:2.0',
-    'PRODID:-//NotTheGreedyBanker//EN',
+    'PRODID:-//Pintdr//EN',
     'BEGIN:VEVENT',
     'UID:' + sid(c.s.id) + '-' + sid(cfg.rm) + '@ntgb',
     'DTSTAMP:' + new Date().toISOString().replace(/[-:]/g, '').replace(/\.\d+/, ''),

@@ -61,16 +61,21 @@ export const TravelTab: React.FC<TravelTabProps> = ({
     'https://www.google.com/maps/search/?api=1&query=' + encodeURIComponent(q);
 
   return (
-    <div className="bg-[#17171a] border border-[#2b2b2f] rounded-2xl p-4">
-      <div className="flex items-center justify-between mb-3">
-        <div className="text-sm font-bold text-[#f4f4f5]">
-          🚆 Squad Travel & Midpoint
+    <div className="bg-[#17171a] border border-[#2b2b2f] rounded-2xl p-5 space-y-4">
+      <div className="flex flex-wrap items-center justify-between gap-3">
+        <div>
+          <div className="text-sm font-bold text-[#f4f4f5] font-display">
+            🚆 Squad Travel & Midpoint
+          </div>
+          <div className="text-xs text-[#8d8d94] mt-0.5">
+            Calculate the fairest geographic meeting point across everyone's stations
+          </div>
         </div>
         <button
           type="button"
           disabled={loading}
           onClick={handleFindMidpoint}
-          className="cursor-pointer bg-[#ff6b57] text-[#1a0703] font-semibold text-xs px-3.5 py-1.5 rounded-xl hover:brightness-105 active:scale-95 transition"
+          className="cursor-pointer bg-[#ff6b57] text-[#1a0703] font-semibold text-xs px-4 py-2 rounded-xl hover:brightness-105 active:scale-95 transition whitespace-nowrap"
         >
           {loading ? 'Finding...' : '📍 Find Midpoint'}
         </button>
@@ -78,8 +83,8 @@ export const TravelTab: React.FC<TravelTabProps> = ({
 
       {/* Midpoint display card */}
       {M ? (
-        <div className="bg-[rgba(255,107,87,0.13)] border border-[#ff6b57] rounded-2xl p-3.5 mb-3">
-          <div className="flex items-center justify-between">
+        <div className="bg-[rgba(255,107,87,0.1)] border border-[#ff6b57]/50 rounded-xl p-4 space-y-3">
+          <div className="flex items-center justify-between gap-2">
             <span className="text-xs text-[#f4f4f5]">
               🎯 Midpoint: <b>near {M.name}</b>
             </span>
@@ -87,14 +92,14 @@ export const TravelTab: React.FC<TravelTabProps> = ({
               href={mapsUrl(`${(+M.lat).toFixed(5)},${(+M.lon).toFixed(5)}`)}
               target="_blank"
               rel="noopener noreferrer"
-              className="cursor-pointer border border-[#2b2b2f] bg-[#212124] text-[#f4f4f5] font-semibold text-xs px-2.5 py-1 rounded-xl hover:border-[#3b3b40] transition"
+              className="cursor-pointer border border-[#2b2b2f] bg-[#212124] text-[#f4f4f5] font-semibold text-xs px-3 py-1.5 rounded-lg hover:border-[#3b3b40] transition whitespace-nowrap"
             >
-              🗺️ Map
+              Map ↗
             </a>
           </div>
 
           {isStale && (
-            <div className="text-xs text-[#ff6b57] mt-1.5">
+            <div className="text-xs text-[#ff6b57]">
               ↻ Someone changed station – tap Find Midpoint again
             </div>
           )}
@@ -102,21 +107,21 @@ export const TravelTab: React.FC<TravelTabProps> = ({
           <button
             type="button"
             onClick={() => onSelectIdeasNearMid(M.name)}
-            className="w-full mt-2.5 cursor-pointer border border-[#2b2b2f] bg-[#212124] text-[#f4f4f5] font-semibold text-xs px-3 py-2 rounded-xl hover:border-[#3b3b40] transition"
+            className="w-full cursor-pointer border border-[#2b2b2f] bg-[#212124] text-[#f4f4f5] font-semibold text-xs px-3.5 py-2.5 rounded-xl hover:border-[#3b3b40] transition"
           >
-            ✨ Gerg AI ideas near {M.name}
+            ✨ Discover ideas near {M.name}
           </button>
         </div>
       ) : (
-        <div className="text-xs text-[#8d8d94] mb-3">
-          Tap 📍 Find Midpoint to find the fairest place to meet.
+        <div className="bg-[#212124] border border-[#2b2b2f] rounded-xl p-4 text-xs text-[#8d8d94]">
+          Tap <b>📍 Find Midpoint</b> to calculate the fairest station or town for the squad to meet.
         </div>
       )}
 
-      {midMsg && <div className="text-xs text-[#cfcfd4] mb-3">{midMsg}</div>}
+      {midMsg && <div className="text-xs text-[#cfcfd4]">{midMsg}</div>}
 
       {/* Squad travel stations list */}
-      <div className="space-y-2">
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
         {squad.map((u) => {
           const p = M && M.pts && M.pts[u.id];
           const dist: string[] = [];
@@ -128,23 +133,23 @@ export const TravelTab: React.FC<TravelTabProps> = ({
           return (
             <div
               key={u.id}
-              className="flex items-center justify-between bg-[#212124] rounded-2xl px-3.5 py-2.5"
+              className="flex items-center justify-between gap-3 bg-[#212124] border border-[#2b2b2f] rounded-xl p-3.5"
             >
-              <div>
-                <b className="text-sm text-[#f4f4f5]">
-                  {u.emo} {u.name}
-                </b>{' '}
-                <span className="text-xs text-[#8d8d94]">({u.loc})</span>
+              <div className="min-w-0">
+                <div className="text-sm font-bold text-[#f4f4f5] truncate">
+                  {u.emo} {u.name}{' '}
+                  <span className="text-xs font-normal text-[#8d8d94]">· {u.loc}</span>
+                </div>
                 {dist.length > 0 && (
-                  <div className="text-[11px] text-[#8d8d94] mt-0.5">
-                    📏 {dist.join(' • ')}
+                  <div className="text-[11px] text-[#8d8d94] mt-0.5 truncate">
+                    📏 {dist.join(' · ')}
                   </div>
                 )}
               </div>
               <button
                 type="button"
                 onClick={() => handleCycleMode(u.id)}
-                className="cursor-pointer border border-[#2b2b2f] bg-[#17171a] text-[#f4f4f5] font-semibold text-xs px-3 py-1.5 rounded-xl hover:border-[#3b3b40] transition"
+                className="cursor-pointer border border-[#2b2b2f] bg-[#17171a] text-[#f4f4f5] font-semibold text-xs px-3 py-1.5 rounded-lg hover:border-[#3b3b40] transition shrink-0 whitespace-nowrap"
               >
                 🚆 {u.mode}
               </button>

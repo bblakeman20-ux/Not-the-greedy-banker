@@ -40,8 +40,8 @@ export const QrCodeModal: React.FC<QrCodeModalProps> = ({
     if (navigator.share) {
       try {
         await navigator.share({
-          title: 'Not The Greedy Banker 🍻',
-          text: `🍻 Join our night out on Not The Greedy Banker! (Room: ${roomCode})`,
+          title: 'Pintdr 🍻',
+          text: `🍻 Join our squad plan on Pintdr! (Room: ${roomCode})`,
           url: fullUrl,
         });
       } catch (e: any) {

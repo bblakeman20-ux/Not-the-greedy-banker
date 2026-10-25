@@ -90,7 +90,7 @@ export function fromDb(d: any): AppState {
 export const normState = (d: any): AppState => ({
   ver: +d.ver || APP_VER,
   squad: d.squad || [],
-  ban: d.ban || [],
+  ban: (d.ban || []).filter((b: any) => !/greedy\s*banker/i.test(b?.name || '')),
   board: d.board || {},
   events: d.events || [],
 });

@@ -104,11 +104,6 @@ export async function extractDatesWithGemini(
   text: string,
   squad: User[]
 ): Promise<ExtractedDateResult[]> {
-  const cleanKey = cfg.key?.trim();
-  if (!cleanKey) {
-    throw new Error('Please add a Gemini API key in ⚙️ Setup to use AI date extraction.');
-  }
-
   const now = new Date();
   const todayStr = toDateStr(now);
   const dayOfWeek = now.toLocaleDateString('en-GB', { weekday: 'long' });
@@ -140,31 +135,20 @@ Rules:
 ]
 `;
 
-  const model = cfg.md || 'gemini-3.8-flash';
-  const url = `https://generativelanguage.googleapis.com/v1beta/models/${encodeURIComponent(
-    model
-  )}:generateContent?key=${encodeURIComponent(cleanKey)}`;
-
-  const body = {
-    contents: [{ parts: [{ text: prompt }] }],
-    generationConfig: {
-      responseMimeType: 'application/json',
-    },
-  };
-
-  const res = await fetch(url, {
+  const model = cfg.md || 'gemini-flash-latest';
+  const res = await fetch('/api/gemini/dates', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify(body),
+    body: JSON.stringify({ prompt, model }),
   });
 
   if (!res.ok) {
     const err = await res.json().catch(() => ({}));
-    throw new Error(err.error?.message || `HTTP ${res.status}`);
+    throw new Error(err.error || `HTTP ${res.status}`);
   }
 
   const json = await res.json();
-  const rawText = json.candidates?.[0]?.content?.parts?.[0]?.text || '';
+  const rawText = json.text || '';
   if (!rawText) return [];
 
   try {

@@ -1,12 +1,17 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { AppConfig, AppState, OutingEvent, User } from './types';
+import { AppConfig, AppState, OutingEvent, User, Venue } from './types';
 import {
   getInitialDemoState,
+  freshRoomState,
+  getSavedUserProfile,
   loadInitialConfig,
   setStorage,
   getStorage,
   newEvent,
+  normName,
+  saveUserProfile,
 } from './utils/storage';
+import { getSavedTheme, setSavedTheme, applyThemeClass, ThemeMode } from './utils/theme';
 import { FirebaseSync } from './utils/firebase';
 import { Header } from './components/Header';
 import { SetupModal } from './components/SetupModal';
@@ -19,8 +24,11 @@ import { DatesTab } from './components/Tabs/DatesTab';
 import { TravelTab } from './components/Tabs/TravelTab';
 import { KittyTab } from './components/Tabs/KittyTab';
 import { QrCodeModal } from './components/QrCodeModal';
+import { Target, Calendar, Train, Coins, Lock, Check, MapPin, Sparkles, Plus } from 'lucide-react';
 import { fetchPlaces, makeIdeas } from './utils/osm';
+import { getLocalCuratedIdeas } from './utils/localPlaces';
 import { parseWhen, isoLocal } from './utils/dates';
+import { calculateLedger } from './utils/kitty';
 
 type TabType = 'act' | 'dat' | 'trv' | 'kit';
 
@@ -31,10 +39,13 @@ export const App: React.FC = () => {
     try {
       const snap = JSON.parse(getStorage('snap', 'null'));
       if (snap && snap.room === (config.rm || '').replace(/\W/g, '') && snap.S) {
-        return snap.S;
+        return {
+          ...snap.S,
+          ban: (snap.S.ban || []).filter((b: any) => !/greedy\s*banker/i.test(b?.name || '')),
+        };
       }
     } catch (e) {}
-    return getInitialDemoState();
+    return freshRoomState();
   });
 
   const [activeTab, setActiveTab] = useState<TabType>('act');
@@ -59,6 +70,18 @@ export const App: React.FC = () => {
   const [installPrompt, setInstallPrompt] = useState<any>(null);
   const [now, setNow] = useState(Date.now());
   const [toastMsg, setToastMsg] = useState<string | null>(null);
+
+  const [theme, setTheme] = useState<ThemeMode>(getSavedTheme);
+
+  useEffect(() => {
+    applyThemeClass(theme);
+  }, [theme]);
+
+  const handleToggleTheme = () => {
+    const next = theme === 'dark' ? 'light' : 'dark';
+    setTheme(next);
+    setSavedTheme(next);
+  };
 
   const showToast = (msg: string) => {
     setToastMsg(msg);
@@ -109,6 +132,17 @@ export const App: React.FC = () => {
         const nextCfg = { ...config, rm: rmUrl };
         setConfig(nextCfg);
         setStorage('rm', rmUrl);
+        let roomState: AppState = freshRoomState();
+        try {
+          const snap = JSON.parse(getStorage('snap', 'null'));
+          if (snap && snap.room === (rmUrl || '').replace(/\W/g, '') && snap.S) {
+            roomState = {
+              ...snap.S,
+              ban: (snap.S.ban || []).filter((b: any) => !/greedy\s*banker/i.test(b?.name || '')),
+            };
+          }
+        } catch (e) {}
+        setState(roomState);
         if (syncRef.current) {
           syncRef.current.updateConfig(nextCfg.db, rmUrl);
         }
@@ -128,8 +162,21 @@ export const App: React.FC = () => {
     setStorage('md', newCfg.md);
     setStorage('key', newCfg.key);
 
-    if (syncRef.current && was !== newCfg.db + newCfg.rm) {
-      syncRef.current.updateConfig(newCfg.db, newCfg.rm);
+    if (was !== newCfg.db + newCfg.rm) {
+      let roomState: AppState = freshRoomState();
+      try {
+        const snap = JSON.parse(getStorage('snap', 'null'));
+        if (snap && snap.room === (newCfg.rm || '').replace(/\W/g, '') && snap.S) {
+          roomState = {
+            ...snap.S,
+            ban: (snap.S.ban || []).filter((b: any) => !/greedy\s*banker/i.test(b?.name || '')),
+          };
+        }
+      } catch (e) {}
+      setState(roomState);
+      if (syncRef.current) {
+        syncRef.current.updateConfig(newCfg.db, newCfg.rm);
+      }
     }
   };
 
@@ -186,7 +233,44 @@ export const App: React.FC = () => {
     state.events[0] ||
     null;
 
-  const currentUser = state.squad.find((u) => u.id === config.u) || null;
+  const savedProfile = getSavedUserProfile();
+  const currentUser: User | null =
+    state.squad.find((u) => u.id === config.u) ||
+    (savedProfile
+      ? state.squad.find(
+          (u) =>
+            u.id === savedProfile.id ||
+            u.name.trim().toLowerCase() === savedProfile.name.trim().toLowerCase()
+        )
+      : null) ||
+    state.squad[0] ||
+    null;
+
+  // Auto-connect saved user profile if matching member exists in room
+  useEffect(() => {
+    const saved = getSavedUserProfile();
+    if (!saved) return;
+    const match = state.squad.find(
+      (u) =>
+        u.id === config.u ||
+        (saved.name && u.name.trim().toLowerCase() === saved.name.trim().toLowerCase())
+    );
+    if (match && match.id !== config.u) {
+      handleSelectUser(match.id);
+    }
+  }, [state.squad]);
+
+  const handleJoinWithSavedProfile = (saved: User) => {
+    const id = saved.id || ('u' + Date.now());
+    const newUser: User = {
+      ...saved,
+      id,
+    };
+    const squad = [...state.squad, newUser];
+    persistState({ ...state, squad });
+    handleSelectUser(id);
+    showToast(`🍻 Added ${saved.name} to this room's squad!`);
+  };
 
   const persistState = (newState: AppState) => {
     setState(newState);
@@ -203,17 +287,31 @@ export const App: React.FC = () => {
     const updated = { ...config, u: id };
     setConfig(updated);
     setStorage('u', id);
+    const target = state.squad.find((u) => u.id === id);
+    if (target) {
+      saveUserProfile(target);
+    }
   };
 
   const handleSaveProfile = (data: Partial<User>, isEdit: boolean) => {
     let squad: User[];
-    let newUserId = config.u;
+    const targetId = (data as any).id || profileModal.user?.id || currentUser?.id;
 
-    if (isEdit && currentUser) {
-      squad = state.squad.map((u) => (u.id === currentUser.id ? { ...u, ...data } : u));
+    if (isEdit && targetId) {
+      const updatedUser = {
+        ...(state.squad.find((u) => u.id === targetId) || {}),
+        ...data,
+        id: targetId,
+      } as User;
+      squad = state.squad.map((u) =>
+        u.id === targetId ? updatedUser : u
+      );
+      persistState({ ...state, squad });
+      saveUserProfile(updatedUser);
+      handleSelectUser(targetId);
+      showToast('✅ Profile updated');
     } else {
       const id = 'u' + Date.now();
-      newUserId = id;
       const newUser: User = {
         id,
         name: data.name || 'Mate',
@@ -224,17 +322,26 @@ export const App: React.FC = () => {
         ...data,
       };
       squad = [...state.squad, newUser];
+      persistState({ ...state, squad });
+      saveUserProfile(newUser);
+      handleSelectUser(id);
+      showToast(`🍻 Welcome to the squad, ${data.name || 'Mate'}!`);
     }
-
-    persistState({ ...state, squad });
-    handleSelectUser(newUserId);
   };
 
   const handleDeleteProfile = (id: string) => {
-    if (state.squad.length < 2) return;
+    if (state.squad.length < 2) {
+      showToast('⚠️ Keep at least 1 member in the squad');
+      return;
+    }
+    const removed = state.squad.find((u) => u.id === id);
     const squad = state.squad.filter((u) => u.id !== id);
     persistState({ ...state, squad });
-    handleSelectUser('');
+    if (config.u === id) {
+      const fallbackId = squad[0]?.id || '';
+      handleSelectUser(fallbackId);
+    }
+    if (removed) showToast(`🗑️ Removed ${removed.name}'s profile`);
   };
 
   const handleSelectEvent = (id: string) => {
@@ -338,14 +445,103 @@ export const App: React.FC = () => {
     persistState({ ...state, events });
   };
 
+  // Cross-tab hand-off: Travel Midpoint -> Activities Tab + Auto-Roll Ideas
+  const handleSelectIdeasNearMid = async (placeName: string) => {
+    if (!currentEvent) return;
+    const cleanPlace = placeName.trim();
+    if (!cleanPlace) {
+      setActiveTab('act');
+      return;
+    }
+
+    // Immediately seed curated spots so the user sees ideas near the midpoint with zero delay
+    const existingNames = new Set(currentEvent.venues.map((v) => normName(v.name)));
+    const instantIdeas = getLocalCuratedIdeas(
+      cleanPlace,
+      currentEvent.vibe || '',
+      state.ban,
+      existingNames,
+      3
+    );
+
+    const seededVenues: Venue[] = instantIdeas.map((x, i) => ({
+      id: 'v' + Date.now() + i,
+      name: x.name || 'Venue',
+      loc: x.loc || cleanPlace,
+      desc: x.desc || '',
+      kind: x.kind || 'spot',
+      steps: x.steps,
+      url: x.url,
+      src: 'osm',
+      votes: currentUser ? { [currentUser.id]: 'k' } : {},
+    }));
+
+    const updatedEvent: OutingEvent = {
+      ...currentEvent,
+      where: cleanPlace,
+      venues: [...seededVenues, ...currentEvent.venues],
+    };
+
+    handleUpdateCurrentEvent(updatedEvent);
+    setActiveTab('act');
+    showToast(
+      seededVenues.length
+        ? `📍 Set area to ${cleanPlace} & rolled ${seededVenues.length} midpoint spots!`
+        : `📍 Set discovery area to ${cleanPlace}`
+    );
+  };
+
   const handleAddBan = (name: string) => {
+    if (/greedy\s*banker/i.test(name)) {
+      showToast("🍺 We don't actually ban The Greedy Banker!");
+      return;
+    }
     const ban = [...state.ban, { id: 'b' + Date.now(), name }];
     persistState({ ...state, ban });
+    showToast(`🚫 Added "${name}" to the Ban List`);
   };
 
   const handleRemoveBan = (id: string) => {
-    const ban = state.ban.filter((b) => b.id !== id || b.lock);
+    const ban = state.ban.filter((b) => b.id !== id);
     persistState({ ...state, ban });
+  };
+
+  const handlePitchHouse = (user: User) => {
+    if (!currentEvent) {
+      showToast('⚠️ Select or create an event first');
+      return;
+    }
+    if (currentEvent.locked) {
+      showToast('🔒 This event is locked in – unlock first to change venues');
+      return;
+    }
+    const houseName = `${user.name}'s Place 🏠`;
+    const alreadyExists = currentEvent.venues.some(
+      (v) =>
+        normName(v.name) === normName(houseName) ||
+        normName(v.name).includes(normName(user.name))
+    );
+    if (alreadyExists) {
+      showToast(`🏠 "${houseName}" is already on the shortlist!`);
+      return;
+    }
+
+    const houseVenue: Venue = {
+      id: 'v_house_' + user.id + '_' + Date.now(),
+      name: houseName,
+      loc: user.loc || 'Local',
+      desc:
+        user.houseNote?.trim() ||
+        'House outing / pre-drinks – BYOB, games & tunes with zero pub markup!',
+      kind: 'spot',
+      cost: 'Free / BYOB',
+      votes: { [user.id]: 'k' },
+      src: 'house',
+    };
+
+    const venues = [houseVenue, ...currentEvent.venues];
+    handleUpdateCurrentEvent({ ...currentEvent, venues });
+    showToast(`🏠 Pitched ${user.name}'s Place to the shortlist!`);
   };
 
   // Bounty Board tally
@@ -360,10 +556,21 @@ export const App: React.FC = () => {
     });
   });
 
+  // Live Navigation Tab Status Indicators
+  const actCount = currentEvent ? currentEvent.venues.length : 0;
+  const hasAlignedDate = Boolean(
+    currentEvent &&
+      state.squad.length > 0 &&
+      currentEvent.slots.some((s) => state.squad.every((u) => s.av && s.av[u.id]))
+  );
+  const dateCount = currentEvent ? currentEvent.slots.length : 0;
+  const hasMidpoint = Boolean(currentEvent?.mid);
+  const kittyTotal = currentEvent ? Math.round(calculateLedger(currentEvent, state.squad).tot) : 0;
+
   return (
-    <div className="max-w-[640px] mx-auto px-3 py-3.5 pb-16">
+    <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-6 pb-24 space-y-6">
       {/* Top Main Card */}
-      <div className="bg-[#17171a] border border-[#2b2b2f] rounded-2xl p-4 mb-3">
+      <div className="bg-[#17171a] border border-[#2b2b2f] rounded-2xl p-5 sm:p-6 shadow-xl">
         <Header
           statusText={syncStatus.text}
           isDenied={syncStatus.ok === 401 || syncStatus.ok === 403}
@@ -372,6 +579,8 @@ export const App: React.FC = () => {
           onOpenQrCode={() => setIsQrOpen(true)}
           showInstall={Boolean(installPrompt)}
           onInstall={handleInstallClick}
+          theme={theme}
+          onToggleTheme={handleToggleTheme}
         />
 
         {/* QR Code Modal for Camera Onboarding */}
@@ -407,8 +616,11 @@ export const App: React.FC = () => {
           currentUserId={config.u}
           onSelectUser={handleSelectUser}
           onEditUser={() => setProfileModal({ isOpen: true, user: currentUser })}
+          onEditSpecificUser={(targetUser) => setProfileModal({ isOpen: true, user: targetUser })}
           onNewUser={() => setProfileModal({ isOpen: true, user: null })}
+          onJoinWithSavedProfile={handleJoinWithSavedProfile}
           currentEvent={currentEvent}
+          onPitchHouse={handlePitchHouse}
         />
 
         {/* Profile Edit/Create Modal */}
@@ -419,6 +631,7 @@ export const App: React.FC = () => {
           onSave={handleSaveProfile}
           onDelete={handleDeleteProfile}
           canDelete={state.squad.length > 1}
+          onPitchHouse={handlePitchHouse}
         />
       </div>
 
@@ -435,81 +648,121 @@ export const App: React.FC = () => {
         currentUser={currentUser}
         configDb={config.db}
         configRm={config.rm}
+        onOpenProfileModal={() => setProfileModal({ isOpen: true, user: null })}
       />
 
-      {/* No Events Empty State */}
+      {/* Blank Canvas Empty State */}
       {!currentEvent && (
-        <div className="bg-[#17171a] border border-[#2b2b2f] rounded-2xl p-6 text-center my-4">
-          <div className="text-base font-bold text-[#f4f4f5]">🎉 No events yet</div>
-          <div className="text-xs text-[#8d8d94] mt-1.5 mb-3">
-            Create one for each night out – it keeps its own ideas, dates and kitty.
+        <div className="bg-[#17171a] border border-[#2b2b2f] rounded-2xl p-6 sm:p-8 text-center space-y-3">
+          <div className="w-12 h-12 rounded-2xl bg-[#ff6b57]/15 border border-[#ff6b57]/30 flex items-center justify-center mx-auto text-[#ff6b57]">
+            <Sparkles className="w-6 h-6" />
           </div>
-          <button
-            type="button"
-            onClick={() =>
-              handleNewEvent({
-                name: "Tonight's Outing",
-                where: currentUser?.loc || 'Medway',
-                vibe: 'Competitive, craft beer, or good food',
-                when: 'Sat 7pm',
-                rollFree: true,
-              })
-            }
-            className="cursor-pointer bg-[#ff6b57] text-[#1a0703] font-semibold text-xs px-4 py-2.5 rounded-xl hover:brightness-105 transition"
-          >
-            ➕ Create your first event
-          </button>
+          <div className="text-base sm:text-lg font-bold text-[#ffffff] font-display">
+            Blank Canvas · Ready for Your Squad Outing
+          </div>
+          <p className="text-xs sm:text-sm text-[#8d8d94] max-w-md mx-auto">
+            This room is clean with no pre-made events. Create your first outing plan to start pitching spots, swiping in Pintdr mode, and coordinating dates.
+          </p>
+          <div className="pt-2 flex flex-wrap items-center justify-center gap-2.5">
+            {state.squad.length === 0 ? (
+              <button
+                type="button"
+                onClick={() => setProfileModal({ isOpen: true, user: null })}
+                className="cursor-pointer bg-[#ff6b57] text-[#1a0703] font-bold text-xs sm:text-sm px-5 py-2.5 rounded-xl hover:brightness-105 active:scale-95 transition shadow-[0_0_16px_rgba(255,107,87,0.25)] flex items-center gap-1.5"
+              >
+                <Plus className="w-4 h-4" />
+                <span>Create Your Profile First</span>
+              </button>
+            ) : (
+              <button
+                type="button"
+                onClick={() =>
+                  handleNewEvent({
+                    name: "Friday Outing",
+                    where: currentUser?.loc || '',
+                    vibe: '',
+                    when: 'Friday 7:00 PM',
+                    rollFree: false,
+                  })
+                }
+                className="cursor-pointer bg-[#ff6b57] text-[#1a0703] font-bold text-xs sm:text-sm px-5 py-2.5 rounded-xl hover:brightness-105 active:scale-95 transition shadow-[0_0_16px_rgba(255,107,87,0.25)] flex items-center gap-1.5"
+              >
+                <Plus className="w-4 h-4" />
+                <span>Start New Outing Plan</span>
+              </button>
+            )}
+          </div>
         </div>
       )}
 
       {/* Event Details and Tabs */}
       {currentEvent && (
-        <div>
-          {/* Navigation Tabs */}
-          <div className="grid grid-cols-4 gap-1 bg-[#17171a] border border-[#2b2b2f] p-1 rounded-2xl mb-3 sticky top-2 z-10 backdrop-blur-md">
+        <div className="space-y-5">
+          {/* Navigation Tabs with Vector Icons & Status Indicators */}
+          <div className="grid grid-cols-4 gap-2 bg-[#17171a] border border-[#2b2b2f] p-2 rounded-2xl sticky top-3 z-10 backdrop-blur-md shadow-xl">
             <button
               type="button"
               onClick={() => setActiveTab('act')}
-              className={`py-2 text-xs font-semibold rounded-xl transition cursor-pointer ${
+              className={`py-3 px-3 text-xs sm:text-sm font-bold rounded-xl transition cursor-pointer whitespace-nowrap truncate flex items-center justify-center gap-1.5 ${
                 activeTab === 'act'
-                  ? 'bg-[#212124] text-[#f4f4f5] shadow-[inset_0_0_0_1px_#3b3b40]'
-                  : 'text-[#8d8d94] hover:text-[#f4f4f5]'
+                  ? 'bg-[#24252a] text-[#ffffff] shadow-[inset_0_0_0_1.5px_#ff6b57,0_0_12px_rgba(255,107,87,0.18)]'
+                  : 'text-[#a1a1aa] hover:text-[#ffffff] hover:bg-[#1f1f23]'
               }`}
             >
-              🎯 Activities
+              <Target className={`w-4 h-4 shrink-0 ${activeTab === 'act' ? 'text-[#ff6b57]' : 'text-[#8d8d94]'}`} />
+              <span>Activities</span>
+              {currentEvent.locked ? (
+                <Lock className="w-3.5 h-3.5 text-[#c6ff3d] ml-1 shrink-0" />
+              ) : actCount > 0 ? (
+                <span className="text-[#8d8d94] ml-0.5 text-xs font-normal">· {actCount}</span>
+              ) : null}
             </button>
             <button
               type="button"
               onClick={() => setActiveTab('dat')}
-              className={`py-2 text-xs font-semibold rounded-xl transition cursor-pointer ${
+              className={`py-3 px-3 text-xs sm:text-sm font-bold rounded-xl transition cursor-pointer whitespace-nowrap truncate flex items-center justify-center gap-1.5 ${
                 activeTab === 'dat'
-                  ? 'bg-[#212124] text-[#f4f4f5] shadow-[inset_0_0_0_1px_#3b3b40]'
-                  : 'text-[#8d8d94] hover:text-[#f4f4f5]'
+                  ? 'bg-[#24252a] text-[#ffffff] shadow-[inset_0_0_0_1.5px_#ff6b57,0_0_12px_rgba(255,107,87,0.18)]'
+                  : 'text-[#a1a1aa] hover:text-[#ffffff] hover:bg-[#1f1f23]'
               }`}
             >
-              📅 Dates
+              <Calendar className={`w-4 h-4 shrink-0 ${activeTab === 'dat' ? 'text-[#ff6b57]' : 'text-[#8d8d94]'}`} />
+              <span>Dates</span>
+              {hasAlignedDate ? (
+                <Check className="w-3.5 h-3.5 text-[#c6ff3d] ml-1 shrink-0" />
+              ) : dateCount > 0 ? (
+                <span className="text-[#8d8d94] ml-0.5 text-xs font-normal">· {dateCount}</span>
+              ) : null}
             </button>
             <button
               type="button"
               onClick={() => setActiveTab('trv')}
-              className={`py-2 text-xs font-semibold rounded-xl transition cursor-pointer ${
+              className={`py-3 px-3 text-xs sm:text-sm font-bold rounded-xl transition cursor-pointer whitespace-nowrap truncate flex items-center justify-center gap-1.5 ${
                 activeTab === 'trv'
-                  ? 'bg-[#212124] text-[#f4f4f5] shadow-[inset_0_0_0_1px_#3b3b40]'
-                  : 'text-[#8d8d94] hover:text-[#f4f4f5]'
+                  ? 'bg-[#24252a] text-[#ffffff] shadow-[inset_0_0_0_1.5px_#ff6b57,0_0_12px_rgba(255,107,87,0.18)]'
+                  : 'text-[#a1a1aa] hover:text-[#ffffff] hover:bg-[#1f1f23]'
               }`}
             >
-              🚆 Travel
+              <Train className={`w-4 h-4 shrink-0 ${activeTab === 'trv' ? 'text-[#ff6b57]' : 'text-[#8d8d94]'}`} />
+              <span>Travel</span>
+              {hasMidpoint && <MapPin className="w-3.5 h-3.5 text-[#ff6b57] ml-1 shrink-0" />}
             </button>
             <button
               type="button"
               onClick={() => setActiveTab('kit')}
-              className={`py-2 text-xs font-semibold rounded-xl transition cursor-pointer ${
+              className={`py-3 px-3 text-xs sm:text-sm font-bold rounded-xl transition cursor-pointer whitespace-nowrap truncate flex items-center justify-center gap-1.5 ${
                 activeTab === 'kit'
-                  ? 'bg-[#212124] text-[#f4f4f5] shadow-[inset_0_0_0_1px_#3b3b40]'
-                  : 'text-[#8d8d94] hover:text-[#f4f4f5]'
+                  ? 'bg-[#24252a] text-[#ffffff] shadow-[inset_0_0_0_1.5px_#ff6b57,0_0_12px_rgba(255,107,87,0.18)]'
+                  : 'text-[#a1a1aa] hover:text-[#ffffff] hover:bg-[#1f1f23]'
               }`}
             >
-              💷 Kitty
+              <Coins className={`w-4 h-4 shrink-0 ${activeTab === 'kit' ? 'text-[#ff6b57]' : 'text-[#8d8d94]'}`} />
+              <span>Kitty</span>
+              {kittyTotal > 0 && (
+                <span className="text-[#c6ff3d] ml-0.5 text-xs font-normal tabular-nums">
+                  · £{kittyTotal}
+                </span>
+              )}
             </button>
           </div>
 
@@ -528,6 +781,7 @@ export const App: React.FC = () => {
               boardTally={boardTally}
               onOpenSetup={() => setIsSetupOpen(true)}
               onShowToast={showToast}
+              onPitchHouse={handlePitchHouse}
             />
           )}
 
@@ -549,9 +803,7 @@ export const App: React.FC = () => {
               squad={state.squad}
               onUpdateSquad={(squad) => persistState({ ...state, squad })}
               onUpdateEvent={handleUpdateCurrentEvent}
-              onSelectIdeasNearMid={(place) => {
-                setActiveTab('act');
-              }}
+              onSelectIdeasNearMid={handleSelectIdeasNearMid}
             />
           )}
 
@@ -561,6 +813,7 @@ export const App: React.FC = () => {
               squad={state.squad}
               currentUser={currentUser}
               onUpdateEvent={handleUpdateCurrentEvent}
+              onShowToast={showToast}
             />
           )}
         </div>

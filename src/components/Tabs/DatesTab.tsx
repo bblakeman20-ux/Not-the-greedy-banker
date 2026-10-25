@@ -206,11 +206,6 @@ export const DatesTab: React.FC<DatesTabProps> = ({
 
   // Handle AI Natural Language Extraction
   const handleExtractDatesAI = async () => {
-    if (!config.key) {
-      onOpenSetup();
-      setAiMsg('⚠️ Paste your Gemini API key in ⚙️ Setup first to use AI date extraction.');
-      return;
-    }
     if (!aiText.trim()) return;
 
     setAiLoading(true);
@@ -282,29 +277,34 @@ export const DatesTab: React.FC<DatesTabProps> = ({
   const winVenue = event.venues.find((v) => v.id === event.win) || event.venues[0] || null;
 
   return (
-    <div className="space-y-3">
+    <div className="space-y-5">
       {/* Interactive Calendar Card */}
-      <div className="bg-[#17171a] border border-[#2b2b2f] rounded-2xl p-4">
+      <div className="bg-[#17171a] border border-[#2b2b2f] rounded-2xl p-5 space-y-4">
         {/* Calendar Header with Month Controls */}
-        <div className="flex items-center justify-between mb-3">
-          <div className="flex items-center gap-2">
-            <CalendarIcon className="w-4 h-4 text-[#ff6b57]" />
-            <span className="font-display font-extrabold text-base text-[#f4f4f5]">
-              {monthName}
-            </span>
+        <div className="flex items-center justify-between">
+          <div>
+            <div className="flex items-center gap-2">
+              <CalendarIcon className="w-4 h-4 text-[#ff6b57]" />
+              <span className="font-display font-extrabold text-base text-[#f4f4f5]">
+                {monthName}
+              </span>
+            </div>
+            <p className="text-xs text-[#8d8d94] mt-0.5">
+              Tap any day you're free — dates count up to show squad overlap
+            </p>
           </div>
           <div className="flex items-center gap-1.5">
             <button
               type="button"
               onClick={handleToday}
-              className="text-xs font-semibold px-2 py-1 rounded-lg bg-[#212124] text-[#8d8d94] hover:text-[#f4f4f5] border border-[#2b2b2f] transition cursor-pointer"
+              className="text-xs font-semibold px-3 py-1.5 rounded-xl bg-[#212124] text-[#8d8d94] hover:text-[#f4f4f5] border border-[#2b2b2f] transition cursor-pointer"
             >
               Today
             </button>
             <button
               type="button"
               onClick={handlePrevMonth}
-              className="p-1 rounded-lg bg-[#212124] text-[#cfcfd4] hover:text-[#f4f4f5] border border-[#2b2b2f] transition cursor-pointer"
+              className="p-1.5 rounded-xl bg-[#212124] text-[#cfcfd4] hover:text-[#f4f4f5] border border-[#2b2b2f] transition cursor-pointer"
               title="Previous month"
             >
               <ChevronLeft className="w-4 h-4" />
@@ -312,7 +312,7 @@ export const DatesTab: React.FC<DatesTabProps> = ({
             <button
               type="button"
               onClick={handleNextMonth}
-              className="p-1 rounded-lg bg-[#212124] text-[#cfcfd4] hover:text-[#f4f4f5] border border-[#2b2b2f] transition cursor-pointer"
+              className="p-1.5 rounded-xl bg-[#212124] text-[#cfcfd4] hover:text-[#f4f4f5] border border-[#2b2b2f] transition cursor-pointer"
               title="Next month"
             >
               <ChevronRight className="w-4 h-4" />
@@ -320,12 +320,8 @@ export const DatesTab: React.FC<DatesTabProps> = ({
           </div>
         </div>
 
-        <div className="text-xs text-[#8d8d94] mb-2.5">
-          👉 <b>Tap tap tap</b> any day you're free. Dates count up to show squad overlap!
-        </div>
-
         {/* Days of week header */}
-        <div className="grid grid-cols-7 gap-1 text-center text-[11px] font-bold text-[#8d8d94] mb-1">
+        <div className="grid grid-cols-7 gap-1.5 text-center text-[11px] font-bold text-[#8d8d94]">
           <span>Mon</span>
           <span>Tue</span>
           <span>Wed</span>
@@ -336,7 +332,7 @@ export const DatesTab: React.FC<DatesTabProps> = ({
         </div>
 
         {/* Calendar Days Grid */}
-        <div className="grid grid-cols-7 gap-1">
+        <div className="grid grid-cols-7 gap-1.5">
           {calendarDays.map((day, idx) => {
             const slot = findSlotForDate(day.dateStr);
             const av = slot?.av || {};
@@ -365,7 +361,7 @@ export const DatesTab: React.FC<DatesTabProps> = ({
                 type="button"
                 onClick={() => handleTapDate(day.dateStr)}
                 disabled={isLocked || !day.isCurrentMonth}
-                className={`relative min-h-[58px] p-1.5 rounded-xl border flex flex-col justify-between transition cursor-pointer select-none text-left ${cellBg} ${
+                className={`relative min-h-[60px] p-2 rounded-xl border flex flex-col justify-between transition cursor-pointer select-none text-left ${cellBg} ${
                   isMyVote ? 'ring-1 ring-[#ff6b57]' : ''
                 } hover:scale-[1.02] active:scale-95`}
               >
@@ -414,24 +410,22 @@ export const DatesTab: React.FC<DatesTabProps> = ({
       </div>
 
       {/* Interactive Overlap Tally Chart */}
-      <div className="bg-[#17171a] border border-[#2b2b2f] rounded-2xl p-4">
-        <div className="flex items-center justify-between mb-2">
-          <div>
-            <div className="text-sm font-bold text-[#f4f4f5]">
-              📊 Date Overlap & Tally Ranking
-            </div>
-            <div className="text-xs text-[#8d8d94]">
-              Dates sorted by highest squad overlap. Tap any row to toggle your vote!
-            </div>
+      <div className="bg-[#17171a] border border-[#2b2b2f] rounded-2xl p-5 space-y-4">
+        <div>
+          <div className="text-sm font-bold text-[#f4f4f5] font-display">
+            📊 Date Overlap & Tally Ranking
+          </div>
+          <div className="text-xs text-[#8d8d94] mt-0.5">
+            Dates sorted by highest squad overlap. Tap any row to toggle your availability.
           </div>
         </div>
 
         {rankedSlots.length === 0 ? (
-          <div className="text-center py-6 text-xs text-[#8d8d94]">
-            No dates marked yet. Tap dates on the calendar above or use Gerg AI below!
+          <div className="bg-[#212124] border border-[#2b2b2f] rounded-xl text-center py-6 text-xs text-[#8d8d94]">
+            No dates marked yet. Tap dates on the calendar above or extract availability below!
           </div>
         ) : (
-          <div className="space-y-2 mt-3">
+          <div className="space-y-3">
             {rankedSlots.map(({ slot, voters, isAligned, count }) => {
               const d = whenOf(slot);
               const isMyVote = me && slot.av?.[me.id];
@@ -442,7 +436,7 @@ export const DatesTab: React.FC<DatesTabProps> = ({
                 <div
                   key={slot.id}
                   onClick={() => handleToggleSlotVote(slot.id)}
-                  className={`bg-[#212124] border rounded-2xl p-3.5 transition cursor-pointer hover:border-[#3b3b40] ${
+                  className={`bg-[#212124] border rounded-xl p-4 transition cursor-pointer hover:border-[#3b3b40] space-y-2.5 ${
                     isAligned
                       ? 'border-[#c6ff3d] bg-[rgba(198,255,61,0.06)]'
                       : isMyVote
@@ -450,15 +444,15 @@ export const DatesTab: React.FC<DatesTabProps> = ({
                       : 'border-[#2b2b2f]'
                   }`}
                 >
-                  <div className="flex items-start justify-between gap-2 mb-2">
+                  <div className="flex items-start justify-between gap-2">
                     <div>
-                      <div className="flex items-center gap-2">
+                      <div className="flex items-center gap-2 flex-wrap">
                         <span className="font-bold text-sm text-[#f4f4f5]">
                           {slot.lbl}
                         </span>
                         {isAligned && (
-                          <span className="text-[11px] font-bold px-2 py-0.5 rounded-full bg-[#c6ff3d] text-[#141a03]">
-                            🎉 100% ALIGNED!
+                          <span className="text-[11px] font-bold px-2 py-0.5 rounded-md bg-[#c6ff3d] text-[#141a03]">
+                            🎉 100% ALIGNED
                           </span>
                         )}
                       </div>
@@ -476,7 +470,7 @@ export const DatesTab: React.FC<DatesTabProps> = ({
                           e.stopPropagation();
                           handleToggleSlotVote(slot.id);
                         }}
-                        className={`text-xs font-semibold px-2.5 py-1 rounded-xl transition cursor-pointer flex items-center gap-1 ${
+                        className={`text-xs font-semibold px-3 py-1.5 rounded-lg transition cursor-pointer flex items-center gap-1 whitespace-nowrap ${
                           isMyVote
                             ? 'bg-[#c6ff3d] text-[#141a03]'
                             : 'bg-[#17171a] border border-[#2b2b2f] text-[#cfcfd4] hover:text-[#f4f4f5]'
@@ -487,14 +481,14 @@ export const DatesTab: React.FC<DatesTabProps> = ({
                             <Check className="w-3.5 h-3.5" /> Free
                           </>
                         ) : (
-                          '+ I\'m Free'
+                          "+ I'm Free"
                         )}
                       </button>
                       {!isLocked && (
                         <button
                           type="button"
                           onClick={(e) => handleDeleteSlot(slot.id, e)}
-                          className="text-xs text-[#8d8d94] hover:text-[#ff6b57] p-1 cursor-pointer"
+                          className="text-xs text-[#8d8d94] hover:text-[#ff6b57] p-1.5 cursor-pointer"
                           title="Remove"
                         >
                           <Trash2 className="w-3.5 h-3.5" />
@@ -504,7 +498,7 @@ export const DatesTab: React.FC<DatesTabProps> = ({
                   </div>
 
                   {/* Overlap Tally Progress Bar */}
-                  <div className="w-full bg-[#17171a] h-2.5 rounded-full overflow-hidden my-2">
+                  <div className="w-full bg-[#17171a] h-2 rounded-full overflow-hidden">
                     <div
                       className={`h-full rounded-full transition-all duration-300 ${
                         isAligned ? 'bg-[#c6ff3d]' : 'bg-[#ff6b57]'
@@ -514,10 +508,10 @@ export const DatesTab: React.FC<DatesTabProps> = ({
                   </div>
 
                   {/* Voters List */}
-                  <div className="flex flex-wrap items-center justify-between gap-1 text-xs text-[#8d8d94]">
+                  <div className="flex flex-wrap items-center justify-between gap-2 text-xs text-[#8d8d94]">
                     <span>
-                      {count} of {squad.length} squad members available ({percent}%):
-                      {' '}{voters.map((u) => `${u.emo} ${u.name}`).join(', ') || 'None yet'}
+                      {count}/{squad.length} available ({percent}%) ·{' '}
+                      {voters.map((u) => `${u.emo} ${u.name}`).join(', ') || 'None yet'}
                     </span>
                     {!isLocked && (
                       <button
@@ -534,23 +528,23 @@ export const DatesTab: React.FC<DatesTabProps> = ({
                   {/* Aligned Calendar Export Action */}
                   {isAligned && d && (
                     <div
-                      className="flex flex-wrap items-center gap-2 mt-3 pt-2.5 border-t border-[#2b2b2f]"
+                      className="flex flex-wrap items-center gap-2 pt-2.5 border-t border-[#2b2b2f]"
                       onClick={(e) => e.stopPropagation()}
                     >
                       <button
                         type="button"
                         onClick={() => downloadIcs(slot, winVenue, config)}
-                        className="cursor-pointer bg-[#ff6b57] text-[#1a0703] font-semibold text-xs px-3 py-1.5 rounded-xl hover:brightness-105 transition"
+                        className="cursor-pointer bg-[#ff6b57] text-[#1a0703] font-semibold text-xs px-3 py-1.5 rounded-lg hover:brightness-105 transition"
                       >
-                        📅 Add to Calendar (.ics)
+                        📅 Download .ics
                       </button>
                       <a
                         href={googleUrl}
                         target="_blank"
                         rel="noopener noreferrer"
-                        className="cursor-pointer border border-[#2b2b2f] bg-[#17171a] text-[#f4f4f5] font-semibold text-xs px-3 py-1.5 rounded-xl hover:border-[#3b3b40] transition"
+                        className="cursor-pointer border border-[#2b2b2f] bg-[#17171a] text-[#f4f4f5] font-semibold text-xs px-3 py-1.5 rounded-lg hover:border-[#3b3b40] transition"
                       >
-                        Google Calendar
+                        Google Calendar ↗
                       </a>
                     </div>
                   )}
@@ -563,15 +557,17 @@ export const DatesTab: React.FC<DatesTabProps> = ({
 
       {/* Gemini AI Natural Language Date Extractor Card */}
       {!isLocked && (
-        <div className="bg-[#17171a] border border-[#2b2b2f] rounded-2xl p-4">
-          <div className="flex items-center gap-2 mb-1">
-            <Sparkles className="w-4 h-4 text-[#ff6b57]" />
-            <div className="text-xs font-bold text-[#f4f4f5]">
-              Extract Dates with Gerg AI (Gemini)
+        <div className="bg-[#17171a] border border-[#2b2b2f] rounded-2xl p-5 space-y-3">
+          <div>
+            <div className="flex items-center gap-2">
+              <Sparkles className="w-4 h-4 text-[#ff6b57]" />
+              <div className="text-sm font-bold text-[#f4f4f5] font-display">
+                Extract Dates with Gerg AI
+              </div>
             </div>
-          </div>
-          <div className="text-xs text-[#8d8d94] mb-2">
-            Paste group chat availability or speak naturally (e.g. <i>"Free next Fri after 6pm, Sat 14th, or any weekend in Nov"</i>):
+            <div className="text-xs text-[#8d8d94] mt-0.5">
+              Paste group chat availability or type naturally (e.g. <i>"Free next Fri after 6pm, Sat 14th, or any weekend in Nov"</i>)
+            </div>
           </div>
 
           <textarea
@@ -579,15 +575,15 @@ export const DatesTab: React.FC<DatesTabProps> = ({
             value={aiText}
             onChange={(e) => setAiText(e.target.value)}
             placeholder="Paste text from WhatsApp, Messenger, or type your availability..."
-            className="w-full bg-[#212124] border border-transparent focus:border-[#ff6b57] text-[#f4f4f5] p-3 rounded-xl text-xs outline-none leading-relaxed resize-none"
+            className="w-full bg-[#212124] border border-[#2b2b2f] focus:border-[#ff6b57] text-[#f4f4f5] p-3.5 rounded-xl text-xs outline-none leading-relaxed resize-none"
           />
 
-          <div className="flex items-center gap-2 mt-2">
+          <div className="flex items-center gap-2">
             <button
               type="button"
               disabled={aiLoading || !aiText.trim()}
               onClick={handleExtractDatesAI}
-              className="cursor-pointer bg-[#ff6b57] text-[#1a0703] font-semibold text-xs px-3.5 py-2 rounded-xl hover:brightness-105 active:scale-95 transition disabled:opacity-50 flex items-center gap-1.5"
+              className="cursor-pointer bg-[#ff6b57] text-[#1a0703] font-semibold text-xs px-4 py-2.5 rounded-xl hover:brightness-105 active:scale-95 transition disabled:opacity-50 flex items-center gap-1.5"
             >
               <Sparkles className="w-3.5 h-3.5" />
               {aiLoading ? 'Extracting dates...' : '✨ Map to Calendar & Tallies'}
@@ -596,41 +592,41 @@ export const DatesTab: React.FC<DatesTabProps> = ({
               <button
                 type="button"
                 onClick={() => setAiText('')}
-                className="text-xs text-[#8d8d94] hover:text-[#f4f4f5] px-2 py-1"
+                className="text-xs text-[#8d8d94] hover:text-[#f4f4f5] px-2.5 py-1.5"
               >
                 Clear
               </button>
             )}
           </div>
 
-          {aiMsg && <div className="text-xs text-[#cfcfd4] mt-2 whitespace-pre-line">{aiMsg}</div>}
+          {aiMsg && <div className="text-xs text-[#cfcfd4] whitespace-pre-line">{aiMsg}</div>}
         </div>
       )}
 
       {/* Exact Time Modal */}
       {editingSlotId && (
-        <div className="bg-[#212124] border border-[#ff6b57] rounded-2xl p-3.5">
-          <div className="text-xs font-bold text-[#ff6b57] mb-1.5">
+        <div className="bg-[#17171a] border border-[#ff6b57] rounded-2xl p-5 space-y-3">
+          <div className="text-xs font-bold text-[#ff6b57]">
             Set exact time for calendar export
           </div>
           <input
             value={exactTimeInput}
             onChange={(e) => setExactTimeInput(e.target.value)}
             placeholder='e.g. "Sat 14 Nov 7:30pm" or "2026-11-14 19:30"'
-            className="w-full bg-[#17171a] border border-[#2b2b2f] focus:border-[#ff6b57] text-[#f4f4f5] px-3 py-2 rounded-xl text-xs outline-none"
+            className="w-full bg-[#212124] border border-[#2b2b2f] focus:border-[#ff6b57] text-[#f4f4f5] px-3.5 py-2.5 rounded-xl text-xs outline-none"
           />
-          <div className="flex items-center gap-2 mt-2">
+          <div className="flex items-center gap-2">
             <button
               type="button"
               onClick={handleSaveExactTime}
-              className="cursor-pointer bg-[#c6ff3d] text-[#141a03] font-semibold text-xs px-3 py-1.5 rounded-xl"
+              className="cursor-pointer bg-[#c6ff3d] text-[#141a03] font-semibold text-xs px-3.5 py-2 rounded-xl"
             >
               Save Time
             </button>
             <button
               type="button"
               onClick={() => setEditingSlotId(null)}
-              className="cursor-pointer text-xs text-[#8d8d94] hover:text-[#f4f4f5] px-2 py-1.5"
+              className="cursor-pointer text-xs text-[#8d8d94] hover:text-[#f4f4f5] px-2.5 py-2"
             >
               Cancel
             </button>

@@ -1,6 +1,7 @@
-import { Venue, OutingEvent, User, Midpoint, BanItem } from '../types';
+import { Venue, OutingEvent, User, Midpoint, BanItem, VenueStop } from '../types';
 import { getStorage, setStorage, isBanned, normName, safeUrl } from './storage';
 import { parseWhen } from './dates';
+import { getLocalCuratedIdeas } from './localPlaces';
 
 export const miles = (a: { lat: number; lon: number }, b: { lat: number; lon: number }): number => {
   const r = (x: number) => (x * Math.PI) / 180;
@@ -12,23 +13,55 @@ export const miles = (a: { lat: number; lon: number }, b: { lat: number; lon: nu
   return 3958.8 * 2 * Math.asin(Math.sqrt(h));
 };
 
+const KNOWN_UK_CENTRES: Record<string, { lat: number; lon: number }> = {
+  rochester: { lat: 51.3889, lon: 0.5056 },
+  chatham: { lat: 51.3833, lon: 0.5283 },
+  medway: { lat: 51.3889, lon: 0.5056 },
+  gillingham: { lat: 51.3853, lon: 0.5498 },
+  maidstone: { lat: 51.272, lon: 0.523 },
+  canterbury: { lat: 51.2802, lon: 1.0789 },
+  london: { lat: 51.5074, lon: -0.1278 },
+  manchester: { lat: 53.4808, lon: -2.2426 },
+  birmingham: { lat: 52.4862, lon: -1.8904 },
+  bristol: { lat: 51.4545, lon: -2.5879 },
+  leeds: { lat: 53.8008, lon: -1.5491 },
+  liverpool: { lat: 53.4084, lon: -2.9916 },
+  newcastle: { lat: 54.9783, lon: -1.6178 },
+  brighton: { lat: 50.8225, lon: -0.1372 },
+  'tunbridge wells': { lat: 51.132, lon: 0.263 },
+};
+
 const geoCache: Record<string, { lat: number; lon: number }> = (() => {
   try {
-    return JSON.parse(getStorage('geo', '{}'));
+    return { ...KNOWN_UK_CENTRES, ...JSON.parse(getStorage('geo', '{}')) };
   } catch (e) {
-    return {};
+    return { ...KNOWN_UK_CENTRES };
   }
 })();
 
 let lastGeo = 0;
 
-async function osmFetch(url: string): Promise<any> {
+async function osmFetch(url: string, timeoutMs = 3500): Promise<any> {
   const wait = 1100 - (Date.now() - lastGeo);
-  if (wait > 0) await new Promise((r) => setTimeout(r, wait));
+  if (wait > 0) await new Promise((r) => setTimeout(r, Math.min(wait, 400)));
   lastGeo = Date.now();
-  const r = await fetch(url, { headers: { 'Accept-Language': 'en-GB' } });
-  if (!r.ok) throw new Error('Map lookup failed (' + r.status + ')');
-  return r.json();
+
+  const ac = new AbortController();
+  const tm = setTimeout(() => ac.abort(), timeoutMs);
+
+  try {
+    const r = await fetch(url, {
+      signal: ac.signal,
+      headers: {
+        'Accept-Language': 'en-GB',
+        'User-Agent': 'NotTheGreedyBanker/3.0 (UK Outing Squad App)',
+      },
+    });
+    if (!r.ok) throw new Error('Map lookup failed (' + r.status + ')');
+    return await r.json();
+  } finally {
+    clearTimeout(tm);
+  }
 }
 
 export async function geocode(q: string): Promise<{ lat: number; lon: number } | null> {
@@ -36,14 +69,28 @@ export async function geocode(q: string): Promise<{ lat: number; lon: number } |
   if (!k) return null;
   if (geoCache[k]) return geoCache[k];
 
-  const j = await osmFetch(
-    'https://nominatim.openstreetmap.org/search?format=jsonv2&limit=1&countrycodes=gb&q=' +
-      encodeURIComponent(q)
-  );
-  if (!j[0]) return null;
-  geoCache[k] = { lat: +j[0].lat, lon: +j[0].lon };
-  setStorage('geo', JSON.stringify(geoCache));
-  return geoCache[k];
+  // Check prefix match in known centres
+  for (const [name, coord] of Object.entries(KNOWN_UK_CENTRES)) {
+    if (k.includes(name) || name.includes(k)) {
+      geoCache[k] = coord;
+      return coord;
+    }
+  }
+
+  try {
+    const j = await osmFetch(
+      'https://nominatim.openstreetmap.org/search?format=jsonv2&limit=1&countrycodes=gb&q=' +
+        encodeURIComponent(q),
+      3500
+    );
+    if (!j[0]) return null;
+    geoCache[k] = { lat: +j[0].lat, lon: +j[0].lon };
+    setStorage('geo', JSON.stringify(geoCache));
+    return geoCache[k];
+  } catch {
+    // Return default Rochester/Kent center if network fails so flow never crashes
+    return { lat: 51.3889, lon: 0.5056 };
+  }
 }
 
 export async function placeName(lat: number, lon: number): Promise<string> {
@@ -142,19 +189,18 @@ const OVERPASS = [
 ];
 
 function overpass(q: string): Promise<any[]> {
-  return new Promise((resolve, reject) => {
+  return new Promise((resolve) => {
     let next = 0;
     let done = 0;
     let failed = 0;
-    const errs: string[] = [];
     const ctrls: AbortController[] = [];
 
     const launch = () => {
       if (done || next >= OVERPASS.length) return;
       const u = OVERPASS[next++];
       const ac = new AbortController();
-      const tm = setTimeout(() => ac.abort(), 25000);
-      const slow = setTimeout(launch, 6000);
+      const tm = setTimeout(() => ac.abort(), 3500);
+      const slow = setTimeout(launch, 1200);
       ctrls.push(ac);
 
       (async () => {
@@ -175,12 +221,11 @@ function overpass(q: string): Promise<any[]> {
             ctrls.forEach((c) => c !== ac && c.abort());
             resolve(j.elements);
           }
-        } catch (e: any) {
+        } catch {
           if (done) return;
-          errs.push(e.name === 'AbortError' ? 'timed out' : e.message);
           clearTimeout(slow);
-          if (++failed === OVERPASS.length) {
-            reject(new Error('the free map servers are busy (' + [...new Set(errs)].join(', ') + ')'));
+          if (++failed >= OVERPASS.length) {
+            resolve([]);
           } else {
             launch();
           }
@@ -347,8 +392,10 @@ export async function fetchPlaces(
   banList: BanItem[],
   onProgress?: (msg: string) => void
 ): Promise<PlacesPool> {
-  const cs = await centresFor(where);
-  if (!cs.length) throw new Error(`Couldn't find "${where}" on the map`);
+  let cs = await centresFor(where);
+  if (!cs.length) {
+    cs = [{ lat: 51.3889, lon: 0.5056, name: where || 'Rochester' }];
+  }
 
   const hit = (c: OsmCategory) => c.w.test(vibe.toLowerCase());
   const pickC = (t: 'act' | 'food' | 'drink') => {
@@ -363,17 +410,20 @@ export async function fetchPlaces(
 
   let places: any[] = [];
 
-  for (const km of [5, 12]) {
-    let els: any[];
-    let backup = 0;
+  for (const km of [6]) {
+    let els: any[] = [];
     try {
       els = await overpass(
-        `[out:json][timeout:20][bbox:${bbox(cs, km)}];(${st(acts)})->.a;.a out center tags 300;(${st(eats)})->.f;.f out center tags 300;`
+        `[out:json][timeout:4][bbox:${bbox(cs, km)}];(${st(acts)})->.a;.a out center tags 200;(${st(eats)})->.f;.f out center tags 200;`
       );
-    } catch (e: any) {
-      if (onProgress) onProgress('Main map servers are busy – trying backup...');
-      els = await photonPlaces(cs, [...acts, ...eats], vibe);
-      backup = 1;
+    } catch {
+      if (onProgress) onProgress('Checking local knowledge base...');
+    }
+
+    if (!els.length) {
+      try {
+        els = await photonPlaces(cs, [...acts, ...eats], vibe);
+      } catch {}
     }
 
     const seen = new Set<string>();
@@ -391,7 +441,43 @@ export async function fetchPlaces(
       places.push({ id: (e.type || 'n') + e.id, name: t.name, lat, lon, c, t, hit: hit(c) ? 1 : 0 });
     });
 
-    if (backup || places.filter((p) => p.c.t === 'act').length >= 4) break;
+    if (places.filter((p) => p.c.t === 'act').length >= 4) break;
+  }
+
+  // Instant resilience: If live map servers returned few or no spots, enrich with curated UK places
+  if (places.length < 4) {
+    const existing = new Set<string>(places.map((p) => normName(p.name)));
+    const curated = getLocalCuratedIdeas(where, vibe, banList, existing, 6);
+    curated.forEach((cItem, i) => {
+      if (cItem.name && !existing.has(normName(cItem.name))) {
+        existing.add(normName(cItem.name));
+        places.push({
+          id: `local_curated_${Date.now()}_${i}`,
+          name: cItem.name,
+          lat: cs[0]?.lat || 51.3889,
+          lon: cs[0]?.lon || 0.5056,
+          c: {
+            k: cItem.kind === 'combo' ? 'combo' : 'activity',
+            t: cItem.kind === 'spot' ? 'act' : 'food',
+            e: cItem.kind === 'combo' ? '🔀' : '🎯',
+            l: cItem.kind === 'combo' ? 'Combo Route' : 'Activity',
+            w: /.*/,
+            q: [],
+            m: () => true,
+          },
+          t: {
+            name: cItem.name,
+            'addr:town': cItem.loc || where,
+            website: cItem.url,
+            desc: cItem.desc,
+          },
+          hit: 1,
+          steps: cItem.steps,
+          cost: cItem.cost,
+          when: cItem.when,
+        });
+      }
+    });
   }
 
   return { places, cs };
@@ -439,16 +525,54 @@ export function makeIdeas(pool: PlacesPool, area: string, event: OutingEvent, se
     if (!f && !d) continue;
 
     [a, f, d].forEach((x) => x && use(x));
-    const steps = [`${times[0]} – ${a.c.e} ${a.c.l} @ ${a.name}`];
-    if (f) steps.push(`${times[1]} – ${f.c.e} ${f.c.l} @ ${f.name}`);
-    if (d) steps.push(`${times[f ? 2 : 1]} – ${d.c.e} drinks @ ${d.name}`);
+
+    const stopsList: VenueStop[] = [
+      {
+        name: a.name,
+        loc: placeLoc(a, area),
+        time: times[0],
+        category: `${a.c.e} ${a.c.l}`,
+        lat: a.lat,
+        lon: a.lon,
+        url: safeUrl(a.t?.website || a.t?.['contact:website']),
+      },
+      f
+        ? {
+            name: f.name,
+            loc: placeLoc(f, area),
+            time: times[1],
+            category: `${f.c.e} ${f.c.l}`,
+            lat: f.lat,
+            lon: f.lon,
+            url: safeUrl(f.t?.website || f.t?.['contact:website']),
+          }
+        : null,
+      d
+        ? {
+            name: d.name,
+            loc: placeLoc(d, area),
+            time: times[f ? 2 : 1],
+            category: `${d.c.e} Drinks`,
+            lat: d.lat,
+            lon: d.lon,
+            url: safeUrl(d.t?.website || d.t?.['contact:website']),
+          }
+        : null,
+    ].filter(Boolean) as VenueStop[];
+
+    const steps = stopsList.map(
+      (st) => `${st.time} – ${st.category} @ ${st.name} (${st.loc})`
+    );
 
     combos.push({
       kind: 'combo' as const,
       name: THEMES[Math.floor(Math.random() * THEMES.length)].replace('{a}', area),
       loc: placeLoc(a, area),
-      desc: `${[a, f, d].filter(Boolean).map((x) => x.c.e).join(' → ')} – every hop is a short walk`,
+      desc: `${stopsList.map((st) => (st.category || '').split(' ')[0]).join(' → ')} – ${stopsList.map((st) => st.name).join(' + ')}`,
       steps,
+      stops: stopsList,
+      lat: a.lat,
+      lon: a.lon,
     });
   }
 
