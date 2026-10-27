@@ -38,7 +38,7 @@ export const MODES: Record<string, AiModeConfig> = {
   },
 };
 
-const DEFAULT_FAST_MODELS = ['gemini-flash-latest', 'gemini-3.8-flash', 'gemini-3.1-flash-lite'];
+const DEFAULT_FAST_MODELS = ['gemini-flash-latest', 'gemini-flash-lite-latest'];
 
 export async function liveModels(_key?: string): Promise<string[]> {
   return DEFAULT_FAST_MODELS;
@@ -152,6 +152,24 @@ export function squadBrief(
     .join('\n');
 }
 
+// A Builder Admin can set their own Gemini key on this device; the server uses it instead of its own.
+export const aiHeaders = (cfg: AppConfig): Record<string, string> => ({
+  'Content-Type': 'application/json',
+  ...(cfg.key ? { 'x-gemini-key': cfg.key } : {}),
+});
+
+// Turn raw server / network errors into something the squad can act on.
+export function friendlyAiError(err: any): string {
+  const msg = String(err?.message || err || '');
+  if (err?.name === 'AbortError') return 'Gerg AI took too long to answer – give it another go.';
+  if (/not valid|invalid|PERMISSION_DENIED|403/i.test(msg)) return "Gerg AI's Gemini API key was rejected – it needs a valid key.";
+  if (/not configured|API_KEY/i.test(msg)) return "Gerg AI isn't switched on – the server has no Gemini API key.";
+  if (/429|quota|rate|exhausted/i.test(msg)) return 'Gerg AI has hit its usage limit for now – try again later.';
+  if (/Failed to fetch|NetworkError|HTTP 5\d\d/i.test(msg)) return "Couldn't reach Gerg AI – check your connection and try again.";
+  if (/not found|404|model/i.test(msg)) return 'Gerg AI model is unavailable – the server model list needs updating.';
+  return `Gerg AI is unavailable right now (${msg.slice(0, 120)}).`;
+}
+
 export interface GergAiResult {
   ideas: Partial<Venue>[];
   duration: number;
@@ -235,7 +253,7 @@ export async function askGergAI(
             onStreamIdea(formatted, streamedIdeas.length - 1);
           }
           const elapsed = ((Date.now() - t0) / 1000).toFixed(1);
-          onStatus(`⚡ Gerg AI streamed idea ${streamedIdeas.length} of 3 (${elapsed}s)...`);
+          onStatus(`⚡ Gerg AI streamed idea ${streamedIdeas.length} of ${count} (${elapsed}s)...`);
         }
       }
     }
@@ -244,13 +262,12 @@ export async function askGergAI(
 
   const ac = new AbortController();
   const tm = setTimeout(() => ac.abort(), 35000);
+  let failure: any = null;
 
   try {
     const response = await fetch('/api/gemini/ideas', {
       method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-      },
+      headers: aiHeaders(cfg),
       signal: ac.signal,
       body: JSON.stringify({
         prompt,
@@ -346,112 +363,17 @@ export async function askGergAI(
     }
   } catch (err: any) {
     console.warn('Gerg AI request encountered issue:', err.message);
+    failure = err;
   } finally {
     clearTimeout(tm);
   }
 
-  // Resilient fallback: If no ideas could be generated (e.g. rate limit, offline), provide curated anti-default suggestions
   if (streamedIdeas.length === 0) {
-    const loc = customLoc || (event.mid ? event.mid.name : 'Rochester');
-    const vLower = (customVib || '').toLowerCase();
-    let fallbackIdeas: Partial<Venue>[] = [];
-
-    if (vLower.includes('wine') || vLower.includes('vineyard')) {
-      fallbackIdeas = [
-        {
-          name: `${loc} Boutique Wine & Tapas Flight`,
-          loc,
-          kind: 'combo' as const,
-          desc: `Sommelier-curated natural wines paired with artisan British charcuterie.`,
-          cost: '£30',
-          steps: ['6:30pm Sparkling wine flight', '7:45pm Tapas & regional reds', '9:30pm Port & cheese board'],
-        },
-        {
-          name: `The Cellar Vault Tasting Experience`,
-          loc,
-          kind: 'spot' as const,
-          desc: `Intimate candlelit brick arch vault with over 40 natural and organic wines by the glass.`,
-          cost: '£25',
-        },
-        {
-          name: `Sunset Vineyard & Orchard Tour`,
-          loc,
-          kind: 'event' as const,
-          desc: `Guided walk through Kent grapevines followed by private outdoor tasting flight.`,
-          cost: '£28',
-          when: 'Sat 4:00pm',
-        },
-      ];
-    } else if (vLower.includes('curry') || vLower.includes('spice') || vLower.includes('indian')) {
-      fallbackIdeas = [
-        {
-          name: `Grand Tandoori Feast & Craft Ciders`,
-          loc,
-          kind: 'combo' as const,
-          desc: `Clay-oven sizzling mixed grill platters followed by dry-hopped fruit ciders.`,
-          cost: '£28',
-          steps: ['7:00pm Starter samosas & poppadoms', '8:15pm Chef special karahi & naan'],
-        },
-        {
-          name: `The Spice Route Tasting Banquet`,
-          loc,
-          kind: 'spot' as const,
-          desc: `Regional street-food chaat and slow-cooked Kashmiri lamb shanks.`,
-          cost: '£25',
-        },
-      ];
-    } else if (vLower.includes('taproom') || vLower.includes('craft') || vLower.includes('brew')) {
-      fallbackIdeas = [
-        {
-          name: `Microbrewery Tank-to-Glass Tour`,
-          loc,
-          kind: 'combo' as const,
-          desc: `Behind-the-scenes tasting straight from fermentation vessels, then street pizza.`,
-          cost: '£24',
-          steps: ['6:00pm Tank sampling', '7:30pm Neapolitan pizza & fresh hazy IPAs'],
-        },
-        {
-          name: `The Hop Exchange Taproom`,
-          loc,
-          kind: 'spot' as const,
-          desc: `16 rotating craft lines, sour beers, and outdoor heated shipping container courtyard.`,
-          cost: '£20',
-        },
-      ];
-    } else {
-      fallbackIdeas = [
-        {
-          name: `Shuffleboard & Craft Pint Showdown`,
-          loc,
-          kind: 'combo' as const,
-          desc: `High-energy interactive games followed by independent local brews. Beats sitting in the usual booth!`,
-          cost: '£20',
-          steps: ['6:30pm Table shuffleboard tournament', '8:15pm Street food & guest taps'],
-        },
-        {
-          name: `Secret Cellar Comedy Club`,
-          loc,
-          kind: 'event' as const,
-          desc: `Underground comedy night featuring circuit headliners and wildcard sets.`,
-          cost: '£15',
-          when: 'Fri & Sat 8pm',
-        },
-        {
-          name: `Axe Throwing & Smoked BBQ Pit`,
-          loc,
-          kind: 'spot' as const,
-          desc: `Competitive target games with pitmaster platters to share. Zero chance of pub boredom.`,
-          cost: '£25',
-        },
-      ];
-    }
-
-    fallbackIdeas = fallbackIdeas.filter((f) => !isBanned(f.name || '', banList) && !have.has(normName(f.name || '')));
-
-    fallbackIdeas.forEach((idea, idx) => {
-      streamedIdeas.push(idea);
-      if (onStreamIdea) onStreamIdea(idea, idx);
-    });
+    throw new Error(
+      failure
+        ? friendlyAiError(failure)
+        : "Gerg AI came back empty-handed – try a different vibe or area."
+    );
   }
 
   return {

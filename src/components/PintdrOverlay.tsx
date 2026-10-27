@@ -1,7 +1,8 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { AppConfig, BanItem, OutingEvent, User, Venue } from '../types';
 import { fetchPlaces, makeIdeas, miles } from '../utils/osm';
-import { askGergAI, MODES } from '../utils/gemini';
+import { askGergAI, friendlyAiError, MODES } from '../utils/gemini';
+import { getLocalCuratedIdeas } from '../utils/localPlaces';
 import { isBanned, normName, safeUrl } from '../utils/storage';
 import { FlickeringFlameLoader } from './FlickeringFlameLoader';
 import {
@@ -87,6 +88,7 @@ export const PintdrOverlay: React.FC<PintdrOverlayProps> = ({
   const [likedCount, setLikedCount] = useState(0);
   const [isLoadingMore, setIsLoadingMore] = useState(false);
   const [statusMessage, setStatusMessage] = useState('');
+  const [aiNotice, setAiNotice] = useState('');
   const [showFilters, setShowFilters] = useState(false);
 
   // Swipe Gesture Animation State
@@ -240,6 +242,8 @@ export const PintdrOverlay: React.FC<PintdrOverlayProps> = ({
 
         // 2. Fetch from Gemini / Gerg AI if enabled and key present
         let aiCards: PintdrCard[] = [];
+        let aiError = '';
+        setAiNotice('');
         if (canUseAI) {
           try {
             setStatusMessage(`⚡ Gerg AI is streaming spots for "${targetVibe || 'anti-default'}"...`);
@@ -331,6 +335,8 @@ export const PintdrOverlay: React.FC<PintdrOverlayProps> = ({
             }
           } catch (e: any) {
             console.warn('AI fetch error in Pintdr:', e);
+            aiError = e?.message || friendlyAiError(e);
+            setAiNotice(aiError);
           }
         }
 
@@ -341,98 +347,36 @@ export const PintdrOverlay: React.FC<PintdrOverlayProps> = ({
           if (i < osmCards.length) newBatch.push(osmCards[i]);
         }
 
+        // Nothing from the map or Gerg AI: fall back to the hand-checked list of real UK spots
         if (newBatch.length === 0 && deck.length === 0) {
-          const vLower = targetVibe.toLowerCase();
-          let fallbackSpots: PintdrCard[] = [];
-
-          if (vLower.includes('wine') || vLower.includes('vineyard')) {
-            fallbackSpots = [
-              {
-                id: `fallback_wine_1_${Date.now()}`,
-                name: `${targetArea} Boutique Wine & Tapas Flight`,
-                loc: targetArea,
-                desc: 'Sommelier-curated natural wines paired with artisan British charcuterie.',
-                kind: 'combo',
-                category: 'Wine Flight',
-                emoji: '🍷',
-                cost: '£30',
-                steps: ['6:30pm Sparkling wine flight', '7:45pm Tapas & regional reds', '9:30pm Port & cheese board'],
-                source: 'ai',
-              },
-              {
-                id: `fallback_wine_2_${Date.now()}`,
-                name: 'The Cellar Vault Tasting Experience',
-                loc: targetArea,
-                desc: 'Intimate candlelit brick arch vault with over 40 organic wines by the glass.',
-                kind: 'spot',
-                category: 'Wine Bar',
-                emoji: '🍷',
-                cost: '£25',
-                source: 'ai',
-              },
-            ];
-          } else if (vLower.includes('craft') || vLower.includes('brew') || vLower.includes('taproom')) {
-            fallbackSpots = [
-              {
-                id: `fallback_craft_1_${Date.now()}`,
-                name: 'Microbrewery Tank-to-Glass Tour',
-                loc: targetArea,
-                desc: 'Behind-the-scenes tasting straight from fermentation vessels, then street pizza.',
-                kind: 'combo',
-                category: 'Taproom Combo',
-                emoji: '🍻',
-                cost: '£24',
-                steps: ['6:00pm Tank sampling', '7:30pm Neapolitan pizza & fresh hazy IPAs'],
-                source: 'ai',
-              },
-            ];
-          } else {
-            fallbackSpots = [
-              {
-                id: `fallback_1_${Date.now()}`,
-                name: 'Social Darts & Craft Pint Showdown',
-                loc: targetArea,
-                desc: 'High-tech interactive darts with craft beers and sharing platters. Fast and fun.',
-                kind: 'spot',
-                category: 'Activity Bar',
-                emoji: '🎯',
-                source: 'ai',
-              },
-              {
-                id: `fallback_2_${Date.now()}`,
-                name: 'Secret Underground Arcade & Pinball',
-                loc: targetArea,
-                desc: 'Retro Japanese arcade cabinets, multiplayer pinball, and rotating guest taps.',
-                kind: 'spot',
-                category: 'Retro Gaming',
-                emoji: '🕹️',
-                source: 'ai',
-              },
-              {
-                id: `fallback_3_${Date.now()}`,
-                name: 'Axe Throwing & Smoked BBQ Combo',
-                loc: targetArea,
-                desc: 'Tournament-style axe throwing followed by pitmaster brisket platters.',
-                kind: 'combo',
-                category: 'Combo Night',
-                emoji: '🔀',
-                steps: ['6:30pm Axe throwing tournament', '8:00pm Low-and-slow BBQ platter'],
-                source: 'ai',
-              },
-            ];
-          }
-
-          fallbackSpots.forEach((f) => {
-            if (!seenIdsRef.current.has(normName(f.name))) {
-              newBatch.push(f);
-            }
+          const existing = new Set(seenIdsRef.current);
+          getLocalCuratedIdeas(targetArea, targetVibe, banList, existing, 6).forEach((x, i) => {
+            if (!x.name) return;
+            seenIdsRef.current.add(normName(x.name));
+            newBatch.push({
+              id: `curated_${Date.now()}_${i}`,
+              name: x.name,
+              loc: x.loc || targetArea,
+              desc: x.desc || '',
+              kind: x.kind || 'spot',
+              cost: x.cost,
+              when: x.when,
+              steps: x.steps,
+              url: x.url,
+              source: 'osm',
+              category: 'Curated Spot',
+            });
           });
         }
 
         if (newBatch.length === 0) {
           setDeck((prev) => {
             if (prev.length === 0) {
-              setStatusMessage('🤷 No new spots found for this filter – try expanding the area or vibe.');
+              setStatusMessage(
+                aiError
+                  ? `⚠️ ${aiError} No map spots found either – try a bigger area.`
+                  : '🤷 No new spots found for this filter – try expanding the area or vibe.'
+              );
             }
             return prev;
           });
@@ -442,7 +386,11 @@ export const PintdrOverlay: React.FC<PintdrOverlayProps> = ({
             const deduplicated = newBatch.filter((c) => !existingNames.has(normName(c.name)));
             const combined = resetDeck && prev.length === 0 ? deduplicated : [...prev, ...deduplicated];
             deckCacheRef.current[cacheKey] = combined;
-            setStatusMessage(`✨ Loaded ${combined.length} swipeable venues!`);
+            setStatusMessage(
+              aiError
+                ? `⚠️ ${aiError} Showing ${combined.length} real map spots instead.`
+                : `✨ Loaded ${combined.length} swipeable venues!`
+            );
             return combined;
           });
         }
@@ -820,6 +768,12 @@ export const PintdrOverlay: React.FC<PintdrOverlayProps> = ({
           )}
         </div>
       </div>
+
+      {aiNotice && (
+        <div className="relative z-10 mx-4 mt-2 px-3 py-2 rounded-xl border border-primary/40 bg-primary/10 text-[11px] font-semibold text-ink2">
+          ⚠️ {aiNotice} Showing real map spots only.
+        </div>
+      )}
 
       {/* Swipe Pool Waiting Counter */}
       {(() => {

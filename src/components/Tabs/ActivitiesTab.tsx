@@ -771,7 +771,7 @@ export const ActivitiesTab: React.FC<ActivitiesTabProps> = ({
         )}s! Review them below in "Fresh Gerg AI Rolls" and tap "➕ Shortlist This" to add to the squad list.`
       );
     } catch (e: any) {
-      setAiMsg(`❌ ${e.message}`);
+      setAiMsg(`⚠️ ${e.message} The Interactive Map still finds real spots nearby.`);
     } finally {
       setIsAiStreaming(false);
       setStreamingIdeas([]);

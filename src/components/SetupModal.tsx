@@ -690,10 +690,9 @@ export const SetupModal: React.FC<SetupModalProps> = ({
                   />
                   <div className="flex flex-wrap gap-1">
                     {[
-                      { id: 'gemini-flash-latest', label: '⚡ Latest' },
-                      { id: 'gemini-3.8-flash', label: '3.8 Flash' },
-                      { id: 'gemini-3.1-flash-lite', label: '3.1 Lite' },
-                      { id: 'gemini-4-argon', label: '4 Argon' },
+                      { id: 'gemini-flash-latest', label: '⚡ Flash (latest)' },
+                      { id: 'gemini-flash-lite-latest', label: 'Flash Lite' },
+                      { id: 'gemini-pro-latest', label: 'Pro' },
                     ].map((m) => (
                       <button
                         key={m.id}
