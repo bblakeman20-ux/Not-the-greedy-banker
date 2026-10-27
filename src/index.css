@@ -1,24 +1,45 @@
 @import "tailwindcss";
 @import "leaflet/dist/leaflet.css";
 
+@theme inline {
+  --color-page: var(--bg);
+  --color-card: var(--card);
+  --color-card2: var(--card-2);
+  --color-line: var(--line);
+  --color-line2: var(--line-2);
+  --color-ink: var(--text);
+  --color-ink2: var(--text-2);
+  --color-muted: var(--muted);
+  --color-primary: var(--accent);
+  --color-primary-hi: var(--accent-hi);
+  --color-primary-ink: var(--accent-ink);
+  --color-secondary: var(--good);
+  --color-secondary-ink: var(--good-ink);
+}
+
 @layer base {
   :root {
+    /* Room palette (set at runtime by applyRoomTheme; defaults = Pintdr) */
     --bg: #0e0e10;
-    --card: #17171a;
-    --card-2: #212124;
-    --line: #2b2b2f;
-    --line-2: #3b3b40;
+    --surface: #17171a;
     --text: #f4f4f5;
-    --text-2: #cfcfd4;
-    --muted: #8d8d94;
     --accent: #ff6b57;
     --accent-ink: #1a0703;
-    --accent-soft: rgba(255, 107, 87, 0.13);
     --good: #c6ff3d;
     --good-ink: #141a03;
-    --good-soft: rgba(198, 255, 61, 0.12);
-    --bad: #ff6b57;
-    --bad-soft: rgba(255, 107, 87, 0.13);
+
+    /* Derived from the palette, so every theme stays within its 4-5 colours */
+    --card: var(--surface);
+    --card-2: color-mix(in oklab, var(--surface), var(--text) 6%);
+    --line: color-mix(in oklab, var(--surface), var(--text) 12%);
+    --line-2: color-mix(in oklab, var(--surface), var(--text) 20%);
+    --text-2: color-mix(in oklab, var(--text), var(--surface) 15%);
+    --muted: color-mix(in oklab, var(--text), var(--surface) 45%);
+    --accent-hi: color-mix(in oklab, var(--accent), var(--text) 25%);
+    --accent-soft: color-mix(in oklab, var(--accent) 13%, transparent);
+    --good-soft: color-mix(in oklab, var(--good) 12%, transparent);
+    --bad: var(--accent);
+    --bad-soft: var(--accent-soft);
     --display: 'Bricolage Grotesque', Inter, system-ui, sans-serif;
   }
 

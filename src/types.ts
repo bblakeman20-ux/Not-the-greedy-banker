@@ -121,12 +121,24 @@ export interface OutingEvent {
   planVetoes?: Record<string, number>;
 }
 
+export interface RoomTheme {
+  id: string; // preset id, or 'custom'
+  bg: string;
+  surface: string;
+  text: string;
+  primary: string;
+  secondary?: string; // optional 5th colour; falls back to primary
+  by?: string; // name of whoever last changed it
+  at?: number;
+}
+
 export interface AppState {
   ver: number;
   squad: User[];
   ban: BanItem[];
   board: Record<string, { r: number; m: number }>;
   events: OutingEvent[];
+  theme?: RoomTheme;
 }
 
 export interface AppConfig {

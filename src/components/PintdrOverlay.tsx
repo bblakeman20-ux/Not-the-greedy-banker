@@ -24,6 +24,7 @@ import {
   Zap,
 } from 'lucide-react';
 import confetti from 'canvas-confetti';
+import { themeConfetti } from '../utils/theme';
 
 export interface PintdrCard {
   id: string;
@@ -520,9 +521,7 @@ export const PintdrOverlay: React.FC<PintdrOverlayProps> = ({
       origin: { y: 0.6 },
       colors: isGreedyBanker
         ? ['#ef4444', '#dc2626', '#b91c1c']
-        : makeWinner
-        ? ['#ff6b57', '#ffd700', '#c6ff3d']
-        : ['#c6ff3d', '#4ade80', '#ffffff'],
+        : themeConfetti(),
     });
 
     if (isGreedyBanker) {
@@ -641,21 +640,21 @@ export const PintdrOverlay: React.FC<PintdrOverlayProps> = ({
   };
 
   return (
-    <div className="fixed inset-0 z-50 bg-[#09090b]/85 backdrop-blur-md flex flex-col items-center justify-between p-3 sm:p-5 text-[#f4f4f5] select-none overflow-y-auto animate-in fade-in duration-200">
+    <div className="fixed inset-0 z-50 bg-page/85 backdrop-blur-md flex flex-col items-center justify-between p-3 sm:p-5 text-ink select-none overflow-y-auto animate-in fade-in duration-200">
       {/* Top Bar HUD */}
       <div className="w-full max-w-md flex items-center justify-between gap-2 z-10 shrink-0">
         <div className="flex items-center gap-2">
-          <div className="w-9 h-9 rounded-xl bg-gradient-to-tr from-[#ff6b57] to-[#ff8f7d] flex items-center justify-center text-[#1a0703] shadow-lg shadow-[#ff6b57]/20">
+          <div className="w-9 h-9 rounded-xl bg-gradient-to-tr from-primary to-primary-hi flex items-center justify-center text-primary-ink shadow-lg shadow-primary/20">
             <Flame className="w-5 h-5 fill-current" />
           </div>
           <div>
-            <div className="flex items-center gap-1.5 font-display font-black text-base tracking-wide text-[#f4f4f5]">
+            <div className="flex items-center gap-1.5 font-display font-black text-base tracking-wide text-ink">
               <span>PINTDR™</span>
-              <span className="text-[10px] uppercase font-bold tracking-wider px-1.5 py-0.5 rounded-full bg-[rgba(255,107,87,0.2)] text-[#ff6b57] border border-[#ff6b57]/30">
+              <span className="text-[10px] uppercase font-bold tracking-wider px-1.5 py-0.5 rounded-full bg-[color-mix(in_oklab,var(--accent)_20%,transparent)] text-primary border border-primary/30">
                 Matchmaker
               </span>
             </div>
-            <div className="text-[11px] text-[#8d8d94]">Anti-Banker Idea Swiper</div>
+            <div className="text-[11px] text-muted">Anti-Banker Idea Swiper</div>
           </div>
         </div>
 
@@ -665,19 +664,19 @@ export const PintdrOverlay: React.FC<PintdrOverlayProps> = ({
             type="button"
             onClick={() => replenishDeck(true)}
             disabled={isLoadingMore}
-            className="px-2.5 py-1.5 rounded-xl border border-[#2b2b2f] bg-[#17171a] text-[#8d8d94] hover:text-[#c6ff3d] hover:border-[#c6ff3d]/50 transition cursor-pointer flex items-center gap-1.5 text-xs"
+            className="px-2.5 py-1.5 rounded-xl border border-line bg-card text-muted hover:text-secondary hover:border-secondary/50 transition cursor-pointer flex items-center gap-1.5 text-xs"
             title="Deal fresh tailored cards for current theme & area"
           >
-            <RefreshCw className={`w-3.5 h-3.5 ${isLoadingMore ? 'animate-spin text-[#c6ff3d]' : ''}`} />
-            <span className="text-[11px] font-bold text-[#cfcfd4] hidden sm:inline">Fresh Deal</span>
+            <RefreshCw className={`w-3.5 h-3.5 ${isLoadingMore ? 'animate-spin text-secondary' : ''}`} />
+            <span className="text-[11px] font-bold text-ink2 hidden sm:inline">Fresh Deal</span>
           </button>
           <button
             type="button"
             onClick={() => setShowFilters(!showFilters)}
             className={`p-2 rounded-xl border transition cursor-pointer flex items-center gap-1 text-xs ${
               showFilters
-                ? 'border-[#ff6b57] bg-[rgba(255,107,87,0.15)] text-[#ff6b57]'
-                : 'border-[#2b2b2f] bg-[#17171a] text-[#8d8d94] hover:text-[#f4f4f5]'
+                ? 'border-primary bg-[color-mix(in_oklab,var(--accent)_15%,transparent)] text-primary'
+                : 'border-line bg-card text-muted hover:text-ink'
             }`}
             title="Adjust Search & Filters"
           >
@@ -686,7 +685,7 @@ export const PintdrOverlay: React.FC<PintdrOverlayProps> = ({
           <button
             type="button"
             onClick={onClose}
-            className="p-2 rounded-xl border border-[#2b2b2f] bg-[#17171a] text-[#8d8d94] hover:text-[#ff6b57] hover:border-[#ff6b57]/50 transition cursor-pointer"
+            className="p-2 rounded-xl border border-line bg-card text-muted hover:text-primary hover:border-primary/50 transition cursor-pointer"
             title="Close PINTDR (ESC)"
           >
             <X className="w-4 h-4" />
@@ -696,48 +695,48 @@ export const PintdrOverlay: React.FC<PintdrOverlayProps> = ({
 
       {/* Expandable Filter / Generator Config Tray */}
       {showFilters && (
-        <div className="w-full max-w-md bg-[#17171a] border border-[#2b2b2f] rounded-2xl p-3.5 my-2 shrink-0 shadow-2xl animate-in slide-in-from-top-3 duration-150">
-          <div className="flex items-center justify-between text-xs font-bold text-[#cfcfd4] mb-2">
+        <div className="w-full max-w-md bg-card border border-line rounded-2xl p-3.5 my-2 shrink-0 shadow-2xl animate-in slide-in-from-top-3 duration-150">
+          <div className="flex items-center justify-between text-xs font-bold text-ink2 mb-2">
             <span className="flex items-center gap-1.5">
-              <SlidersHorizontal className="w-3.5 h-3.5 text-[#ff6b57]" />
+              <SlidersHorizontal className="w-3.5 h-3.5 text-primary" />
               <span>Radar Settings</span>
             </span>
-            <span className="text-[10px] text-[#8d8d94]">Updates generative deck</span>
+            <span className="text-[10px] text-muted">Updates generative deck</span>
           </div>
 
           <div className="grid grid-cols-2 gap-2 mb-2">
             <div>
-              <label className="text-[10px] text-[#8d8d94] block mb-1">Town / Area</label>
+              <label className="text-[10px] text-muted block mb-1">Town / Area</label>
               <div className="relative">
-                <MapPin className="w-3.5 h-3.5 text-[#ff6b57] absolute left-2.5 top-2.5" />
+                <MapPin className="w-3.5 h-3.5 text-primary absolute left-2.5 top-2.5" />
                 <input
                   value={area}
                   onChange={(e) => setArea(e.target.value)}
                   placeholder="e.g. Soho, Rochester"
-                  className="w-full bg-[#212124] border border-transparent focus:border-[#ff6b57] text-[#f4f4f5] pl-7 pr-2 py-1.5 rounded-xl text-xs outline-none"
+                  className="w-full bg-card2 border border-transparent focus:border-primary text-ink pl-7 pr-2 py-1.5 rounded-xl text-xs outline-none"
                 />
               </div>
             </div>
             <div>
-              <label className="text-[10px] text-[#8d8d94] block mb-1">Vibe Filter</label>
+              <label className="text-[10px] text-muted block mb-1">Vibe Filter</label>
               <input
                 value={vibe}
                 onChange={(e) => setVibe(e.target.value)}
                 placeholder="e.g. curry, arcade, craft beer"
-                className="w-full bg-[#212124] border border-transparent focus:border-[#ff6b57] text-[#f4f4f5] px-2.5 py-1.5 rounded-xl text-xs outline-none"
+                className="w-full bg-card2 border border-transparent focus:border-primary text-ink px-2.5 py-1.5 rounded-xl text-xs outline-none"
               />
             </div>
           </div>
 
           {/* Source Filter Switcher */}
-          <div className="flex items-center gap-1 bg-[#212124] p-1 rounded-xl mb-2 text-xs">
+          <div className="flex items-center gap-1 bg-card2 p-1 rounded-xl mb-2 text-xs">
             <button
               type="button"
               onClick={() => setSourceFilter('mixed')}
               className={`flex-1 py-1 rounded-lg font-semibold flex items-center justify-center gap-1 transition cursor-pointer ${
                 sourceFilter === 'mixed'
-                  ? 'bg-[#ff6b57] text-[#1a0703]'
-                  : 'text-[#8d8d94] hover:text-[#f4f4f5]'
+                  ? 'bg-primary text-primary-ink'
+                  : 'text-muted hover:text-ink'
               }`}
             >
               <Zap className="w-3 h-3" />
@@ -748,8 +747,8 @@ export const PintdrOverlay: React.FC<PintdrOverlayProps> = ({
               onClick={() => setSourceFilter('osm')}
               className={`flex-1 py-1 rounded-lg font-semibold flex items-center justify-center gap-1 transition cursor-pointer ${
                 sourceFilter === 'osm'
-                  ? 'bg-[#ff6b57] text-[#1a0703]'
-                  : 'text-[#8d8d94] hover:text-[#f4f4f5]'
+                  ? 'bg-primary text-primary-ink'
+                  : 'text-muted hover:text-ink'
               }`}
             >
               <Compass className="w-3 h-3" />
@@ -760,8 +759,8 @@ export const PintdrOverlay: React.FC<PintdrOverlayProps> = ({
               onClick={() => setSourceFilter('ai')}
               className={`flex-1 py-1 rounded-lg font-semibold flex items-center justify-center gap-1 transition cursor-pointer ${
                 sourceFilter === 'ai'
-                  ? 'bg-[#ff6b57] text-[#1a0703]'
-                  : 'text-[#8d8d94] hover:text-[#f4f4f5]'
+                  ? 'bg-primary text-primary-ink'
+                  : 'text-muted hover:text-ink'
               }`}
             >
               <Bot className="w-3 h-3" />
@@ -779,8 +778,8 @@ export const PintdrOverlay: React.FC<PintdrOverlayProps> = ({
                   onClick={() => setAiMode(k)}
                   className={`shrink-0 px-2 py-1 rounded-lg border transition cursor-pointer ${
                     aiMode === k
-                      ? 'border-[#ff6b57] bg-[rgba(255,107,87,0.15)] text-[#f4f4f5] font-semibold'
-                      : 'border-[#2b2b2f] bg-[#212124] text-[#8d8d94]'
+                      ? 'border-primary bg-[color-mix(in_oklab,var(--accent)_15%,transparent)] text-ink font-semibold'
+                      : 'border-line bg-card2 text-muted'
                   }`}
                 >
                   {m.lbl}
@@ -795,7 +794,7 @@ export const PintdrOverlay: React.FC<PintdrOverlayProps> = ({
               replenishDeck(true);
               setShowFilters(false);
             }}
-            className="w-full cursor-pointer bg-[#ff6b57] text-[#1a0703] font-bold text-xs py-2 rounded-xl hover:brightness-105 active:scale-98 transition flex items-center justify-center gap-1.5"
+            className="w-full cursor-pointer bg-primary text-primary-ink font-bold text-xs py-2 rounded-xl hover:brightness-105 active:scale-98 transition flex items-center justify-center gap-1.5"
           >
             <RefreshCw className="w-3.5 h-3.5" />
             <span>Apply & Reload Deck</span>
@@ -804,20 +803,20 @@ export const PintdrOverlay: React.FC<PintdrOverlayProps> = ({
       )}
 
       {/* Status Bar */}
-      <div className="w-full max-w-md flex items-center justify-between text-[11px] text-[#8d8d94] px-2 py-1 shrink-0">
+      <div className="w-full max-w-md flex items-center justify-between text-[11px] text-muted px-2 py-1 shrink-0">
         <div className="flex items-center gap-2">
           <span>🔥 Swiped: {swipedCount}</span>
           <span>•</span>
-          <span className="text-[#c6ff3d]">💖 Pitched: {likedCount}</span>
+          <span className="text-secondary">💖 Pitched: {likedCount}</span>
         </div>
         <div className="flex items-center gap-1">
           {isLoadingMore ? (
-            <span className="flex items-center gap-1.5 text-[#c6ff3d] font-semibold animate-pulse text-[10px] bg-[rgba(198,255,61,0.12)] px-2 py-0.5 rounded-full border border-[#c6ff3d]/30">
-              <span className="w-1.5 h-1.5 rounded-full bg-[#c6ff3d] animate-ping" />
+            <span className="flex items-center gap-1.5 text-secondary font-semibold animate-pulse text-[10px] bg-[color-mix(in_oklab,var(--good)_12%,transparent)] px-2 py-0.5 rounded-full border border-secondary/30">
+              <span className="w-1.5 h-1.5 rounded-full bg-secondary animate-ping" />
               <span>⚡ Fast Streaming ({deck.length} in deck)</span>
             </span>
           ) : (
-            <span className="text-[10px] bg-[#212124] px-2 py-0.5 rounded-full text-[#8d8d94]">Deck: {deck.length} cards</span>
+            <span className="text-[10px] bg-card2 px-2 py-0.5 rounded-full text-muted">Deck: {deck.length} cards</span>
           )}
         </div>
       </div>
@@ -827,7 +826,7 @@ export const PintdrOverlay: React.FC<PintdrOverlayProps> = ({
         const waitingInPool = Object.values(event.swipePool || {}).filter((item) => (item.likes || []).length === 1).length;
         if (waitingInPool <= 0) return null;
         return (
-          <div className="w-full max-w-md bg-[#212124]/90 border border-[#ff6b57]/30 rounded-xl px-3 py-1 my-1 text-[11px] text-[#ff8f7d] flex items-center justify-center gap-1.5 shrink-0 shadow-sm animate-in fade-in">
+          <div className="w-full max-w-md bg-card2/90 border border-primary/30 rounded-xl px-3 py-1 my-1 text-[11px] text-primary-hi flex items-center justify-center gap-1.5 shrink-0 shadow-sm animate-in fade-in">
             <span>🕵️</span>
             <span>
               <strong>{waitingInPool} spot{waitingInPool === 1 ? '' : 's'}</strong> in background swipe pool (waiting for a 2nd match)
@@ -850,18 +849,18 @@ export const PintdrOverlay: React.FC<PintdrOverlayProps> = ({
           >
             {/* Next Card in Stack (Preview) */}
             {nextCard && (
-              <div className="absolute inset-0 bg-[#17171a] border border-[#2b2b2f] rounded-3xl p-5 scale-[0.93] translate-y-3 opacity-50 shadow-xl pointer-events-none flex flex-col justify-between">
+              <div className="absolute inset-0 bg-card border border-line rounded-3xl p-5 scale-[0.93] translate-y-3 opacity-50 shadow-xl pointer-events-none flex flex-col justify-between">
                 <div>
                   <div className="flex items-center justify-between mb-2">
-                    <span className="text-xs px-2 py-0.5 rounded-full bg-[#212124] text-[#8d8d94]">
+                    <span className="text-xs px-2 py-0.5 rounded-full bg-card2 text-muted">
                       {nextCard.source === 'ai' ? '🤖 AI Wildcard' : '🗺️ Map Spot'}
                     </span>
-                    <span className="text-xs text-[#8d8d94]">{nextCard.loc}</span>
+                    <span className="text-xs text-muted">{nextCard.loc}</span>
                   </div>
-                  <h4 className="font-display font-black text-lg text-[#f4f4f5] truncate">
+                  <h4 className="font-display font-black text-lg text-ink truncate">
                     {nextCard.name}
                   </h4>
-                  <p className="text-xs text-[#8d8d94] mt-1 line-clamp-2">{nextCard.desc}</p>
+                  <p className="text-xs text-muted mt-1 line-clamp-2">{nextCard.desc}</p>
                 </div>
               </div>
             )}
@@ -878,28 +877,28 @@ export const PintdrOverlay: React.FC<PintdrOverlayProps> = ({
                   }}
                   className={`absolute inset-0 rounded-3xl p-5 shadow-2xl flex flex-col justify-between overflow-hidden transition-colors ${
                     isGreedyBanker
-                      ? 'bg-gradient-to-b from-red-950/80 via-[#1c1214] to-[#141417] border-2 border-red-500 animate-pulse shadow-[0_0_30px_rgba(239,68,68,0.4)]'
-                      : 'bg-gradient-to-b from-[#212124] via-[#1a1a1d] to-[#141417] border-2 border-[#3b3b40]'
+                      ? 'bg-gradient-to-b from-red-950/80 via-card to-page border-2 border-red-500 animate-pulse shadow-[0_0_30px_rgba(239,68,68,0.4)]'
+                      : 'bg-gradient-to-b from-card2 via-card to-page border-2 border-line2'
                   }`}
                 >
                   {/* Dynamic Stamps Overlay */}
                   <div
                     style={{ opacity: likeOpacity }}
                     className={`absolute top-5 right-5 border-3 font-display font-black text-sm px-3.5 py-1 rounded-xl rotate-12 bg-black/80 backdrop-blur-md pointer-events-none tracking-wider shadow-lg ${
-                      isGreedyBanker ? 'border-red-500 text-red-400' : 'border-[#c6ff3d] text-[#c6ff3d]'
+                      isGreedyBanker ? 'border-red-500 text-red-400' : 'border-secondary text-secondary'
                     }`}
                   >
                     {isGreedyBanker ? '🐍 COMMIT TREASON' : 'KEEN / PITCH'}
                   </div>
                   <div
                     style={{ opacity: passOpacity }}
-                    className="absolute top-5 left-5 border-3 border-[#ff6b57] text-[#ff6b57] font-display font-black text-sm px-3.5 py-1 rounded-xl -rotate-12 bg-black/80 backdrop-blur-md pointer-events-none tracking-wider shadow-lg"
+                    className="absolute top-5 left-5 border-3 border-primary text-primary font-display font-black text-sm px-3.5 py-1 rounded-xl -rotate-12 bg-black/80 backdrop-blur-md pointer-events-none tracking-wider shadow-lg"
                   >
                     PASS / BIN
                   </div>
                   <div
                     style={{ opacity: superOpacity }}
-                    className="absolute top-8 inset-x-0 mx-auto w-fit border-3 border-[#ffd700] text-[#ffd700] font-display font-black text-sm px-4 py-1.5 rounded-xl bg-black/80 backdrop-blur-md pointer-events-none tracking-wider shadow-xl"
+                    className="absolute top-8 inset-x-0 mx-auto w-fit border-3 border-secondary text-secondary font-display font-black text-sm px-4 py-1.5 rounded-xl bg-black/80 backdrop-blur-md pointer-events-none tracking-wider shadow-xl"
                   >
                     SUPERLIKE
                   </div>
@@ -925,16 +924,16 @@ export const PintdrOverlay: React.FC<PintdrOverlayProps> = ({
                             isGreedyBanker
                               ? 'bg-red-950 text-red-300 border-red-500/60'
                               : currentCard.source === 'ai'
-                              ? 'bg-[rgba(255,107,87,0.15)] text-[#ff6b57] border-[#ff6b57]/30'
-                              : 'bg-[rgba(198,255,61,0.15)] text-[#c6ff3d] border-[#c6ff3d]/30'
+                              ? 'bg-[color-mix(in_oklab,var(--accent)_15%,transparent)] text-primary border-primary/30'
+                              : 'bg-[color-mix(in_oklab,var(--good)_15%,transparent)] text-secondary border-secondary/30'
                           }`}
                         >
                           {isGreedyBanker ? (
                             <span>🐍</span>
                           ) : currentCard.source === 'ai' ? (
-                            <Sparkles className="w-3 h-3 text-[#ff6b57]" />
+                            <Sparkles className="w-3 h-3 text-primary" />
                           ) : (
-                            <MapIcon className="w-3 h-3 text-[#c6ff3d]" />
+                            <MapIcon className="w-3 h-3 text-secondary" />
                           )}
                           <span>
                             {isGreedyBanker
@@ -952,7 +951,7 @@ export const PintdrOverlay: React.FC<PintdrOverlayProps> = ({
                       </div>
 
                       {currentCard.distMiles != null && (
-                        <span className="text-[11px] font-mono text-[#8d8d94]">
+                        <span className="text-[11px] font-mono text-muted">
                           {currentCard.distMiles.toFixed(1)} mi away
                         </span>
                       )}
@@ -961,36 +960,36 @@ export const PintdrOverlay: React.FC<PintdrOverlayProps> = ({
                     {/* Venue Name & Location */}
                     <h3
                       className={`font-display font-black text-xl leading-snug line-clamp-2 mt-1 ${
-                        isGreedyBanker ? 'text-red-300' : 'text-[#f4f4f5]'
+                        isGreedyBanker ? 'text-red-300' : 'text-ink'
                       }`}
                     >
                       {currentCard.name}
                     </h3>
-                    <div className="text-xs text-[#ff8f7d] font-semibold mt-1 flex items-center gap-1">
-                      <MapPin className="w-3.5 h-3.5 text-[#ff6b57] shrink-0" />
+                    <div className="text-xs text-primary-hi font-semibold mt-1 flex items-center gap-1">
+                      <MapPin className="w-3.5 h-3.5 text-primary shrink-0" />
                       <span className="truncate">{currentCard.loc}</span>
                     </div>
 
                     {/* Meta details if available */}
                     {(currentCard.when || currentCard.cost) && (
-                      <div className="flex items-center gap-2 text-xs text-[#cfcfd4] mt-2 font-mono">
+                      <div className="flex items-center gap-2 text-xs text-ink2 mt-2 font-mono">
                         {currentCard.when && <span>{currentCard.when}</span>}
                         {currentCard.cost && <span>{currentCard.cost}</span>}
                       </div>
                     )}
 
                     {/* Description */}
-                    <p className="text-xs text-[#d4d4d8] mt-2.5 leading-relaxed">
+                    <p className="text-xs text-ink2 mt-2.5 leading-relaxed">
                       {currentCard.desc}
                     </p>
 
                     {/* Multi-step combo preview */}
                     {currentCard.steps && currentCard.steps.length > 0 && (
-                      <div className="mt-3 bg-[#17171a]/80 p-2.5 rounded-2xl border border-[#2b2b2f]">
-                        <span className="text-[10px] font-bold text-[#ff6b57] block mb-1">
+                      <div className="mt-3 bg-card/80 p-2.5 rounded-2xl border border-line">
+                        <span className="text-[10px] font-bold text-primary block mb-1">
                           COMBO ROUTE:
                         </span>
-                        <ul className="text-[11px] text-[#cfcfd4] space-y-1">
+                        <ul className="text-[11px] text-ink2 space-y-1">
                           {currentCard.steps.map((st, i) => (
                             <li key={i} className="truncate">
                               • {st}
@@ -1002,14 +1001,14 @@ export const PintdrOverlay: React.FC<PintdrOverlayProps> = ({
                   </div>
 
                   {/* Card Footer Links & Navigation Hint */}
-                  <div className="pt-3 border-t border-[#2b2b2f] flex items-center justify-between text-xs">
+                  <div className="pt-3 border-t border-line flex items-center justify-between text-xs">
                     <div className="flex items-center gap-2">
                       {currentCard.url ? (
                         <a
                           href={currentCard.url}
                           target="_blank"
                           rel="noopener noreferrer"
-                          className="text-[#c6ff3d] hover:underline flex items-center gap-1 text-[11px]"
+                          className="text-secondary hover:underline flex items-center gap-1 text-[11px]"
                           onClick={(e) => e.stopPropagation()}
                         >
                           <ExternalLink className="w-3 h-3" />
@@ -1022,7 +1021,7 @@ export const PintdrOverlay: React.FC<PintdrOverlayProps> = ({
                           )}`}
                           target="_blank"
                           rel="noopener noreferrer"
-                          className="text-[#8d8d94] hover:text-[#f4f4f5] flex items-center gap-1 text-[11px]"
+                          className="text-muted hover:text-ink flex items-center gap-1 text-[11px]"
                           onClick={(e) => e.stopPropagation()}
                         >
                           <MapIcon className="w-3 h-3" />
@@ -1031,7 +1030,7 @@ export const PintdrOverlay: React.FC<PintdrOverlayProps> = ({
                       )}
                     </div>
 
-                    <div className="text-[10px] text-[#8d8d94] font-medium hidden sm:block">
+                    <div className="text-[10px] text-muted font-medium hidden sm:block">
                       {isGreedyBanker
                         ? '🐍 Swipe Right to Commit Treason • Left to Pass'
                         : 'Swipe Right to Pitch • Left to Pass • Up to Star'}
@@ -1043,7 +1042,7 @@ export const PintdrOverlay: React.FC<PintdrOverlayProps> = ({
           </div>
         ) : (
           /* Empty Deck State or Flickering Flame Loader while fetching */
-          <div className="w-full bg-[#17171a] border border-[#2b2b2f] rounded-3xl p-6 text-center shadow-2xl flex flex-col items-center justify-center min-h-[340px]">
+          <div className="w-full bg-card border border-line rounded-3xl p-6 text-center shadow-2xl flex flex-col items-center justify-center min-h-[340px]">
             {isLoadingMore ? (
               <FlickeringFlameLoader
                 statusText={statusMessage || `🔥 Gerg AI is uncorking "${vibe || 'fresh'}" spots near ${area}...`}
@@ -1052,13 +1051,13 @@ export const PintdrOverlay: React.FC<PintdrOverlayProps> = ({
               />
             ) : (
               <>
-                <div className="w-14 h-14 rounded-2xl bg-[rgba(255,107,87,0.15)] text-[#ff6b57] flex items-center justify-center text-2xl mb-3 shadow-inner">
+                <div className="w-14 h-14 rounded-2xl bg-[color-mix(in_oklab,var(--accent)_15%,transparent)] text-primary flex items-center justify-center text-2xl mb-3 shadow-inner">
                   <Flame className="w-7 h-7 fill-current" />
                 </div>
-                <h4 className="font-display font-black text-lg text-[#f4f4f5]">
+                <h4 className="font-display font-black text-lg text-ink">
                   You've Swiped All Cached Ideas!
                 </h4>
-                <p className="text-xs text-[#8d8d94] mt-1 mb-4 max-w-xs">
+                <p className="text-xs text-muted mt-1 mb-4 max-w-xs">
                   Keep the momentum going: roll another batch of AI wildcards and map venues nearby.
                 </p>
                 <div className="flex flex-col sm:flex-row gap-2 w-full max-w-xs">
@@ -1066,7 +1065,7 @@ export const PintdrOverlay: React.FC<PintdrOverlayProps> = ({
                     type="button"
                     onClick={() => replenishDeck(true)}
                     disabled={isLoadingMore}
-                    className="flex-1 cursor-pointer bg-[#ff6b57] hover:brightness-110 active:scale-95 text-[#1a0703] font-bold text-xs py-2.5 px-4 rounded-xl transition flex items-center justify-center gap-1.5 shadow-lg disabled:opacity-50"
+                    className="flex-1 cursor-pointer bg-primary hover:brightness-110 active:scale-95 text-primary-ink font-bold text-xs py-2.5 px-4 rounded-xl transition flex items-center justify-center gap-1.5 shadow-lg disabled:opacity-50"
                   >
                     <RefreshCw className={`w-3.5 h-3.5 ${isLoadingMore ? 'animate-spin' : ''}`} />
                     <span>Roll Fresh Batch</span>
@@ -1075,7 +1074,7 @@ export const PintdrOverlay: React.FC<PintdrOverlayProps> = ({
                     <button
                       type="button"
                       onClick={handleUndo}
-                      className="cursor-pointer border border-[#2b2b2f] bg-[#212124] text-[#f4f4f5] font-semibold text-xs py-2.5 px-4 rounded-xl hover:border-[#3b3b40] transition flex items-center justify-center gap-1.5"
+                      className="cursor-pointer border border-line bg-card2 text-ink font-semibold text-xs py-2.5 px-4 rounded-xl hover:border-line2 transition flex items-center justify-center gap-1.5"
                     >
                       <RotateCcw className="w-3.5 h-3.5" />
                       <span>Undo Last Pass</span>
@@ -1096,7 +1095,7 @@ export const PintdrOverlay: React.FC<PintdrOverlayProps> = ({
           onClick={handleUndo}
           disabled={history.length === 0}
           title="Undo last swipe (Z)"
-          className="cursor-pointer p-3 rounded-full bg-[#17171a] border border-[#2b2b2f] text-[#8d8d94] hover:text-[#f4f4f5] hover:border-[#3b3b40] active:scale-95 transition disabled:opacity-30 disabled:pointer-events-none shadow-md"
+          className="cursor-pointer p-3 rounded-full bg-card border border-line text-muted hover:text-ink hover:border-line2 active:scale-95 transition disabled:opacity-30 disabled:pointer-events-none shadow-md"
         >
           <RotateCcw className="w-4 h-4" />
         </button>
@@ -1107,7 +1106,7 @@ export const PintdrOverlay: React.FC<PintdrOverlayProps> = ({
           onClick={() => currentCard && handleBan(currentCard)}
           disabled={!currentCard}
           title="Permanently Ban Spot (B)"
-          className="cursor-pointer p-3 rounded-full bg-[#17171a] border border-[#2b2b2f] text-[#8d8d94] hover:text-[#ff6b57] hover:border-[#ff6b57] active:scale-95 transition disabled:opacity-30 disabled:pointer-events-none shadow-md"
+          className="cursor-pointer p-3 rounded-full bg-card border border-line text-muted hover:text-primary hover:border-primary active:scale-95 transition disabled:opacity-30 disabled:pointer-events-none shadow-md"
         >
           <Ban className="w-4 h-4" />
         </button>
@@ -1118,7 +1117,7 @@ export const PintdrOverlay: React.FC<PintdrOverlayProps> = ({
           onClick={() => triggerSwipe('left')}
           disabled={!currentCard}
           title="Pass / Bin this idea (Left Arrow / H)"
-          className="cursor-pointer p-4 rounded-full bg-[#212124] border-2 border-[#ff6b57]/40 text-[#ff6b57] hover:bg-[rgba(255,107,87,0.15)] hover:border-[#ff6b57] active:scale-95 transition disabled:opacity-30 disabled:pointer-events-none shadow-lg"
+          className="cursor-pointer p-4 rounded-full bg-card2 border-2 border-primary/40 text-primary hover:bg-[color-mix(in_oklab,var(--accent)_15%,transparent)] hover:border-primary active:scale-95 transition disabled:opacity-30 disabled:pointer-events-none shadow-lg"
         >
           <ThumbsDown className="w-6 h-6" />
         </button>
@@ -1129,7 +1128,7 @@ export const PintdrOverlay: React.FC<PintdrOverlayProps> = ({
           onClick={() => triggerSwipe('up')}
           disabled={!currentCard}
           title="Superlike & Set as Winning Pick (Up Arrow / K)"
-          className="cursor-pointer p-3.5 rounded-full bg-[#212124] border-2 border-[#ffd700]/40 text-[#ffd700] hover:bg-[rgba(255,215,0,0.15)] hover:border-[#ffd700] active:scale-95 transition disabled:opacity-30 disabled:pointer-events-none shadow-lg"
+          className="cursor-pointer p-3.5 rounded-full bg-card2 border-2 border-secondary/40 text-secondary hover:bg-[color-mix(in_oklab,var(--good)_15%,transparent)] hover:border-secondary active:scale-95 transition disabled:opacity-30 disabled:pointer-events-none shadow-lg"
         >
           <Star className="w-5 h-5 fill-current" />
         </button>
@@ -1146,7 +1145,7 @@ export const PintdrOverlay: React.FC<PintdrOverlayProps> = ({
               className={`cursor-pointer p-4 rounded-full font-bold active:scale-95 transition disabled:opacity-30 disabled:pointer-events-none shadow-xl ${
                 isGreedy
                   ? 'bg-red-600 hover:bg-red-500 text-white shadow-red-600/40 animate-pulse'
-                  : 'bg-[#ff6b57] text-[#1a0703] hover:brightness-110 shadow-[#ff6b57]/20'
+                  : 'bg-primary text-primary-ink hover:brightness-110 shadow-primary/20'
               }`}
             >
               {isGreedy ? <span className="text-xl">🐍</span> : <ThumbsUp className="w-6 h-6 fill-current" />}
@@ -1156,12 +1155,12 @@ export const PintdrOverlay: React.FC<PintdrOverlayProps> = ({
       </div>
 
       {/* Keyboard Helper Hint */}
-      <div className="text-[10px] text-[#8d8d94] mt-2 text-center shrink-0 hidden sm:block">
-        Keys: <span className="text-[#cfcfd4]">← Left (Pass)</span> •{' '}
-        <span className="text-[#cfcfd4]">→ Right (Pitch)</span> •{' '}
-        <span className="text-[#cfcfd4]">↑ Up (Superlike)</span> •{' '}
-        <span className="text-[#cfcfd4]">B (Ban)</span> •{' '}
-        <span className="text-[#cfcfd4]">Z (Undo)</span>
+      <div className="text-[10px] text-muted mt-2 text-center shrink-0 hidden sm:block">
+        Keys: <span className="text-ink2">← Left (Pass)</span> •{' '}
+        <span className="text-ink2">→ Right (Pitch)</span> •{' '}
+        <span className="text-ink2">↑ Up (Superlike)</span> •{' '}
+        <span className="text-ink2">B (Ban)</span> •{' '}
+        <span className="text-ink2">Z (Undo)</span>
       </div>
     </div>
   );

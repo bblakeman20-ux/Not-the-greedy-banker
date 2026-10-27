@@ -133,16 +133,16 @@ export const ProfileModal: React.FC<ProfileModalProps> = ({
   if (!isOpen) return null;
 
   return (
-    <div className="mt-4 bg-[#212124] border border-[#2b2b2f] rounded-2xl p-5 transition-all space-y-3">
+    <div className="mt-4 bg-card2 border border-line rounded-2xl p-5 transition-all space-y-3">
       <div className="flex items-center justify-between">
-        <div className="text-xs font-bold text-[#ff6b57] flex items-center gap-1.5">
+        <div className="text-xs font-bold text-primary flex items-center gap-1.5">
           <span className="text-base leading-none">{emo || '👤'}</span>
           <span>{isEdit ? `Edit ${user?.name || name}` : 'New Profile'}</span>
         </div>
         <button
           type="button"
           onClick={onClose}
-          className="text-xs text-[#8d8d94] hover:text-[#f4f4f5] cursor-pointer"
+          className="text-xs text-muted hover:text-ink cursor-pointer"
         >
           ✕
         </button>
@@ -151,19 +151,19 @@ export const ProfileModal: React.FC<ProfileModalProps> = ({
       <div className="space-y-3">
         <div className="grid grid-cols-2 sm:grid-cols-4 gap-2.5">
           <div>
-            <label className="text-[11px] text-[#8d8d94] block mb-1">Your Name</label>
+            <label className="text-[11px] text-muted block mb-1">Your Name</label>
             <input
               value={name}
               onChange={(e) => setName(e.target.value)}
               placeholder="Your Name"
-              className="w-full bg-[#17171a] border border-[#2b2b2f] focus:border-[#ff6b57] text-[#f4f4f5] px-3 py-2 rounded-xl text-xs outline-none"
+              className="w-full bg-card border border-line focus:border-primary text-ink px-3 py-2 rounded-xl text-xs outline-none"
             />
           </div>
           <div>
-            <label className="text-[11px] text-[#8d8d94] block mb-1">Emoji Avatar</label>
+            <label className="text-[11px] text-muted block mb-1">Emoji Avatar</label>
             <div className="flex items-center gap-2">
               <span
-                className="w-8 h-8 rounded-xl bg-[#17171a] border border-[#ff6b57]/50 flex items-center justify-center text-lg leading-none shrink-0 shadow-inner select-none"
+                className="w-8 h-8 rounded-xl bg-card border border-primary/50 flex items-center justify-center text-lg leading-none shrink-0 shadow-inner select-none"
                 role="img"
                 aria-label="Selected emoji"
               >
@@ -173,35 +173,35 @@ export const ProfileModal: React.FC<ProfileModalProps> = ({
                 value={emo}
                 onChange={(e) => setEmo(e.target.value)}
                 placeholder="🍺"
-                className="w-full bg-[#17171a] border border-[#2b2b2f] focus:border-[#ff6b57] text-[#f4f4f5] px-2.5 py-2 rounded-xl text-xs outline-none"
+                className="w-full bg-card border border-line focus:border-primary text-ink px-2.5 py-2 rounded-xl text-xs outline-none"
               />
             </div>
           </div>
           <div>
-            <label className="text-[11px] text-[#8d8d94] block mb-1">Station / Town</label>
+            <label className="text-[11px] text-muted block mb-1">Station / Town</label>
             <input
               value={loc}
               onChange={(e) => setLoc(e.target.value)}
               placeholder="e.g. Chatham"
-              className="w-full bg-[#17171a] border border-[#2b2b2f] focus:border-[#ff6b57] text-[#f4f4f5] px-3 py-2 rounded-xl text-xs outline-none"
+              className="w-full bg-card border border-line focus:border-primary text-ink px-3 py-2 rounded-xl text-xs outline-none"
             />
           </div>
           <div>
-            <label className="text-[11px] text-[#8d8d94] block mb-1">Pay way</label>
+            <label className="text-[11px] text-muted block mb-1">Pay way</label>
             <input
               value={pay}
               onChange={(e) => setPay(e.target.value)}
               placeholder="Monzo / Revolut"
-              className="w-full bg-[#17171a] border border-[#2b2b2f] focus:border-[#ff6b57] text-[#f4f4f5] px-3 py-2 rounded-xl text-xs outline-none"
+              className="w-full bg-card border border-line focus:border-primary text-ink px-3 py-2 rounded-xl text-xs outline-none"
             />
           </div>
         </div>
 
         {/* Quick Emoji Avatar Selector Palette */}
-        <div className="bg-[#17171a] border border-[#2b2b2f] rounded-xl p-2.5 space-y-1.5">
-          <div className="flex items-center justify-between text-[11px] text-[#8d8d94]">
+        <div className="bg-card border border-line rounded-xl p-2.5 space-y-1.5">
+          <div className="flex items-center justify-between text-[11px] text-muted">
             <span>Tap to choose an avatar emoji:</span>
-            <span className="text-[#ff6b57] font-semibold flex items-center gap-1">
+            <span className="text-primary font-semibold flex items-center gap-1">
               <span>Selected:</span>
               <span className="text-sm leading-none">{emo || '🍺'}</span>
             </span>
@@ -218,8 +218,8 @@ export const ProfileModal: React.FC<ProfileModalProps> = ({
                 onClick={() => setEmo(icon)}
                 className={`w-7 h-7 rounded-lg flex items-center justify-center text-base transition cursor-pointer select-none ${
                   emo === icon
-                    ? 'bg-[#ff6b57]/25 border border-[#ff6b57] scale-110 shadow-[0_0_8px_rgba(255,107,87,0.4)]'
-                    : 'bg-[#212124] border border-[#2b2b2f] hover:border-[#ff6b57]/40 hover:bg-[#252529]'
+                    ? 'bg-primary/25 border border-primary scale-110 shadow-[0_0_8px_color-mix(in_oklab,var(--accent)_40%,transparent)]'
+                    : 'bg-card2 border border-line hover:border-primary/40 hover:bg-card2'
                 }`}
               >
                 {icon}
@@ -229,13 +229,13 @@ export const ProfileModal: React.FC<ProfileModalProps> = ({
         </div>
 
         {/* Host / House Offer Section */}
-        <div className="bg-[#17171a] border border-[#2b2b2f] rounded-xl p-3.5 space-y-3">
+        <div className="bg-card border border-line rounded-xl p-3.5 space-y-3">
           <div className="flex items-center justify-between gap-3">
             <div>
-              <div className="text-xs font-bold text-[#c6ff3d] flex items-center gap-1.5">
+              <div className="text-xs font-bold text-secondary flex items-center gap-1.5">
                 <span>🏠 Offer Up Your House</span>
               </div>
-              <div className="text-[11px] text-[#8d8d94]">
+              <div className="text-[11px] text-muted">
                 Host pre-drinks, games night, or the squad gathering at your place
               </div>
             </div>
@@ -246,20 +246,20 @@ export const ProfileModal: React.FC<ProfileModalProps> = ({
                 onChange={(e) => setOffersHouse(e.target.checked)}
                 className="sr-only peer"
               />
-              <div className="w-9 h-5 bg-[#2b2b2f] peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:bg-[#c6ff3d]"></div>
+              <div className="w-9 h-5 bg-line peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:bg-secondary"></div>
             </label>
           </div>
 
           {offersHouse && (
-            <div className="space-y-2 pt-1 border-t border-[#2b2b2f]/60">
-              <label className="text-[11px] text-[#8d8d94] block">
+            <div className="space-y-2 pt-1 border-t border-line/60">
+              <label className="text-[11px] text-muted block">
                 What's the house setup? (optional)
               </label>
               <input
                 value={houseNote}
                 onChange={(e) => setHouseNote(e.target.value)}
                 placeholder="e.g. Garden, BBQ, Mario Kart, darts & BYOB fridge (fits 8 mates)"
-                className="w-full bg-[#212124] border border-[#2b2b2f] focus:border-[#c6ff3d] text-[#f4f4f5] px-3 py-2 rounded-xl text-xs outline-none"
+                className="w-full bg-card2 border border-line focus:border-secondary text-ink px-3 py-2 rounded-xl text-xs outline-none"
               />
               {isEdit && user && onPitchHouse && (
                 <button
@@ -282,7 +282,7 @@ export const ProfileModal: React.FC<ProfileModalProps> = ({
                     onPitchHouse(updatedUser);
                     onClose();
                   }}
-                  className="cursor-pointer bg-[rgba(198,255,61,0.12)] border border-[#c6ff3d]/40 text-[#c6ff3d] hover:bg-[rgba(198,255,61,0.2)] font-semibold text-xs px-3 py-1.5 rounded-lg transition flex items-center gap-1.5"
+                  className="cursor-pointer bg-[color-mix(in_oklab,var(--good)_12%,transparent)] border border-secondary/40 text-secondary hover:bg-[color-mix(in_oklab,var(--good)_20%,transparent)] font-semibold text-xs px-3 py-1.5 rounded-lg transition flex items-center gap-1.5"
                 >
                   <span>🏠 Pitch My Place to Current Shortlist Now</span>
                 </button>
@@ -292,90 +292,90 @@ export const ProfileModal: React.FC<ProfileModalProps> = ({
         </div>
 
         <div>
-          <div className="text-xs font-semibold text-[#ff6b57] mb-1">
+          <div className="text-xs font-semibold text-primary mb-1">
             💳 How to pay you (all optional)
           </div>
           <input
             value={payLink}
             onChange={(e) => setPayLink(e.target.value)}
             placeholder="Pay link (monzo.me/you, paypal.me/you, revolut.me/you)"
-            className="w-full bg-[#17171a] border border-[#2b2b2f] focus:border-[#ff6b57] text-[#f4f4f5] px-3 py-2 rounded-xl text-xs outline-none"
+            className="w-full bg-card border border-line focus:border-primary text-ink px-3 py-2 rounded-xl text-xs outline-none"
           />
         </div>
 
         <div className="grid grid-cols-2 sm:grid-cols-4 gap-2.5">
           <div>
-            <label className="text-[11px] text-[#8d8d94] block mb-1">PayPal Email</label>
+            <label className="text-[11px] text-muted block mb-1">PayPal Email</label>
             <input
               type="email"
               value={payMail}
               onChange={(e) => setPayMail(e.target.value)}
               placeholder="Payment email"
-              className="w-full bg-[#17171a] border border-[#2b2b2f] focus:border-[#ff6b57] text-[#f4f4f5] px-3 py-2 rounded-xl text-xs outline-none"
+              className="w-full bg-card border border-line focus:border-primary text-ink px-3 py-2 rounded-xl text-xs outline-none"
             />
           </div>
           <div>
-            <label className="text-[11px] text-[#8d8d94] block mb-1">Account Name</label>
+            <label className="text-[11px] text-muted block mb-1">Account Name</label>
             <input
               value={acn}
               onChange={(e) => setAcn(e.target.value)}
               placeholder="Account name"
-              className="w-full bg-[#17171a] border border-[#2b2b2f] focus:border-[#ff6b57] text-[#f4f4f5] px-3 py-2 rounded-xl text-xs outline-none"
+              className="w-full bg-card border border-line focus:border-primary text-ink px-3 py-2 rounded-xl text-xs outline-none"
             />
           </div>
           <div>
-            <label className="text-[11px] text-[#8d8d94] block mb-1">Sort Code</label>
+            <label className="text-[11px] text-muted block mb-1">Sort Code</label>
             <input
               inputMode="numeric"
               value={sort}
               onChange={(e) => setSort(e.target.value)}
               placeholder="12-34-56"
-              className="w-full bg-[#17171a] border border-[#2b2b2f] focus:border-[#ff6b57] text-[#f4f4f5] px-3 py-2 rounded-xl text-xs outline-none"
+              className="w-full bg-card border border-line focus:border-primary text-ink px-3 py-2 rounded-xl text-xs outline-none"
             />
           </div>
           <div>
-            <label className="text-[11px] text-[#8d8d94] block mb-1">Account No.</label>
+            <label className="text-[11px] text-muted block mb-1">Account No.</label>
             <input
               inputMode="numeric"
               value={acc}
               onChange={(e) => setAcc(e.target.value)}
               placeholder="8 digits"
-              className="w-full bg-[#17171a] border border-[#2b2b2f] focus:border-[#ff6b57] text-[#f4f4f5] px-3 py-2 rounded-xl text-xs outline-none"
+              className="w-full bg-card border border-line focus:border-primary text-ink px-3 py-2 rounded-xl text-xs outline-none"
             />
           </div>
         </div>
 
         <div>
-          <label className="text-[11px] text-[#8d8d94] block mb-1">
+          <label className="text-[11px] text-muted block mb-1">
             😈 Roast line for your pay card (optional)
           </label>
           <input
             value={tx}
             onChange={(e) => setTx(e.target.value)}
             placeholder="e.g. Still owes for 2019 Uber"
-            className="w-full bg-[#17171a] border border-[#2b2b2f] focus:border-[#ff6b57] text-[#f4f4f5] px-3 py-2 rounded-xl text-xs outline-none"
+            className="w-full bg-card border border-line focus:border-primary text-ink px-3 py-2 rounded-xl text-xs outline-none"
           />
         </div>
 
-        <div className="text-[11px] text-[#ff6b57]">
+        <div className="text-[11px] text-primary">
           ⚠️ Anyone with the group link can see these. A pay link is safer than account numbers.
         </div>
 
-        {msg && <div className="text-xs text-[#ff6b57]">{msg}</div>}
+        {msg && <div className="text-xs text-primary">{msg}</div>}
 
         <div className="flex flex-wrap items-center justify-between gap-2 pt-2">
           <div className="flex items-center gap-2">
             <button
               type="button"
               onClick={handleSave}
-              className="cursor-pointer bg-[rgba(198,255,61,0.12)] border border-[#c6ff3d]/30 text-[#c6ff3d] font-semibold text-xs px-4 py-2 rounded-xl hover:bg-[rgba(198,255,61,0.2)] active:scale-95 transition"
+              className="cursor-pointer bg-[color-mix(in_oklab,var(--good)_12%,transparent)] border border-secondary/30 text-secondary font-semibold text-xs px-4 py-2 rounded-xl hover:bg-[color-mix(in_oklab,var(--good)_20%,transparent)] active:scale-95 transition"
             >
               ✅ Save Profile
             </button>
             <button
               type="button"
               onClick={onClose}
-              className="cursor-pointer border border-[#2b2b2f] bg-transparent text-[#8d8d94] font-semibold text-xs px-3.5 py-2 rounded-xl hover:text-[#f4f4f5] transition"
+              className="cursor-pointer border border-line bg-transparent text-muted font-semibold text-xs px-3.5 py-2 rounded-xl hover:text-ink transition"
             >
               Cancel
             </button>
@@ -384,18 +384,18 @@ export const ProfileModal: React.FC<ProfileModalProps> = ({
           {isEdit && canDelete && (
             confirmDelete ? (
               <div className="flex items-center gap-1.5">
-                <span className="text-xs text-[#ff6b57] font-semibold">Delete {user?.name}?</span>
+                <span className="text-xs text-primary font-semibold">Delete {user?.name}?</span>
                 <button
                   type="button"
                   onClick={handleDelete}
-                  className="cursor-pointer bg-[#ff6b57] text-[#1a0703] font-semibold text-xs px-2.5 py-1.5 rounded-lg"
+                  className="cursor-pointer bg-primary text-primary-ink font-semibold text-xs px-2.5 py-1.5 rounded-lg"
                 >
                   Confirm
                 </button>
                 <button
                   type="button"
                   onClick={() => setConfirmDelete(false)}
-                  className="cursor-pointer bg-[#17171a] border border-[#2b2b2f] text-[#cfcfd4] text-xs px-2.5 py-1.5 rounded-lg"
+                  className="cursor-pointer bg-card border border-line text-ink2 text-xs px-2.5 py-1.5 rounded-lg"
                 >
                   No
                 </button>
@@ -404,7 +404,7 @@ export const ProfileModal: React.FC<ProfileModalProps> = ({
               <button
                 type="button"
                 onClick={() => setConfirmDelete(true)}
-                className="cursor-pointer bg-[rgba(255,107,87,0.13)] text-[#ff6b57] font-semibold text-xs px-3.5 py-2 rounded-xl hover:bg-[rgba(255,107,87,0.2)] transition"
+                className="cursor-pointer bg-[color-mix(in_oklab,var(--accent)_13%,transparent)] text-primary font-semibold text-xs px-3.5 py-2 rounded-xl hover:bg-[color-mix(in_oklab,var(--accent)_20%,transparent)] transition"
               >
                 🗑️ Remove Profile
               </button>

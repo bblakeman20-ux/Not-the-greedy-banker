@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { AppConfig, AppState, OutingEvent, User, Venue } from './types';
+import { AppConfig, AppState, OutingEvent, RoomTheme, User, Venue } from './types';
 import {
   getInitialDemoState,
   freshRoomState,
@@ -19,7 +19,7 @@ import {
   sanitizeSquad,
   getDeviceId,
 } from './utils/storage';
-import { applyThemeClass } from './utils/theme';
+import { applyRoomTheme, presetName, sanitizeTheme } from './utils/theme';
 import { FirebaseSync } from './utils/firebase';
 import { Header } from './components/Header';
 import { SetupModal } from './components/SetupModal';
@@ -34,6 +34,7 @@ import { TravelTab } from './components/Tabs/TravelTab';
 import { KittyTab } from './components/Tabs/KittyTab';
 import { QrCodeModal } from './components/QrCodeModal';
 import { ShareDrawer } from './components/ShareDrawer';
+import { ThemePicker } from './components/ThemePicker';
 import { BottomNav, TabType } from './components/BottomNav';
 import { Sparkles, Plus } from 'lucide-react';
 import { fetchPlaces, makeIdeas } from './utils/osm';
@@ -82,9 +83,12 @@ export const App: React.FC = () => {
   const [now, setNow] = useState(Date.now());
   const [toastMsg, setToastMsg] = useState<string | null>(null);
 
+  const [isThemeOpen, setIsThemeOpen] = useState(false);
+
+  // The palette lives in the room state, so a change by anyone syncs to everyone
   useEffect(() => {
-    applyThemeClass();
-  }, []);
+    applyRoomTheme(state.theme);
+  }, [state.theme]);
 
   const showToast = (msg: string) => {
     setToastMsg(msg);
@@ -317,6 +321,13 @@ export const App: React.FC = () => {
       const rmKey = (config.rm || '').replace(/\W/g, '');
       setStorage('snap', JSON.stringify({ room: rmKey, S: newState }));
     } catch (e) {}
+  };
+
+  const handleSetTheme = (picked: RoomTheme) => {
+    const theme = sanitizeTheme({ ...picked, by: currentUser?.name, at: Date.now() });
+    if (!theme) return;
+    persistState({ ...state, theme });
+    showToast(`🎨 Room theme: ${presetName(theme)}`);
   };
 
   const handleSelectUser = (id: string) => {
@@ -620,13 +631,14 @@ export const App: React.FC = () => {
   return (
     <div className="max-w-6xl mx-auto px-3 sm:px-6 lg:px-8 py-4 pb-28 space-y-4">
       {/* Top Header Card & Squad Profile Strip */}
-      <div className="bg-[#17171a] border border-[#2b2b2f] rounded-2xl p-3.5 sm:p-5 shadow-xl space-y-3">
+      <div className="bg-card border border-line rounded-2xl p-3.5 sm:p-5 shadow-xl space-y-3">
         <Header
           statusText={syncStatus.text}
           isDenied={syncStatus.ok === 401 || syncStatus.ok === 403}
           onOpenSetup={() => setIsSetupOpen(!isSetupOpen)}
           onOpenShare={() => setIsShareOpen(true)}
           onOpenQrCode={() => setIsQrOpen(true)}
+          onOpenTheme={() => setIsThemeOpen(true)}
           showInstall={Boolean(installPrompt)}
           onInstall={handleInstallClick}
           roomFriendlyName={roomFriendlyName}
@@ -688,6 +700,13 @@ export const App: React.FC = () => {
       />
 
       {/* QR Code Modal for Camera Onboarding */}
+      <ThemePicker
+        isOpen={isThemeOpen}
+        onClose={() => setIsThemeOpen(false)}
+        theme={state.theme}
+        onApply={handleSetTheme}
+      />
+
       <QrCodeModal
         isOpen={isQrOpen}
         onClose={() => setIsQrOpen(false)}
@@ -750,14 +769,14 @@ export const App: React.FC = () => {
 
       {/* Blank Canvas Empty State */}
       {!currentEvent && (
-        <div className="bg-[#17171a] border border-[#2b2b2f] rounded-2xl p-6 sm:p-8 text-center space-y-3">
-          <div className="w-12 h-12 rounded-2xl bg-[#ff6b57]/15 border border-[#ff6b57]/30 flex items-center justify-center mx-auto text-[#ff6b57]">
+        <div className="bg-card border border-line rounded-2xl p-6 sm:p-8 text-center space-y-3">
+          <div className="w-12 h-12 rounded-2xl bg-primary/15 border border-primary/30 flex items-center justify-center mx-auto text-primary">
             <Sparkles className="w-6 h-6" />
           </div>
-          <div className="text-base sm:text-lg font-bold text-[#ffffff] font-display">
+          <div className="text-base sm:text-lg font-bold text-ink font-display">
             Blank Canvas · Ready for Your Squad Outing
           </div>
-          <p className="text-xs sm:text-sm text-[#8d8d94] max-w-md mx-auto">
+          <p className="text-xs sm:text-sm text-muted max-w-md mx-auto">
             This room is clean with no pre-made events. Create your first outing plan to start pitching spots, swiping in Pintdr mode, and coordinating dates.
           </p>
           <div className="pt-2 flex flex-wrap items-center justify-center gap-2.5">
@@ -765,7 +784,7 @@ export const App: React.FC = () => {
               <button
                 type="button"
                 onClick={() => setProfileModal({ isOpen: true, user: null })}
-                className="cursor-pointer bg-[#ff6b57] text-[#1a0703] font-bold text-xs sm:text-sm px-5 py-2.5 rounded-xl hover:brightness-105 active:scale-95 transition shadow-[0_0_16px_rgba(255,107,87,0.25)] flex items-center gap-1.5"
+                className="cursor-pointer bg-primary text-primary-ink font-bold text-xs sm:text-sm px-5 py-2.5 rounded-xl hover:brightness-105 active:scale-95 transition shadow-[0_0_16px_color-mix(in_oklab,var(--accent)_25%,transparent)] flex items-center gap-1.5"
               >
                 <Plus className="w-4 h-4" />
                 <span>Create Your Profile First</span>
@@ -782,7 +801,7 @@ export const App: React.FC = () => {
                     rollFree: false,
                   })
                 }
-                className="cursor-pointer bg-[#ff6b57] text-[#1a0703] font-bold text-xs sm:text-sm px-5 py-2.5 rounded-xl hover:brightness-105 active:scale-95 transition shadow-[0_0_16px_rgba(255,107,87,0.25)] flex items-center gap-1.5"
+                className="cursor-pointer bg-primary text-primary-ink font-bold text-xs sm:text-sm px-5 py-2.5 rounded-xl hover:brightness-105 active:scale-95 transition shadow-[0_0_16px_color-mix(in_oklab,var(--accent)_25%,transparent)] flex items-center gap-1.5"
               >
                 <Plus className="w-4 h-4" />
                 <span>Start New Outing Plan</span>
@@ -864,7 +883,7 @@ export const App: React.FC = () => {
 
       {/* Floating In-App Toast Notification */}
       {toastMsg && (
-        <div className="fixed bottom-20 left-1/2 -translate-x-1/2 z-50 bg-[#212124] border border-[#ff6b57] text-[#f4f4f5] px-4 py-2.5 rounded-2xl shadow-2xl text-xs font-semibold flex items-center gap-2 max-w-[90vw] transition-all animate-in fade-in slide-in-from-bottom-2">
+        <div className="fixed bottom-20 left-1/2 -translate-x-1/2 z-50 bg-card2 border border-primary text-ink px-4 py-2.5 rounded-2xl shadow-2xl text-xs font-semibold flex items-center gap-2 max-w-[90vw] transition-all animate-in fade-in slide-in-from-bottom-2">
           <span>{toastMsg}</span>
         </div>
       )}

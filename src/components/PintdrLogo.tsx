@@ -37,11 +37,11 @@ export const PintdrLogo: React.FC<PintdrLogoProps> = ({
     <div
       className={`flex ${
         orientation === 'vertical' ? 'flex-col items-start gap-2' : 'items-center gap-3'
-      } ${className}`}
+      } min-w-0 ${className}`}
     >
       {/* Pint Glass Brand Icon */}
       <div
-        className={`relative ${iconSizes[size]} shrink-0 rounded-2xl overflow-hidden bg-[#1e2326] border border-[#ff6b57]/40 shadow-[0_4px_20px_rgba(255,107,87,0.22)] flex items-center justify-center group transition-transform hover:scale-105`}
+        className={`relative ${iconSizes[size]} shrink-0 rounded-2xl overflow-hidden bg-card border border-primary/40 shadow-[0_4px_20px_color-mix(in_oklab,var(--accent)_22%,transparent)] flex items-center justify-center group transition-transform hover:scale-105`}
       >
         <img
           src="/assets/pintdr-flaming-pint-centered.png"
@@ -53,18 +53,20 @@ export const PintdrLogo: React.FC<PintdrLogoProps> = ({
       {showWordmark && (
         <div className="flex flex-col justify-center leading-none min-w-0">
           <div
-            className={`font-black tracking-tight font-display flex items-center gap-2 select-none ${textSizes[size]}`}
+            className={`font-black tracking-tight font-display flex items-center gap-2 select-none min-w-0 ${textSizes[size]}`}
           >
-            <span className="text-[#ff6b57] drop-shadow-[0_2px_12px_rgba(255,107,87,0.3)]">
+            <span className="text-primary drop-shadow-[0_2px_12px_color-mix(in_oklab,var(--accent)_30%,transparent)]">
               Pintdr
             </span>
-            {inlineNode}
           </div>
-          <span
-            className={`text-[#a1a1aa] font-medium tracking-normal mt-1 lowercase whitespace-nowrap ${sublineSizes[size]}`}
-          >
-            squad outing matcher
-          </span>
+          <div className="flex items-center gap-2 mt-1 min-w-0">
+            {inlineNode}
+            <span
+              className={`text-muted font-medium tracking-normal lowercase truncate ${inlineNode ? 'hidden sm:inline' : ''} ${sublineSizes[size]}`}
+            >
+              squad outing matcher
+            </span>
+          </div>
         </div>
       )}
     </div>

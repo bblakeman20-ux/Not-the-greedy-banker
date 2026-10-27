@@ -94,8 +94,8 @@ export const GoogleMapView: React.FC<GoogleMapViewProps> = ({
     <div className={`space-y-3 ${className}`}>
       {/* Map Canvas Header Bar */}
       <div className="flex flex-wrap items-center justify-between gap-2 px-1 text-xs">
-        <div className="flex items-center gap-1.5 font-bold text-[#f4f4f5]">
-          <MapPin className="w-4 h-4 text-[#ff6b57]" />
+        <div className="flex items-center gap-1.5 font-bold text-ink">
+          <MapPin className="w-4 h-4 text-primary" />
           <span>Google Map Interactive View ({items.length} pinned places)</span>
         </div>
         <div className="flex items-center gap-2">
@@ -104,7 +104,7 @@ export const GoogleMapView: React.FC<GoogleMapViewProps> = ({
               href={comboDirectionsUrl}
               target="_blank"
               rel="noopener noreferrer"
-              className="font-bold text-[#c6ff3d] hover:underline flex items-center gap-1 bg-[#c6ff3d]/10 border border-[#c6ff3d]/30 px-2 py-0.5 rounded-lg text-[11px]"
+              className="font-bold text-secondary hover:underline flex items-center gap-1 bg-secondary/10 border border-secondary/30 px-2 py-0.5 rounded-lg text-[11px]"
             >
               <Navigation className="w-3 h-3" />
               <span>Full Route on Google Maps</span>
@@ -115,7 +115,7 @@ export const GoogleMapView: React.FC<GoogleMapViewProps> = ({
             href={googleMapsUrl}
             target="_blank"
             rel="noopener noreferrer"
-            className="font-bold text-[#ff6b57] hover:underline flex items-center gap-1 text-[11px]"
+            className="font-bold text-primary hover:underline flex items-center gap-1 text-[11px]"
           >
             <span>Open in Google Maps</span>
             <ExternalLink className="w-3 h-3" />
@@ -124,7 +124,7 @@ export const GoogleMapView: React.FC<GoogleMapViewProps> = ({
       </div>
 
       {/* Main Interactive Map Container */}
-      <div className="relative rounded-2xl overflow-hidden border border-[#2b2b2f] h-80 sm:h-96 w-full bg-[#17171a] shadow-inner group">
+      <div className="relative rounded-2xl overflow-hidden border border-line h-80 sm:h-96 w-full bg-card shadow-inner group">
         {/* Google Maps Embed iframe */}
         <iframe
           title="Google Maps Interactive Explorer"
@@ -140,14 +140,14 @@ export const GoogleMapView: React.FC<GoogleMapViewProps> = ({
 
         {/* Floating Quick Action Overlay with active spot details */}
         {active && (
-          <div className="absolute bottom-3 left-3 right-3 sm:left-4 sm:right-auto sm:max-w-md bg-[#17171a]/95 backdrop-blur-md border border-[#2b2b2f] p-3.5 rounded-xl shadow-2xl z-10 space-y-2">
+          <div className="absolute bottom-3 left-3 right-3 sm:left-4 sm:right-auto sm:max-w-md bg-card/95 backdrop-blur-md border border-line p-3.5 rounded-xl shadow-2xl z-10 space-y-2">
             <div className="flex items-start justify-between gap-3">
               <div className="min-w-0">
-                <div className="font-extrabold text-sm sm:text-base text-[#ffffff] flex items-center gap-1.5 truncate">
+                <div className="font-extrabold text-sm sm:text-base text-ink flex items-center gap-1.5 truncate">
                   <span>{active.emoji || '📍'}</span>
                   <span className="truncate">{active.name}</span>
                 </div>
-                <div className="text-xs text-[#a1a1aa] truncate mt-0.5">
+                <div className="text-xs text-muted truncate mt-0.5">
                   📍 {active.loc}
                 </div>
               </div>
@@ -155,7 +155,7 @@ export const GoogleMapView: React.FC<GoogleMapViewProps> = ({
                 <button
                   type="button"
                   onClick={() => onPitchItem(active)}
-                  className="cursor-pointer bg-[#ff6b57] text-[#1a0703] font-bold text-xs h-8 px-3 rounded-lg hover:brightness-105 active:scale-95 transition whitespace-nowrap shrink-0 shadow-md flex items-center gap-1"
+                  className="cursor-pointer bg-primary text-primary-ink font-bold text-xs h-8 px-3 rounded-lg hover:brightness-105 active:scale-95 transition whitespace-nowrap shrink-0 shadow-md flex items-center gap-1"
                 >
                   <Star className="w-3.5 h-3.5 fill-current" />
                   <span>Pitch</span>
@@ -165,19 +165,19 @@ export const GoogleMapView: React.FC<GoogleMapViewProps> = ({
 
             {/* Individual combo stops breakdown if present */}
             {active.stops && active.stops.length > 0 && (
-              <div className="space-y-1 pt-1.5 border-t border-[#2b2b2f]/60 max-h-32 overflow-y-auto pr-1">
-                <div className="text-[11px] font-bold text-[#c6ff3d] flex items-center gap-1">
+              <div className="space-y-1 pt-1.5 border-t border-line/60 max-h-32 overflow-y-auto pr-1">
+                <div className="text-[11px] font-bold text-secondary flex items-center gap-1">
                   <span>🔀 Multi-Stop Route ({active.stops.length} stops):</span>
                 </div>
                 {active.stops.map((st, i) => (
                   <div
                     key={i}
-                    className="flex items-start justify-between gap-1 text-[11px] text-[#cfcfd4] bg-[#212124]/80 px-2 py-1 rounded"
+                    className="flex items-start justify-between gap-1 text-[11px] text-ink2 bg-card2/80 px-2 py-1 rounded"
                   >
                     <span className="font-semibold truncate">
                       {i + 1}. {st.name}
                     </span>
-                    <span className="text-[#a1a1aa] text-[10px] shrink-0 truncate max-w-[120px]">
+                    <span className="text-muted text-[10px] shrink-0 truncate max-w-[120px]">
                       {st.loc}
                     </span>
                   </div>
@@ -190,7 +190,7 @@ export const GoogleMapView: React.FC<GoogleMapViewProps> = ({
 
       {/* Horizontal Carousel of all Pinned Venues for 1-Tap Center & Pitch */}
       <div className="space-y-1.5">
-        <div className="text-[11px] font-semibold text-[#8d8d94] px-1">
+        <div className="text-[11px] font-semibold text-muted px-1">
           Select any spot below to highlight pin on the map:
         </div>
         <div className="flex gap-2 overflow-x-auto pb-2 scrollbar-none">
@@ -202,27 +202,27 @@ export const GoogleMapView: React.FC<GoogleMapViewProps> = ({
                 onClick={() => setActiveItem(item)}
                 className={`min-w-[210px] max-w-[230px] p-3 rounded-xl border transition cursor-pointer flex flex-col justify-between gap-2 shrink-0 ${
                   isSelected
-                    ? 'border-[#ff6b57] bg-[#212124] shadow-[0_0_14px_rgba(255,107,87,0.2)] ring-1 ring-[#ff6b57]/40'
-                    : 'border-[#2b2b2f] bg-[#17171a] hover:border-[#3b3b40]'
+                    ? 'border-primary bg-card2 shadow-[0_0_14px_color-mix(in_oklab,var(--accent)_20%,transparent)] ring-1 ring-primary/40'
+                    : 'border-line bg-card hover:border-line2'
                 }`}
               >
                 <div>
-                  <div className="font-bold text-xs text-[#ffffff] flex items-center gap-1.5 truncate">
+                  <div className="font-bold text-xs text-ink flex items-center gap-1.5 truncate">
                     <span>{item.emoji || '📍'}</span>
                     <span className="truncate">{item.name}</span>
                   </div>
-                  <div className="text-[11px] text-[#a1a1aa] truncate mt-0.5">
+                  <div className="text-[11px] text-muted truncate mt-0.5">
                     📍 {item.loc}
                   </div>
                   {item.stops && item.stops.length > 0 && (
-                    <div className="text-[10px] font-semibold text-[#c6ff3d] mt-1">
+                    <div className="text-[10px] font-semibold text-secondary mt-1">
                       🔀 {item.stops.length} stops included
                     </div>
                   )}
                 </div>
 
-                <div className="flex items-center justify-between gap-2 pt-1 border-t border-[#2b2b2f]/60">
-                  <span className="text-[10px] text-[#8d8d94] truncate">
+                <div className="flex items-center justify-between gap-2 pt-1 border-t border-line/60">
+                  <span className="text-[10px] text-muted truncate">
                     {item.category || (item.kind === 'combo' ? 'Combo Route' : 'Spot')}
                   </span>
                   {onPitchItem && (
@@ -232,7 +232,7 @@ export const GoogleMapView: React.FC<GoogleMapViewProps> = ({
                         e.stopPropagation();
                         onPitchItem(item);
                       }}
-                      className="cursor-pointer bg-[#ff6b57] text-[#1a0703] font-bold text-[11px] px-2.5 py-1 rounded-md hover:brightness-105 active:scale-95 transition whitespace-nowrap"
+                      className="cursor-pointer bg-primary text-primary-ink font-bold text-[11px] px-2.5 py-1 rounded-md hover:brightness-105 active:scale-95 transition whitespace-nowrap"
                     >
                       + Pitch
                     </button>

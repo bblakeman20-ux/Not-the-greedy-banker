@@ -131,15 +131,15 @@ export const SummaryModal: React.FC<SummaryModalProps> = ({
   };
 
   return (
-    <div className="mt-4 bg-[#212124] border border-[#2b2b2f] rounded-2xl p-5 transition-all space-y-3">
+    <div className="mt-4 bg-card2 border border-line rounded-2xl p-5 transition-all space-y-3">
       <div className="flex items-center justify-between">
-        <div className="text-xs font-bold text-[#c6ff3d]">
+        <div className="text-xs font-bold text-secondary">
           📋 Outing Summary & Settle-Up Sheet
         </div>
         <button
           type="button"
           onClick={onClose}
-          className="text-xs text-[#8d8d94] hover:text-[#f4f4f5] cursor-pointer"
+          className="text-xs text-muted hover:text-ink cursor-pointer"
         >
           ✕
         </button>
@@ -149,7 +149,7 @@ export const SummaryModal: React.FC<SummaryModalProps> = ({
         rows={9}
         readOnly
         value={summaryText}
-        className="w-full bg-[#17171a] border border-[#2b2b2f] text-[#f4f4f5] p-3.5 rounded-xl text-xs font-mono leading-relaxed outline-none"
+        className="w-full bg-card border border-line text-ink p-3.5 rounded-xl text-xs font-mono leading-relaxed outline-none"
       />
 
       <div className="flex flex-wrap items-center gap-2">
@@ -157,7 +157,7 @@ export const SummaryModal: React.FC<SummaryModalProps> = ({
           href={whatsappUrl}
           target="_blank"
           rel="noopener noreferrer"
-          className="cursor-pointer bg-[#c6ff3d] text-[#141a03] font-semibold text-xs px-3.5 py-2 rounded-xl hover:brightness-105 active:scale-95 transition whitespace-nowrap"
+          className="cursor-pointer bg-secondary text-secondary-ink font-semibold text-xs px-3.5 py-2 rounded-xl hover:brightness-105 active:scale-95 transition whitespace-nowrap"
         >
           🟢 Share to WhatsApp
         </a>
@@ -166,14 +166,14 @@ export const SummaryModal: React.FC<SummaryModalProps> = ({
           target="_blank"
           rel="noopener noreferrer"
           onClick={handleMessengerShare}
-          className="cursor-pointer border border-[#60a5fa]/40 bg-[#17171a] text-[#60a5fa] font-semibold text-xs px-3.5 py-2 rounded-xl hover:border-[#60a5fa] active:scale-95 transition whitespace-nowrap"
+          className="cursor-pointer border border-secondary/40 bg-card text-secondary font-semibold text-xs px-3.5 py-2 rounded-xl hover:border-secondary active:scale-95 transition whitespace-nowrap"
         >
           💬 Share to Messenger
         </a>
         <button
           type="button"
           onClick={handleNativeShare}
-          className="cursor-pointer border border-[#2b2b2f] bg-[#17171a] text-[#f4f4f5] font-semibold text-xs px-3.5 py-2 rounded-xl hover:border-[#3b3b40] active:scale-95 transition whitespace-nowrap"
+          className="cursor-pointer border border-line bg-card text-ink font-semibold text-xs px-3.5 py-2 rounded-xl hover:border-line2 active:scale-95 transition whitespace-nowrap"
         >
           📤 Share / Copy
         </button>
@@ -181,7 +181,7 @@ export const SummaryModal: React.FC<SummaryModalProps> = ({
           <button
             type="button"
             onClick={() => downloadIcs(calSlot, winVenue, config)}
-            className="cursor-pointer bg-[#ff6b57] text-[#1a0703] font-semibold text-xs px-3.5 py-2 rounded-xl hover:brightness-105 active:scale-95 transition whitespace-nowrap"
+            className="cursor-pointer bg-primary text-primary-ink font-semibold text-xs px-3.5 py-2 rounded-xl hover:brightness-105 active:scale-95 transition whitespace-nowrap"
           >
             📅 Download .ics
           </button>
@@ -189,13 +189,13 @@ export const SummaryModal: React.FC<SummaryModalProps> = ({
         <button
           type="button"
           onClick={onClose}
-          className="cursor-pointer border border-[#2b2b2f] bg-transparent text-[#8d8d94] font-semibold text-xs px-3 py-2 rounded-xl hover:text-[#f4f4f5] transition whitespace-nowrap"
+          className="cursor-pointer border border-line bg-transparent text-muted font-semibold text-xs px-3 py-2 rounded-xl hover:text-ink transition whitespace-nowrap"
         >
           Close
         </button>
       </div>
 
-      {msg && <div className="text-xs text-[#c6ff3d]">{msg}</div>}
+      {msg && <div className="text-xs text-secondary">{msg}</div>}
     </div>
   );
 };

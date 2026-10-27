@@ -1,5 +1,5 @@
 import React, { useRef } from 'react';
-import { Settings, Download, QrCode, Share2 } from 'lucide-react';
+import { Settings, Download, QrCode, Share2, Palette } from 'lucide-react';
 import { PintdrLogo } from './PintdrLogo';
 import { setBuilderAdmin } from '../utils/storage';
 
@@ -9,6 +9,7 @@ interface HeaderProps {
   onOpenSetup: () => void;
   onOpenShare: () => void;
   onOpenQrCode: () => void;
+  onOpenTheme: () => void;
   showInstall: boolean;
   onInstall: () => void;
   roomFriendlyName?: string;
@@ -20,6 +21,7 @@ export const Header: React.FC<HeaderProps> = ({
   onOpenSetup,
   onOpenShare,
   onOpenQrCode,
+  onOpenTheme,
   showInstall,
   onInstall,
   roomFriendlyName,
@@ -64,10 +66,10 @@ export const Header: React.FC<HeaderProps> = ({
                 onOpenSetup();
               }}
               title={`Room: ${roomFriendlyName || statusText} · Tap to switch squad room`}
-              className="inline-flex items-center gap-1.5 cursor-pointer text-[10px] sm:text-[11px] font-bold px-2 py-0.5 rounded-lg bg-[#212124] border border-[#2b2b2f] hover:border-[#ff6b57]/50 transition text-[#a1a1aa] hover:text-[#f4f4f5] shrink-0 active:scale-95 shadow-sm"
+              className="inline-flex items-center gap-1.5 cursor-pointer text-[10px] sm:text-[11px] font-bold px-2 py-0.5 rounded-lg bg-card2 border border-line hover:border-primary/50 transition text-muted hover:text-ink min-w-0 active:scale-95 shadow-sm"
             >
-              <span className="w-1.5 h-1.5 rounded-full bg-[#c6ff3d] animate-pulse shrink-0" />
-              <span className="truncate max-w-[85px] xs:max-w-[125px] sm:max-w-[160px]">
+              <span className="w-1.5 h-1.5 rounded-full bg-secondary animate-pulse shrink-0" />
+              <span className="truncate max-w-[150px] sm:max-w-[200px]">
                 {roomFriendlyName || statusText.replace(/^[⚡⚠️🔴🟢⚪]\s*/, '') || 'Live'}
               </span>
             </button>
@@ -81,33 +83,41 @@ export const Header: React.FC<HeaderProps> = ({
           <button
             type="button"
             onClick={onInstall}
-            className="w-9 h-9 sm:w-10 sm:h-10 flex items-center justify-center cursor-pointer border border-[#2b2b2f] bg-[#212124] text-[#f4f4f5] rounded-xl transition hover:border-[#3b3b40] active:scale-95"
+            className="w-9 h-9 sm:w-10 sm:h-10 flex items-center justify-center cursor-pointer border border-line bg-card2 text-ink rounded-xl transition hover:border-line2 active:scale-95"
             title="Install Pintdr App"
           >
-            <Download className="w-4 h-4 text-[#ff6b57]" />
+            <Download className="w-4 h-4 text-primary" />
           </button>
         )}
         <button
           type="button"
           onClick={onOpenQrCode}
-          className="w-9 h-9 sm:w-10 sm:h-10 flex items-center justify-center cursor-pointer border border-[#2b2b2f] bg-[#212124] text-[#f4f4f5] rounded-xl transition hover:border-[#ff6b57]/50 active:scale-95"
+          className="w-9 h-9 sm:w-10 sm:h-10 flex items-center justify-center cursor-pointer border border-line bg-card2 text-ink rounded-xl transition hover:border-primary/50 active:scale-95"
           title="Show QR Code to join room"
         >
-          <QrCode className="w-4 h-4 text-[#ff6b57]" />
+          <QrCode className="w-4 h-4 text-primary" />
         </button>
         <button
           type="button"
           onClick={onOpenShare}
-          className="w-9 h-9 sm:w-10 sm:h-10 flex items-center justify-center cursor-pointer border border-[#c6ff3d]/30 bg-[rgba(198,255,61,0.12)] text-[#c6ff3d] rounded-xl transition hover:bg-[rgba(198,255,61,0.2)] active:scale-95 shadow-[0_0_12px_rgba(198,255,61,0.12)]"
+          className="w-9 h-9 sm:w-10 sm:h-10 flex items-center justify-center cursor-pointer border border-secondary/30 bg-[color-mix(in_oklab,var(--good)_12%,transparent)] text-secondary rounded-xl transition hover:bg-[color-mix(in_oklab,var(--good)_20%,transparent)] active:scale-95 shadow-[0_0_12px_color-mix(in_oklab,var(--good)_12%,transparent)]"
           title="Share room & view summary"
         >
           <Share2 className="w-4 h-4" />
         </button>
         <button
           type="button"
+          onClick={onOpenTheme}
+          title="Room colour theme"
+          className="w-9 h-9 sm:w-10 sm:h-10 flex items-center justify-center cursor-pointer border border-line bg-card2 text-primary rounded-xl transition hover:border-primary/50 active:scale-95"
+        >
+          <Palette className="w-4 h-4" />
+        </button>
+        <button
+          type="button"
           onClick={onOpenSetup}
           title="Rooms & Cloud Sync Settings"
-          className="w-9 h-9 sm:w-10 sm:h-10 flex items-center justify-center cursor-pointer border border-[#2b2b2f] bg-[#212124] text-[#a1a1aa] hover:text-[#f4f4f5] rounded-xl transition hover:border-[#3b3b40] active:scale-95"
+          className="w-9 h-9 sm:w-10 sm:h-10 flex items-center justify-center cursor-pointer border border-line bg-card2 text-muted hover:text-ink rounded-xl transition hover:border-line2 active:scale-95"
         >
           <Settings className="w-4 h-4" />
         </button>

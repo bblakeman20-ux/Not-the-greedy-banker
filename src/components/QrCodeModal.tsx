@@ -54,22 +54,22 @@ export const QrCodeModal: React.FC<QrCodeModalProps> = ({
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/75 backdrop-blur-sm animate-in fade-in duration-150">
-      <div className="bg-[#17171a] border border-[#2b2b2f] rounded-3xl p-5 max-w-sm w-full text-center relative shadow-2xl">
+      <div className="bg-card border border-line rounded-3xl p-5 max-w-sm w-full text-center relative shadow-2xl">
         <button
           type="button"
           onClick={onClose}
-          className="absolute top-4 right-4 p-1.5 rounded-full text-[#8d8d94] hover:text-[#f4f4f5] hover:bg-[#212124] transition cursor-pointer"
+          className="absolute top-4 right-4 p-1.5 rounded-full text-muted hover:text-ink hover:bg-card2 transition cursor-pointer"
         >
           <X className="w-4 h-4" />
         </button>
 
-        <div className="flex items-center justify-center gap-2 mb-1 text-[#ff6b57]">
+        <div className="flex items-center justify-center gap-2 mb-1 text-primary">
           <QrCode className="w-5 h-5" />
-          <h3 className="font-display font-extrabold text-base text-[#f4f4f5]">
+          <h3 className="font-display font-extrabold text-base text-ink">
             Scan to Join Squad
           </h3>
         </div>
-        <p className="text-xs text-[#8d8d94] mb-4">
+        <p className="text-xs text-muted mb-4">
           Point any phone camera to jump straight into this live room.
         </p>
 
@@ -84,9 +84,9 @@ export const QrCodeModal: React.FC<QrCodeModalProps> = ({
         </div>
 
         {/* Room Code Badge */}
-        <div className="bg-[#212124] border border-[#2b2b2f] rounded-xl px-3 py-2 mb-4 text-xs font-mono text-[#f4f4f5] flex items-center justify-between">
-          <span className="text-[#8d8d94]">Room Code:</span>
-          <span className="font-bold text-[#ff6b57]">{roomCode}</span>
+        <div className="bg-card2 border border-line rounded-xl px-3 py-2 mb-4 text-xs font-mono text-ink flex items-center justify-between">
+          <span className="text-muted">Room Code:</span>
+          <span className="font-bold text-primary">{roomCode}</span>
         </div>
 
         {/* Actions */}
@@ -94,12 +94,12 @@ export const QrCodeModal: React.FC<QrCodeModalProps> = ({
           <button
             type="button"
             onClick={handleCopy}
-            className="flex items-center justify-center gap-1.5 cursor-pointer bg-[#212124] hover:bg-[#2b2b2f] border border-[#2b2b2f] text-[#f4f4f5] font-semibold text-xs py-2.5 px-3 rounded-xl transition"
+            className="flex items-center justify-center gap-1.5 cursor-pointer bg-card2 hover:bg-line border border-line text-ink font-semibold text-xs py-2.5 px-3 rounded-xl transition"
           >
             {copied ? (
               <>
-                <Check className="w-3.5 h-3.5 text-[#c6ff3d]" />
-                <span className="text-[#c6ff3d]">Copied!</span>
+                <Check className="w-3.5 h-3.5 text-secondary" />
+                <span className="text-secondary">Copied!</span>
               </>
             ) : (
               <>
@@ -111,7 +111,7 @@ export const QrCodeModal: React.FC<QrCodeModalProps> = ({
           <button
             type="button"
             onClick={handleNativeShare}
-            className="flex items-center justify-center gap-1.5 cursor-pointer bg-[#ff6b57] text-[#1a0703] font-semibold text-xs py-2.5 px-3 rounded-xl hover:brightness-105 active:scale-95 transition"
+            className="flex items-center justify-center gap-1.5 cursor-pointer bg-primary text-primary-ink font-semibold text-xs py-2.5 px-3 rounded-xl hover:brightness-105 active:scale-95 transition"
           >
             <Share2 className="w-3.5 h-3.5" />
             <span>Share Link</span>

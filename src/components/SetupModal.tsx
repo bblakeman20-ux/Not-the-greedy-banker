@@ -258,28 +258,28 @@ export const SetupModal: React.FC<SetupModalProps> = ({
   };
 
   return (
-    <div className="mt-3 bg-[#1e1e22] border border-[#2b2b2f] rounded-2xl p-4 sm:p-5 transition-all shadow-2xl animate-in fade-in duration-150 text-[#f4f4f5]">
+    <div className="mt-3 bg-card border border-line rounded-2xl p-4 sm:p-5 transition-all shadow-2xl animate-in fade-in duration-150 text-ink">
       {/* Top Header */}
-      <div className="flex items-center justify-between mb-4 border-b border-[#2b2b2f]/70 pb-3">
+      <div className="flex items-center justify-between mb-4 border-b border-line/70 pb-3">
         <div className="flex items-center gap-2">
-          <div className="w-8 h-8 rounded-xl bg-gradient-to-tr from-[#ff6b57] to-[#ff8f7d] flex items-center justify-center text-[#1a0703] shadow-md shadow-[#ff6b57]/20">
+          <div className="w-8 h-8 rounded-xl bg-gradient-to-tr from-primary to-primary-hi flex items-center justify-center text-primary-ink shadow-md shadow-primary/20">
             <Home className="w-4 h-4" />
           </div>
           <div>
-            <h2 className="text-sm font-display font-black text-[#ffffff] tracking-wide flex items-center gap-1.5">
+            <h2 className="text-sm font-display font-black text-ink tracking-wide flex items-center gap-1.5">
               <span>Squad Rooms</span>
-              <span className="text-[10px] font-bold px-1.5 py-0.5 rounded-full bg-[rgba(198,255,61,0.15)] text-[#c6ff3d] border border-[#c6ff3d]/30 font-mono">
+              <span className="text-[10px] font-bold px-1.5 py-0.5 rounded-full bg-[color-mix(in_oklab,var(--good)_15%,transparent)] text-secondary border border-secondary/30 font-mono">
                 Live Sync
               </span>
             </h2>
-            <p className="text-[11px] text-[#8d8d94]">1-tap room switcher & device memory</p>
+            <p className="text-[11px] text-muted">1-tap room switcher & device memory</p>
           </div>
         </div>
 
         <button
           type="button"
           onClick={onClose}
-          className="p-1.5 rounded-lg border border-[#2b2b2f] bg-[#17171a] text-[#8d8d94] hover:text-[#ffffff] hover:border-[#3b3b40] transition cursor-pointer"
+          className="p-1.5 rounded-lg border border-line bg-card text-muted hover:text-ink hover:border-line2 transition cursor-pointer"
           title="Close modal"
         >
           ✕
@@ -288,10 +288,10 @@ export const SetupModal: React.FC<SetupModalProps> = ({
 
       <div className="space-y-4">
         {/* Active Connected Room Hero Card */}
-        <div className="bg-[#17171a] border-2 border-[#ff6b57]/50 rounded-2xl p-3.5 sm:p-4 shadow-lg shadow-[#ff6b57]/10 space-y-2.5">
+        <div className="bg-card border-2 border-primary/50 rounded-2xl p-3.5 sm:p-4 shadow-lg shadow-primary/10 space-y-2.5">
           <div className="flex items-center justify-between gap-2">
-            <span className="text-[10px] font-black uppercase tracking-wider text-[#ff6b57] flex items-center gap-1.5">
-              <span className="w-2 h-2 rounded-full bg-[#c6ff3d] animate-ping" />
+            <span className="text-[10px] font-black uppercase tracking-wider text-primary flex items-center gap-1.5">
+              <span className="w-2 h-2 rounded-full bg-secondary animate-ping" />
               <span>Active Squad Room</span>
             </span>
             <div className="flex items-center gap-1">
@@ -301,16 +301,16 @@ export const SetupModal: React.FC<SetupModalProps> = ({
                   setActiveLabelInput(currentMeta.name);
                   setIsRenamingActive(!isRenamingActive);
                 }}
-                className="text-[11px] font-semibold text-[#8d8d94] hover:text-[#f4f4f5] px-2 py-1 rounded-lg border border-[#2b2b2f] bg-[#212124] hover:border-[#3b3b40] transition cursor-pointer flex items-center gap-1"
+                className="text-[11px] font-semibold text-muted hover:text-ink px-2 py-1 rounded-lg border border-line bg-card2 hover:border-line2 transition cursor-pointer flex items-center gap-1"
                 title="Rename this room"
               >
-                <Edit2 className="w-3 h-3 text-[#ff6b57]" />
+                <Edit2 className="w-3 h-3 text-primary" />
                 <span>Rename</span>
               </button>
               <button
                 type="button"
                 onClick={handleCopyRoomCode}
-                className="text-[11px] font-semibold text-[#8d8d94] hover:text-[#f4f4f5] px-2 py-1 rounded-lg border border-[#2b2b2f] bg-[#212124] hover:border-[#3b3b40] transition cursor-pointer flex items-center gap-1"
+                className="text-[11px] font-semibold text-muted hover:text-ink px-2 py-1 rounded-lg border border-line bg-card2 hover:border-line2 transition cursor-pointer flex items-center gap-1"
                 title="Copy room slug"
               >
                 <Copy className="w-3 h-3" />
@@ -328,37 +328,37 @@ export const SetupModal: React.FC<SetupModalProps> = ({
                 onKeyDown={(e) => e.key === 'Enter' && handleSaveActiveRename()}
                 placeholder="Room display name (e.g. Medway Lads)"
                 autoFocus
-                className="flex-1 bg-[#212124] border border-[#ff6b57] text-[#ffffff] px-3 py-1.5 rounded-xl text-xs sm:text-sm font-semibold outline-none"
+                className="flex-1 bg-card2 border border-primary text-ink px-3 py-1.5 rounded-xl text-xs sm:text-sm font-semibold outline-none"
               />
               <button
                 type="button"
                 onClick={handleSaveActiveRename}
-                className="cursor-pointer bg-[#ff6b57] text-[#1a0703] font-bold text-xs px-3 py-1.5 rounded-xl hover:brightness-105 active:scale-95"
+                className="cursor-pointer bg-primary text-primary-ink font-bold text-xs px-3 py-1.5 rounded-xl hover:brightness-105 active:scale-95"
               >
                 Save
               </button>
               <button
                 type="button"
                 onClick={() => setIsRenamingActive(false)}
-                className="cursor-pointer border border-[#2b2b2f] bg-[#212124] text-[#8d8d94] font-semibold text-xs px-2.5 py-1.5 rounded-xl hover:text-[#ffffff]"
+                className="cursor-pointer border border-line bg-card2 text-muted font-semibold text-xs px-2.5 py-1.5 rounded-xl hover:text-ink"
               >
                 Cancel
               </button>
             </div>
           ) : (
             <div>
-              <h3 className="font-display font-black text-lg sm:text-xl text-[#ffffff] truncate">
+              <h3 className="font-display font-black text-lg sm:text-xl text-ink truncate">
                 {currentMeta.name}
               </h3>
-              <div className="flex items-center gap-2 text-xs text-[#8d8d94] font-mono mt-0.5 flex-wrap">
-                <span className="text-[#a1a1aa]">{rm}</span>
+              <div className="flex items-center gap-2 text-xs text-muted font-mono mt-0.5 flex-wrap">
+                <span className="text-muted">{rm}</span>
                 {squadCount ? (
-                  <span className="text-[#c6ff3d] font-sans flex items-center gap-1">
+                  <span className="text-secondary font-sans flex items-center gap-1">
                     • <Users className="w-3 h-3" /> {squadCount} mates
                   </span>
                 ) : null}
                 {currentPlanName ? (
-                  <span className="text-[#ff8f7d] font-sans truncate">
+                  <span className="text-primary-hi font-sans truncate">
                     • 🗓️ {currentPlanName}
                   </span>
                 ) : null}
@@ -367,11 +367,11 @@ export const SetupModal: React.FC<SetupModalProps> = ({
           )}
 
           {/* Quick Share Link Button */}
-          <div className="pt-2 border-t border-[#2b2b2f]/60 flex items-center justify-between gap-2">
+          <div className="pt-2 border-t border-line/60 flex items-center justify-between gap-2">
             <button
               type="button"
               onClick={handleShareLink}
-              className="w-full cursor-pointer bg-gradient-to-r from-[#ff6b57] to-[#ff8f7d] text-[#1a0703] font-bold text-xs py-2 px-3 rounded-xl hover:brightness-105 active:scale-98 transition flex items-center justify-center gap-1.5 shadow-md shadow-[#ff6b57]/20"
+              className="w-full cursor-pointer bg-gradient-to-r from-primary to-primary-hi text-primary-ink font-bold text-xs py-2 px-3 rounded-xl hover:brightness-105 active:scale-98 transition flex items-center justify-center gap-1.5 shadow-md shadow-primary/20"
             >
               <Share2 className="w-3.5 h-3.5" />
               <span>💬 Share Squad Link with Friends</span>
@@ -385,24 +385,24 @@ export const SetupModal: React.FC<SetupModalProps> = ({
             <button
               type="button"
               onClick={handleOpenCreateNew}
-              className="w-full cursor-pointer border border-[#2b2b2f] bg-[#17171a] hover:border-[#ff6b57]/50 text-[#f4f4f5] font-bold text-xs py-2.5 px-4 rounded-xl transition flex items-center justify-center gap-2 active:scale-98 shadow-sm group"
+              className="w-full cursor-pointer border border-line bg-card hover:border-primary/50 text-ink font-bold text-xs py-2.5 px-4 rounded-xl transition flex items-center justify-center gap-2 active:scale-98 shadow-sm group"
             >
-              <PlusCircle className="w-4 h-4 text-[#ff6b57] group-hover:scale-110 transition-transform" />
+              <PlusCircle className="w-4 h-4 text-primary group-hover:scale-110 transition-transform" />
               <span>+ Create or Join Another Room</span>
             </button>
           </div>
         ) : (
           /* Inline New Room Form */
-          <div className="bg-[#17171a] border border-[#ff6b57]/40 rounded-2xl p-3.5 space-y-2.5 animate-in slide-in-from-top-2 duration-150">
+          <div className="bg-card border border-primary/40 rounded-2xl p-3.5 space-y-2.5 animate-in slide-in-from-top-2 duration-150">
             <div className="flex items-center justify-between">
-              <span className="text-xs font-bold text-[#f4f4f5] flex items-center gap-1.5">
-                <Sparkles className="w-3.5 h-3.5 text-[#ff6b57]" />
+              <span className="text-xs font-bold text-ink flex items-center gap-1.5">
+                <Sparkles className="w-3.5 h-3.5 text-primary" />
                 <span>Create New Squad Room</span>
               </span>
               <button
                 type="button"
                 onClick={() => setIsCreatingNew(false)}
-                className="text-xs text-[#8d8d94] hover:text-[#f4f4f5] p-1"
+                className="text-xs text-muted hover:text-ink p-1"
               >
                 ✕
               </button>
@@ -410,20 +410,20 @@ export const SetupModal: React.FC<SetupModalProps> = ({
 
             <div className="space-y-2">
               <div>
-                <label className="text-[10px] font-semibold text-[#8d8d94] block mb-1">
+                <label className="text-[10px] font-semibold text-muted block mb-1">
                   Friendly Room Name
                 </label>
                 <input
                   value={newRoomLabel}
                   onChange={(e) => setNewRoomLabel(e.target.value)}
                   placeholder="e.g. Medway Lads, Friday Outing"
-                  className="w-full bg-[#212124] border border-transparent focus:border-[#ff6b57] text-[#ffffff] px-3 py-1.5 rounded-xl text-xs outline-none"
+                  className="w-full bg-card2 border border-transparent focus:border-primary text-ink px-3 py-1.5 rounded-xl text-xs outline-none"
                 />
               </div>
 
               <div>
                 <div className="flex items-center justify-between mb-1">
-                  <label className="text-[10px] font-semibold text-[#8d8d94]">
+                  <label className="text-[10px] font-semibold text-muted">
                     Custom Room Code (Slug)
                   </label>
                   <button
@@ -433,7 +433,7 @@ export const SetupModal: React.FC<SetupModalProps> = ({
                       setNewRoomCode(c);
                       if (!newRoomLabel) setNewRoomLabel(humanizeRoomCode(c));
                     }}
-                    className="text-[10px] text-[#ff6b57] hover:underline flex items-center gap-1 cursor-pointer"
+                    className="text-[10px] text-primary hover:underline flex items-center gap-1 cursor-pointer"
                   >
                     <span>🎲 Roll Random</span>
                   </button>
@@ -442,7 +442,7 @@ export const SetupModal: React.FC<SetupModalProps> = ({
                   value={newRoomCode}
                   onChange={(e) => setNewRoomCode(e.target.value)}
                   placeholder="e.g. medway-pints or custom-code"
-                  className="w-full bg-[#212124] border border-transparent focus:border-[#ff6b57] text-[#ffffff] px-3 py-1.5 rounded-xl text-xs font-mono outline-none"
+                  className="w-full bg-card2 border border-transparent focus:border-primary text-ink px-3 py-1.5 rounded-xl text-xs font-mono outline-none"
                 />
               </div>
             </div>
@@ -451,14 +451,14 @@ export const SetupModal: React.FC<SetupModalProps> = ({
               <button
                 type="button"
                 onClick={handleConfirmCreateNew}
-                className="flex-1 cursor-pointer bg-[#ff6b57] text-[#1a0703] font-bold text-xs py-2 px-3 rounded-xl hover:brightness-105 active:scale-98 transition flex items-center justify-center gap-1"
+                className="flex-1 cursor-pointer bg-primary text-primary-ink font-bold text-xs py-2 px-3 rounded-xl hover:brightness-105 active:scale-98 transition flex items-center justify-center gap-1"
               >
                 <span>✨ Create & Enter Room</span>
               </button>
               <button
                 type="button"
                 onClick={() => setIsCreatingNew(false)}
-                className="cursor-pointer border border-[#2b2b2f] bg-[#212124] text-[#8d8d94] font-semibold text-xs py-2 px-3 rounded-xl hover:text-[#f4f4f5]"
+                className="cursor-pointer border border-line bg-card2 text-muted font-semibold text-xs py-2 px-3 rounded-xl hover:text-ink"
               >
                 Cancel
               </button>
@@ -469,9 +469,9 @@ export const SetupModal: React.FC<SetupModalProps> = ({
         {/* Recent Rooms Switcher (1-Tap Switch) */}
         <div>
           <div className="flex items-center justify-between mb-2">
-            <span className="text-xs font-bold text-[#cfcfd4] flex items-center gap-1.5">
+            <span className="text-xs font-bold text-ink2 flex items-center gap-1.5">
               <span>Recent Rooms on this device:</span>
-              <span className="bg-[#212124] text-[#8d8d94] text-[10px] font-mono px-1.5 py-0.2 rounded-full">
+              <span className="bg-card2 text-muted text-[10px] font-mono px-1.5 py-0.2 rounded-full">
                 {recentRooms.length}
               </span>
             </span>
@@ -480,7 +480,7 @@ export const SetupModal: React.FC<SetupModalProps> = ({
               <button
                 type="button"
                 onClick={handleClearRooms}
-                className="text-[10px] text-[#8d8d94] hover:text-[#ff6b57] cursor-pointer transition flex items-center gap-1"
+                className="text-[10px] text-muted hover:text-primary cursor-pointer transition flex items-center gap-1"
                 title="Clear recent rooms from this browser"
               >
                 <Trash2 className="w-3 h-3" />
@@ -490,7 +490,7 @@ export const SetupModal: React.FC<SetupModalProps> = ({
           </div>
 
           {recentRooms.length === 0 ? (
-            <div className="bg-[#17171a] border border-[#2b2b2f] rounded-xl p-4 text-center text-xs text-[#8d8d94]">
+            <div className="bg-card border border-line rounded-xl p-4 text-center text-xs text-muted">
               No other saved rooms on this device yet.
             </div>
           ) : (
@@ -509,16 +509,16 @@ export const SetupModal: React.FC<SetupModalProps> = ({
                     }}
                     className={`group w-full flex items-center justify-between p-2.5 sm:p-3 rounded-xl border transition-all select-none ${
                       isActive
-                        ? 'border-[#ff6b57] bg-[rgba(255,107,87,0.12)] cursor-default'
-                        : 'border-[#2b2b2f] bg-[#17171a] hover:border-[#3b3b40] hover:bg-[#212124] cursor-pointer'
+                        ? 'border-primary bg-[color-mix(in_oklab,var(--accent)_12%,transparent)] cursor-default'
+                        : 'border-line bg-card hover:border-line2 hover:bg-card2 cursor-pointer'
                     }`}
                   >
                     <div className="flex items-center gap-2.5 min-w-0 flex-1">
                       <div
                         className={`w-7 h-7 rounded-lg flex items-center justify-center shrink-0 ${
                           isActive
-                            ? 'bg-[#ff6b57] text-[#1a0703]'
-                            : 'bg-[#212124] text-[#8d8d94] group-hover:text-[#f4f4f5]'
+                            ? 'bg-primary text-primary-ink'
+                            : 'bg-card2 text-muted group-hover:text-ink'
                         }`}
                       >
                         <Home className="w-3.5 h-3.5" />
@@ -534,19 +534,19 @@ export const SetupModal: React.FC<SetupModalProps> = ({
                             onChange={(e) => setRenamingLabel(e.target.value)}
                             onKeyDown={(e) => e.key === 'Enter' && handleSaveItemRename(r.code)}
                             autoFocus
-                            className="flex-1 bg-[#212124] border border-[#ff6b57] text-[#ffffff] px-2 py-1 rounded-lg text-xs outline-none"
+                            className="flex-1 bg-card2 border border-primary text-ink px-2 py-1 rounded-lg text-xs outline-none"
                           />
                           <button
                             type="button"
                             onClick={() => handleSaveItemRename(r.code)}
-                            className="bg-[#ff6b57] text-[#1a0703] font-bold text-[10px] px-2 py-1 rounded-lg"
+                            className="bg-primary text-primary-ink font-bold text-[10px] px-2 py-1 rounded-lg"
                           >
                             Save
                           </button>
                           <button
                             type="button"
                             onClick={() => setRenamingCode(null)}
-                            className="text-[#8d8d94] text-[10px] px-1.5 py-1"
+                            className="text-muted text-[10px] px-1.5 py-1"
                           >
                             ✕
                           </button>
@@ -554,24 +554,24 @@ export const SetupModal: React.FC<SetupModalProps> = ({
                       ) : (
                         <div className="min-w-0 flex-1">
                           <div className="flex items-center gap-1.5">
-                            <span className="font-display font-bold text-xs sm:text-sm text-[#ffffff] truncate">
+                            <span className="font-display font-bold text-xs sm:text-sm text-ink truncate">
                               {r.name || humanizeRoomCode(r.code)}
                             </span>
                             {isActive && (
-                              <span className="text-[9px] font-black uppercase tracking-wider px-1.5 py-0.2 rounded-full bg-[#c6ff3d]/15 text-[#c6ff3d] border border-[#c6ff3d]/30 font-mono">
+                              <span className="text-[9px] font-black uppercase tracking-wider px-1.5 py-0.2 rounded-full bg-secondary/15 text-secondary border border-secondary/30 font-mono">
                                 Active
                               </span>
                             )}
                           </div>
-                          <div className="flex items-center gap-1.5 text-[10px] text-[#8d8d94] font-mono truncate mt-0.5">
+                          <div className="flex items-center gap-1.5 text-[10px] text-muted font-mono truncate mt-0.5">
                             <span className="truncate">{r.code}</span>
                             {r.memberCount ? (
-                              <span className="font-sans text-[#a1a1aa] shrink-0">
+                              <span className="font-sans text-muted shrink-0">
                                 • {r.memberCount} mates
                               </span>
                             ) : null}
                             {r.planName ? (
-                              <span className="font-sans text-[#ff8f7d] shrink-0 truncate">
+                              <span className="font-sans text-primary-hi shrink-0 truncate">
                                 • {r.planName}
                               </span>
                             ) : null}
@@ -591,7 +591,7 @@ export const SetupModal: React.FC<SetupModalProps> = ({
                             setRenamingCode(r.code);
                             setRenamingLabel(r.name);
                           }}
-                          className="p-1 rounded text-[#8d8d94] hover:text-[#f4f4f5] transition cursor-pointer"
+                          className="p-1 rounded text-muted hover:text-ink transition cursor-pointer"
                           title="Rename room label"
                         >
                           <Edit2 className="w-3 h-3" />
@@ -599,7 +599,7 @@ export const SetupModal: React.FC<SetupModalProps> = ({
                         <button
                           type="button"
                           onClick={(e) => handleRemoveRoom(r.code, e)}
-                          className="p-1 rounded text-[#8d8d94] hover:text-[#ff6b57] transition cursor-pointer opacity-70 hover:opacity-100"
+                          className="p-1 rounded text-muted hover:text-primary transition cursor-pointer opacity-70 hover:opacity-100"
                           title="Remove from history"
                         >
                           <Trash2 className="w-3 h-3" />
@@ -612,8 +612,8 @@ export const SetupModal: React.FC<SetupModalProps> = ({
             </div>
           )}
 
-          <div className="flex items-center gap-1.5 text-[10px] text-[#8d8d94] bg-[#17171a] p-2.5 rounded-xl border border-[#2b2b2f]/50 mt-2">
-            <ShieldCheck className="w-3.5 h-3.5 text-[#c6ff3d] shrink-0" />
+          <div className="flex items-center gap-1.5 text-[10px] text-muted bg-card p-2.5 rounded-xl border border-line/50 mt-2">
+            <ShieldCheck className="w-3.5 h-3.5 text-secondary shrink-0" />
             <span>
               <b>Device-only privacy:</b> These rooms are remembered on your personal phone/browser only.
             </span>
@@ -622,7 +622,7 @@ export const SetupModal: React.FC<SetupModalProps> = ({
 
         {/* BUILDER ADMIN DRAWER (Only visible when unlocked!) */}
         {isAdmin && (
-          <div className="border border-amber-500/40 bg-[#17171a] rounded-2xl overflow-hidden mt-3 shadow-lg">
+          <div className="border border-amber-500/40 bg-card rounded-2xl overflow-hidden mt-3 shadow-lg">
             <button
               type="button"
               onClick={() => setAdminDrawerOpen(!adminDrawerOpen)}
@@ -640,15 +640,15 @@ export const SetupModal: React.FC<SetupModalProps> = ({
             {adminDrawerOpen && (
               <div className="p-3.5 space-y-3 border-t border-amber-500/30 text-xs animate-in slide-in-from-top-2">
                 {/* Central Backend Banner */}
-                <div className="bg-[#212124] border border-[#2b2b2f] rounded-xl p-2.5">
-                  <div className="flex items-center justify-between text-[11px] font-semibold text-[#f4f4f5]">
+                <div className="bg-card2 border border-line rounded-xl p-2.5">
+                  <div className="flex items-center justify-between text-[11px] font-semibold text-ink">
                     <span className="flex items-center gap-1.5">
-                      <span className="w-2 h-2 rounded-full bg-[#c6ff3d] animate-pulse" />
+                      <span className="w-2 h-2 rounded-full bg-secondary animate-pulse" />
                       <span>{isCentralDb ? 'Central Default Firebase' : 'Custom Database URL'}</span>
                     </span>
-                    <span className="text-[10px] text-[#c6ff3d] font-mono">europe-west1</span>
+                    <span className="text-[10px] text-secondary font-mono">europe-west1</span>
                   </div>
-                  <p className="text-[10px] text-[#8d8d94] mt-1 break-all font-mono">
+                  <p className="text-[10px] text-muted mt-1 break-all font-mono">
                     {DEFAULT_FIREBASE_DB}
                   </p>
                 </div>
@@ -656,7 +656,7 @@ export const SetupModal: React.FC<SetupModalProps> = ({
                 {/* Firebase URL override */}
                 <div>
                   <div className="flex items-center justify-between mb-1">
-                    <label className="text-[10px] font-semibold text-[#8d8d94]">
+                    <label className="text-[10px] font-semibold text-muted">
                       Firebase RTDB URL Override
                     </label>
                     {!isCentralDb && (
@@ -673,20 +673,20 @@ export const SetupModal: React.FC<SetupModalProps> = ({
                     value={db}
                     onChange={(e) => setDb(e.target.value)}
                     placeholder="https://...-rtdb.europe-west1.firebasedatabase.app"
-                    className="w-full bg-[#212124] border border-[#2b2b2f] focus:border-amber-400 text-[#ffffff] px-2.5 py-1.5 rounded-xl text-xs font-mono outline-none"
+                    className="w-full bg-card2 border border-line focus:border-amber-400 text-ink px-2.5 py-1.5 rounded-xl text-xs font-mono outline-none"
                   />
                 </div>
 
                 {/* Gemini Model Selector */}
                 <div>
-                  <label className="text-[10px] font-semibold text-[#8d8d94] block mb-1">
+                  <label className="text-[10px] font-semibold text-muted block mb-1">
                     Gemini Model Identifier
                   </label>
                   <input
                     value={md}
                     onChange={(e) => setMd(e.target.value)}
                     placeholder="gemini-flash-latest"
-                    className="w-full bg-[#212124] border border-[#2b2b2f] focus:border-amber-400 text-[#ffffff] px-2.5 py-1.5 rounded-xl text-xs font-mono outline-none mb-1.5"
+                    className="w-full bg-card2 border border-line focus:border-amber-400 text-ink px-2.5 py-1.5 rounded-xl text-xs font-mono outline-none mb-1.5"
                   />
                   <div className="flex flex-wrap gap-1">
                     {[
@@ -702,7 +702,7 @@ export const SetupModal: React.FC<SetupModalProps> = ({
                         className={`text-[10px] font-mono px-2 py-0.5 rounded-lg border transition cursor-pointer ${
                           md === m.id
                             ? 'border-amber-400 bg-amber-500/20 text-amber-300 font-bold'
-                            : 'border-[#2b2b2f] bg-[#212124] text-[#8d8d94] hover:text-[#f4f4f5]'
+                            : 'border-line bg-card2 text-muted hover:text-ink'
                         }`}
                       >
                         {m.label}
@@ -713,7 +713,7 @@ export const SetupModal: React.FC<SetupModalProps> = ({
 
                 {/* Optional Key */}
                 <div>
-                  <label className="text-[10px] font-semibold text-[#8d8d94] block mb-1">
+                  <label className="text-[10px] font-semibold text-muted block mb-1">
                     Custom Gemini API Key (Optional)
                   </label>
                   <input
@@ -721,14 +721,14 @@ export const SetupModal: React.FC<SetupModalProps> = ({
                     value={key}
                     onChange={(e) => setKey(e.target.value)}
                     placeholder="AIzaSy..."
-                    className="w-full bg-[#212124] border border-[#2b2b2f] focus:border-amber-400 text-[#ffffff] px-2.5 py-1.5 rounded-xl text-xs font-mono outline-none"
+                    className="w-full bg-card2 border border-line focus:border-amber-400 text-ink px-2.5 py-1.5 rounded-xl text-xs font-mono outline-none"
                   />
                 </div>
 
                 <button
                   type="button"
                   onClick={handleSaveAdminSettings}
-                  className="w-full cursor-pointer bg-amber-500 hover:bg-amber-400 text-[#1a0703] font-bold text-xs py-2 px-3 rounded-xl transition"
+                  className="w-full cursor-pointer bg-amber-500 hover:bg-amber-400 text-primary-ink font-bold text-xs py-2 px-3 rounded-xl transition"
                 >
                   Save Admin Backend Settings
                 </button>
@@ -739,21 +739,21 @@ export const SetupModal: React.FC<SetupModalProps> = ({
 
         {/* Feedback message banner if present */}
         {msg && (
-          <div className="text-xs text-[#c6ff3d] bg-[rgba(198,255,61,0.1)] border border-[#c6ff3d]/30 px-3 py-2 rounded-xl flex items-center gap-1.5">
+          <div className="text-xs text-secondary bg-[color-mix(in_oklab,var(--good)_10%,transparent)] border border-secondary/30 px-3 py-2 rounded-xl flex items-center gap-1.5">
             <Check className="w-3.5 h-3.5 shrink-0" />
             <span>{msg}</span>
           </div>
         )}
 
         {/* Bottom Bar: Subtle Admin Unlock & Close Button */}
-        <div className="flex items-center justify-between pt-2 border-t border-[#2b2b2f]/60">
+        <div className="flex items-center justify-between pt-2 border-t border-line/60">
           <div>
             {!isAdmin ? (
               !showAdminPassInput ? (
                 <button
                   type="button"
                   onClick={() => setShowAdminPassInput(true)}
-                  className="text-[10px] text-[#52525b] hover:text-[#a1a1aa] transition cursor-pointer flex items-center gap-1"
+                  className="text-[10px] text-muted hover:text-muted transition cursor-pointer flex items-center gap-1"
                   title="Builder Admin access"
                 >
                   <Lock className="w-2.5 h-2.5" />
@@ -768,7 +768,7 @@ export const SetupModal: React.FC<SetupModalProps> = ({
                     onKeyDown={(e) => e.key === 'Enter' && handleUnlockAdmin()}
                     placeholder="Passcode"
                     autoFocus
-                    className="w-20 bg-[#17171a] border border-[#3b3b40] text-[#f4f4f5] px-2 py-0.5 rounded text-[10px] outline-none"
+                    className="w-20 bg-card border border-line2 text-ink px-2 py-0.5 rounded text-[10px] outline-none"
                   />
                   <button
                     type="button"
@@ -780,7 +780,7 @@ export const SetupModal: React.FC<SetupModalProps> = ({
                   <button
                     type="button"
                     onClick={() => setShowAdminPassInput(false)}
-                    className="text-[#8d8d94] text-[10px] px-1"
+                    className="text-muted text-[10px] px-1"
                   >
                     ✕
                   </button>
@@ -802,7 +802,7 @@ export const SetupModal: React.FC<SetupModalProps> = ({
           <button
             type="button"
             onClick={onClose}
-            className="cursor-pointer border border-[#2b2b2f] bg-[#17171a] hover:border-[#3b3b40] text-[#cfcfd4] hover:text-[#ffffff] font-semibold text-xs px-4 py-1.5 rounded-xl transition"
+            className="cursor-pointer border border-line bg-card hover:border-line2 text-ink2 hover:text-ink font-semibold text-xs px-4 py-1.5 rounded-xl transition"
           >
             Close
           </button>

@@ -6,6 +6,7 @@ import { fetchPlaces, makeIdeas, miles } from '../../utils/osm';
 import { askGergAI, MODES } from '../../utils/gemini';
 import { getLocalCuratedIdeas } from '../../utils/localPlaces';
 import confetti from 'canvas-confetti';
+import { themeConfetti } from '../../utils/theme';
 import { VenueExplorer } from '../VenueExplorer';
 import { PintdrOverlay } from '../PintdrOverlay';
 import { FlickeringFlameLoader } from '../FlickeringFlameLoader';
@@ -499,7 +500,7 @@ export const ActivitiesTab: React.FC<ActivitiesTabProps> = ({
         particleCount: 80,
         spread: 90,
         origin: { y: 0.5 },
-        colors: ['#ff6b57', '#c6ff3d', '#38bdf8', '#ffffff'],
+        colors: themeConfetti(),
       });
 
       notify(`🔥 IT'S A SQUAD MATCH! "${matchedVenue.name}" reached 2 votes and joined the Shortlist!`);
@@ -898,22 +899,22 @@ export const ActivitiesTab: React.FC<ActivitiesTabProps> = ({
           isGreedyBanker
             ? 'border-red-500/80 bg-red-950/30 shadow-[0_0_18px_rgba(239,68,68,0.25)] animate-pulse'
             : isWinner
-            ? 'border-[#f59e0b] bg-[#22242b] shadow-[0_0_20px_rgba(245,158,11,0.2)] ring-1 ring-[#f59e0b]/50'
+            ? 'border-secondary bg-card2 shadow-[0_0_20px_color-mix(in_oklab,var(--good)_20%,transparent)] ring-1 ring-secondary/50'
             : isColdPassed
-            ? 'border-[#2b2b2f]/60 bg-[#17171a]/70 opacity-75'
-            : 'border-[#2b2b2f] bg-[#212124] hover:border-[#3b3b40]'
+            ? 'border-line/60 bg-card/70 opacity-75'
+            : 'border-line bg-card2 hover:border-line2'
         } ${isSpinning ? 'roulette-spin' : ''}`}
       >
         {/* Compact Accordion Header Pill (~60-64px) */}
         <div
           onClick={() => setExpandedVenueId(isExpanded ? null : v.id)}
-          className="cursor-pointer min-h-[60px] p-3 sm:px-4 flex items-center justify-between gap-2.5 select-none hover:bg-white/[0.02] transition"
+          className="cursor-pointer min-h-[60px] p-3 sm:px-4 flex items-center justify-between gap-2.5 select-none hover:bg-ink/[0.02] transition"
         >
           {/* Left: Vote Status Badge */}
           <div className="shrink-0">
             {isWinner ? (
               <div
-                className="w-10 h-10 rounded-xl bg-[#f59e0b]/20 border border-[#f59e0b]/40 text-[#f59e0b] flex flex-col items-center justify-center font-black text-xs shadow-sm"
+                className="w-10 h-10 rounded-xl bg-secondary/20 border border-secondary/40 text-secondary flex flex-col items-center justify-center font-black text-xs shadow-sm"
                 title="Winning Pick"
               >
                 <Crown className="w-4 h-4 fill-current" />
@@ -921,7 +922,7 @@ export const ActivitiesTab: React.FC<ActivitiesTabProps> = ({
               </div>
             ) : keenCount >= 2 ? (
               <div
-                className="w-10 h-10 rounded-xl bg-[rgba(198,255,61,0.18)] border border-[#c6ff3d]/40 text-[#c6ff3d] flex flex-col items-center justify-center font-black text-xs shadow-[0_0_12px_rgba(198,255,61,0.2)]"
+                className="w-10 h-10 rounded-xl bg-[color-mix(in_oklab,var(--good)_18%,transparent)] border border-secondary/40 text-secondary flex flex-col items-center justify-center font-black text-xs shadow-[0_0_12px_color-mix(in_oklab,var(--good)_20%,transparent)]"
                 title={`${keenCount} keen, ${passCount} passed (Net: ${netScore > 0 ? `+${netScore}` : netScore})`}
               >
                 <Flame className="w-4 h-4 fill-current" />
@@ -929,23 +930,23 @@ export const ActivitiesTab: React.FC<ActivitiesTabProps> = ({
               </div>
             ) : keenCount === 1 ? (
               <div
-                className="w-10 h-10 rounded-xl bg-[#17171a] border border-[#2b2b2f] text-[#cfcfd4] flex flex-col items-center justify-center font-bold text-xs"
+                className="w-10 h-10 rounded-xl bg-card border border-line text-ink2 flex flex-col items-center justify-center font-bold text-xs"
                 title={`1 keen${passCount > 0 ? `, ${passCount} passed` : ' (Needs seconder)'}`}
               >
-                <ThumbsUp className="w-3.5 h-3.5 text-[#c6ff3d]" />
+                <ThumbsUp className="w-3.5 h-3.5 text-secondary" />
                 <span className="text-[10px] leading-none">1</span>
               </div>
             ) : passCount > 0 ? (
               <div
-                className="w-10 h-10 rounded-xl bg-[#17171a] border border-[#2b2b2f] text-[#8d8d94] flex flex-col items-center justify-center font-bold text-xs"
+                className="w-10 h-10 rounded-xl bg-card border border-line text-muted flex flex-col items-center justify-center font-bold text-xs"
                 title={`${passCount} squad members passed (Net: -${passCount})`}
               >
-                <ThumbsDown className="w-3.5 h-3.5 text-[#8d8d94]" />
+                <ThumbsDown className="w-3.5 h-3.5 text-muted" />
                 <span className="text-[10px] leading-none">-{passCount}</span>
               </div>
             ) : (
               <div
-                className="w-10 h-10 rounded-xl bg-[#17171a] border border-[#2b2b2f] text-[#8d8d94] flex flex-col items-center justify-center font-bold text-xs"
+                className="w-10 h-10 rounded-xl bg-card border border-line text-muted flex flex-col items-center justify-center font-bold text-xs"
                 title="0 votes yet"
               >
                 <span className="text-sm">🌱</span>
@@ -957,7 +958,7 @@ export const ActivitiesTab: React.FC<ActivitiesTabProps> = ({
           {/* Middle: Name, Town/Location, £ Price */}
           <div className="min-w-0 flex-1">
             <div className="flex items-center gap-1.5 flex-wrap">
-              <span className="font-display font-black text-sm sm:text-base text-[#ffffff] truncate">
+              <span className="font-display font-black text-sm sm:text-base text-ink truncate">
                 {v.name}
               </span>
               {Boolean(isGreedyBanker) && (
@@ -966,7 +967,7 @@ export const ActivitiesTab: React.FC<ActivitiesTabProps> = ({
                 </span>
               )}
               {Boolean(isMajorityOption) && (
-                <span className="text-[9px] font-bold text-[#c6ff3d] bg-[#c6ff3d]/15 px-1.5 py-0.2 rounded border border-[#c6ff3d]/30">
+                <span className="text-[9px] font-bold text-secondary bg-secondary/15 px-1.5 py-0.2 rounded border border-secondary/30">
                   Majority
                 </span>
               )}
@@ -974,10 +975,10 @@ export const ActivitiesTab: React.FC<ActivitiesTabProps> = ({
                 <span
                   className={`text-[9px] font-bold px-1.5 py-0.2 rounded border ${
                     netScore > 0
-                      ? 'text-[#c6ff3d] bg-[#c6ff3d]/10 border-[#c6ff3d]/25'
+                      ? 'text-secondary bg-secondary/10 border-secondary/25'
                       : netScore < 0
-                      ? 'text-[#8d8d94] bg-[#2b2b2f]/40 border-[#2b2b2f]'
-                      : 'text-[#cfcfd4] bg-[#2b2b2f]/30 border-[#2b2b2f]'
+                      ? 'text-muted bg-line/40 border-line'
+                      : 'text-ink2 bg-line/30 border-line'
                   }`}
                   title={`Net Score: ${netScore} (👍 ${keenCount} Keen - 👎 ${passCount} Pass)`}
                 >
@@ -986,18 +987,18 @@ export const ActivitiesTab: React.FC<ActivitiesTabProps> = ({
               )}
             </div>
 
-            <div className="flex items-center gap-2 text-xs text-[#a1a1aa] mt-0.5 flex-wrap">
+            <div className="flex items-center gap-2 text-xs text-muted mt-0.5 flex-wrap">
               <span className="truncate flex items-center gap-1">
-                <MapPin className="w-3 h-3 text-[#ff6b57] shrink-0" />
+                <MapPin className="w-3 h-3 text-primary shrink-0" />
                 <span>{v.loc}</span>
               </span>
               {v.cost ? (
-                <span className="text-[#c6ff3d] font-semibold shrink-0">
+                <span className="text-secondary font-semibold shrink-0">
                   • £{v.cost.replace(/[^0-9.]/g, '') || v.cost} pp
                 </span>
               ) : null}
               {v.when ? (
-                <span className="text-[#8d8d94] shrink-0 hidden sm:inline">
+                <span className="text-muted shrink-0 hidden sm:inline">
                   • 🕒 {v.when}
                 </span>
               ) : null}
@@ -1018,8 +1019,8 @@ export const ActivitiesTab: React.FC<ActivitiesTabProps> = ({
                         ? 'bg-red-600 text-white shadow-lg shadow-red-600/30 font-black'
                         : 'border border-red-500/60 bg-red-950/40 text-red-300 hover:bg-red-900/50'
                       : vt[me.id] === 'k'
-                      ? 'bg-[#c6ff3d] text-[#141a03] shadow-[0_0_12px_rgba(198,255,61,0.3)] font-black'
-                      : 'border border-[#2b2b2f] bg-[#17171a] text-[#cfcfd4] hover:text-white hover:border-[#3b3b40]'
+                      ? 'bg-secondary text-secondary-ink shadow-[0_0_12px_color-mix(in_oklab,var(--good)_30%,transparent)] font-black'
+                      : 'border border-line bg-card text-ink2 hover:text-ink hover:border-line2'
                   }`}
                 >
                   {isGreedyBanker ? (
@@ -1045,8 +1046,8 @@ export const ActivitiesTab: React.FC<ActivitiesTabProps> = ({
                   }
                   className={`cursor-pointer font-bold text-xs h-8 sm:h-9 px-2.5 sm:px-3 rounded-xl transition flex items-center gap-1 active:scale-95 ${
                     vt[me.id] === 'p' || vt[me.id] === 'v'
-                      ? 'bg-[#ff6b57] text-[#1a0703] shadow-[0_0_12px_rgba(255,107,87,0.3)] font-black'
-                      : 'border border-[#2b2b2f] bg-[#17171a] text-[#cfcfd4] hover:text-white hover:border-[#3b3b40]'
+                      ? 'bg-primary text-primary-ink shadow-[0_0_12px_color-mix(in_oklab,var(--accent)_30%,transparent)] font-black'
+                      : 'border border-line bg-card text-ink2 hover:text-ink hover:border-line2'
                   }`}
                 >
                   <ThumbsDown className="w-3.5 h-3.5" />
@@ -1058,7 +1059,7 @@ export const ActivitiesTab: React.FC<ActivitiesTabProps> = ({
             <button
               type="button"
               onClick={() => setExpandedVenueId(isExpanded ? null : v.id)}
-              className="p-1.5 rounded-lg text-[#8d8d94] hover:text-[#ffffff] transition"
+              className="p-1.5 rounded-lg text-muted hover:text-ink transition"
               title={isExpanded ? 'Collapse details' : 'Expand details'}
             >
               {isExpanded ? <ChevronUp className="w-4 h-4" /> : <ChevronDown className="w-4 h-4" />}
@@ -1068,7 +1069,7 @@ export const ActivitiesTab: React.FC<ActivitiesTabProps> = ({
 
         {/* Expanded Accordion Details Panel */}
         {isExpanded && (
-          <div className="p-4 sm:p-5 border-t border-[#2b2b2f] bg-[#17171a]/95 space-y-4 animate-in fade-in duration-150">
+          <div className="p-4 sm:p-5 border-t border-line bg-card/95 space-y-4 animate-in fade-in duration-150">
             {/* Treason Mode Warning Banner */}
             {isGreedyBanker && (
               <div className="bg-red-950/70 border border-red-500/70 rounded-xl p-3 text-xs text-red-200 font-semibold flex items-center gap-2">
@@ -1081,15 +1082,15 @@ export const ActivitiesTab: React.FC<ActivitiesTabProps> = ({
 
             {/* Description */}
             {Boolean(v.desc) && (
-              <p className="text-xs sm:text-sm text-[#cfcfd4] leading-relaxed">
+              <p className="text-xs sm:text-sm text-ink2 leading-relaxed">
                 {v.desc}
               </p>
             )}
 
             {/* Multi-Stop Timeline or Steps */}
             {v.stops && v.stops.length > 0 ? (
-              <div className="bg-[#212124] p-3.5 sm:p-4 rounded-xl border border-[#2b2b2f] space-y-3">
-                <div className="flex items-center justify-between text-xs font-bold text-[#c6ff3d]">
+              <div className="bg-card2 p-3.5 sm:p-4 rounded-xl border border-line space-y-3">
+                <div className="flex items-center justify-between text-xs font-bold text-secondary">
                   <span className="flex items-center gap-1.5">
                     <Route className="w-4 h-4" />
                     <span>Multi-Stop Timeline ({v.stops.length} Venues)</span>
@@ -1100,7 +1101,7 @@ export const ActivitiesTab: React.FC<ActivitiesTabProps> = ({
                       .join('/')}`}
                     target="_blank"
                     rel="noopener noreferrer"
-                    className="text-[#ff6b57] hover:underline flex items-center gap-1"
+                    className="text-primary hover:underline flex items-center gap-1"
                   >
                     <ExternalLink className="w-3 h-3" />
                     <span>Full Walking Route</span>
@@ -1110,16 +1111,16 @@ export const ActivitiesTab: React.FC<ActivitiesTabProps> = ({
                   {v.stops.map((stop, sIdx) => (
                     <div
                       key={sIdx}
-                      className="bg-[#17171a] border border-[#2b2b2f] rounded-lg p-2.5 flex items-center justify-between text-xs"
+                      className="bg-card border border-line rounded-lg p-2.5 flex items-center justify-between text-xs"
                     >
-                      <div className="font-semibold text-[#f4f4f5] flex items-center gap-2">
-                        <span className="w-4 h-4 rounded-full bg-[#ff6b57] text-[#1a0703] text-[9px] font-black flex items-center justify-center">
+                      <div className="font-semibold text-ink flex items-center gap-2">
+                        <span className="w-4 h-4 rounded-full bg-primary text-primary-ink text-[9px] font-black flex items-center justify-center">
                           {sIdx + 1}
                         </span>
                         <span>{stop.name}</span>
                       </div>
                       {Boolean(stop.time) && (
-                        <span className="text-[10px] text-[#c6ff3d] bg-[#c6ff3d]/10 px-1.5 py-0.5 rounded border border-[#c6ff3d]/20">
+                        <span className="text-[10px] text-secondary bg-secondary/10 px-1.5 py-0.5 rounded border border-secondary/20">
                           {stop.time}
                         </span>
                       )}
@@ -1128,13 +1129,13 @@ export const ActivitiesTab: React.FC<ActivitiesTabProps> = ({
                 </div>
               </div>
             ) : v.steps && v.steps.length > 0 ? (
-              <div className="bg-[#212124] p-3 rounded-xl border border-[#2b2b2f] space-y-1.5 text-xs text-[#cfcfd4]">
-                <div className="text-[10px] font-bold text-[#ff6b57] uppercase tracking-wider">
+              <div className="bg-card2 p-3 rounded-xl border border-line space-y-1.5 text-xs text-ink2">
+                <div className="text-[10px] font-bold text-primary uppercase tracking-wider">
                   Timeline / Route Steps
                 </div>
                 {v.steps.map((st, i) => (
                   <div key={i} className="flex items-start gap-1.5">
-                    <span className="text-[#ff6b57] font-bold">•</span>
+                    <span className="text-primary font-bold">•</span>
                     <span>{st}</span>
                   </div>
                 ))}
@@ -1142,29 +1143,29 @@ export const ActivitiesTab: React.FC<ActivitiesTabProps> = ({
             ) : null}
 
             {/* Voters Breakdown */}
-            <div className="flex flex-wrap items-center justify-between gap-2 pt-2 border-t border-[#2b2b2f]/80 text-xs">
+            <div className="flex flex-wrap items-center justify-between gap-2 pt-2 border-t border-line/80 text-xs">
               <div className="flex items-center gap-1.5 flex-wrap">
-                <ThumbsUp className="w-3.5 h-3.5 text-[#c6ff3d] shrink-0" />
-                <span className="font-bold text-[#c6ff3d]">Keen ({keenList.length}):</span>
-                <span className="text-[#cfcfd4]">{keenList.join(', ') || 'None yet'}</span>
+                <ThumbsUp className="w-3.5 h-3.5 text-secondary shrink-0" />
+                <span className="font-bold text-secondary">Keen ({keenList.length}):</span>
+                <span className="text-ink2">{keenList.join(', ') || 'None yet'}</span>
               </div>
               {passList.length > 0 && (
-                <div className="flex items-center gap-1.5 text-[#cfcfd4]">
-                  <ThumbsDown className="w-3.5 h-3.5 text-[#8d8d94] shrink-0" />
-                  <span className="font-semibold text-[#8d8d94]">Passed ({passList.length}):</span>
-                  <span className="text-[#a1a1aa]">{passList.join(', ')}</span>
+                <div className="flex items-center gap-1.5 text-ink2">
+                  <ThumbsDown className="w-3.5 h-3.5 text-muted shrink-0" />
+                  <span className="font-semibold text-muted">Passed ({passList.length}):</span>
+                  <span className="text-muted">{passList.join(', ')}</span>
                 </div>
               )}
             </div>
 
             {/* Expanded Action Toolbar */}
-            <div className="flex items-center justify-between gap-2 pt-2 border-t border-[#2b2b2f]/80">
+            <div className="flex items-center justify-between gap-2 pt-2 border-t border-line/80">
               <div className="flex items-center gap-2">
                 <a
                   href={mapsUrl((v.kind === 'combo' ? '' : v.name + ', ') + v.loc)}
                   target="_blank"
                   rel="noopener noreferrer"
-                  className="cursor-pointer text-xs font-semibold text-[#8d8d94] hover:text-[#ff6b57] bg-[#212124] border border-[#2b2b2f] hover:border-[#ff6b57]/40 px-3 py-1.5 rounded-xl transition flex items-center gap-1.5"
+                  className="cursor-pointer text-xs font-semibold text-muted hover:text-primary bg-card2 border border-line hover:border-primary/40 px-3 py-1.5 rounded-xl transition flex items-center gap-1.5"
                 >
                   <MapIcon className="w-3.5 h-3.5" />
                   <span>Google Maps</span>
@@ -1174,7 +1175,7 @@ export const ActivitiesTab: React.FC<ActivitiesTabProps> = ({
                     href={safeUrl(v.url)}
                     target="_blank"
                     rel="noopener noreferrer"
-                    className="cursor-pointer text-xs font-semibold text-[#8d8d94] hover:text-[#ffffff] bg-[#212124] border border-[#2b2b2f] px-3 py-1.5 rounded-xl transition flex items-center gap-1.5"
+                    className="cursor-pointer text-xs font-semibold text-muted hover:text-ink bg-card2 border border-line px-3 py-1.5 rounded-xl transition flex items-center gap-1.5"
                   >
                     <ExternalLink className="w-3.5 h-3.5" />
                     <span>Website</span>
@@ -1189,8 +1190,8 @@ export const ActivitiesTab: React.FC<ActivitiesTabProps> = ({
                     onClick={() => handleLockIn(v.id)}
                     className={`cursor-pointer text-xs font-bold px-3 py-1.5 rounded-xl transition flex items-center gap-1.5 ${
                       isWinner
-                        ? 'bg-[#f59e0b] text-[#141a03] shadow-md'
-                        : 'border border-[#2b2b2f] bg-[#212124] text-[#cfcfd4] hover:text-[#f59e0b] hover:border-[#f59e0b]/40'
+                        ? 'bg-secondary text-secondary-ink shadow-md'
+                        : 'border border-line bg-card2 text-ink2 hover:text-secondary hover:border-secondary/40'
                     }`}
                   >
                     <Star className={`w-3.5 h-3.5 ${isWinner ? 'fill-current' : ''}`} />
@@ -1199,7 +1200,7 @@ export const ActivitiesTab: React.FC<ActivitiesTabProps> = ({
                   <button
                     type="button"
                     onClick={() => handleDeleteVenue(v.id)}
-                    className="cursor-pointer text-xs font-semibold text-[#8d8d94] hover:text-[#ff6b57] bg-[#212124] border border-[#2b2b2f] hover:border-[#ff6b57]/40 p-1.5 rounded-xl transition"
+                    className="cursor-pointer text-xs font-semibold text-muted hover:text-primary bg-card2 border border-line hover:border-primary/40 p-1.5 rounded-xl transition"
                     title="Remove from shortlist"
                   >
                     <Trash2 className="w-4 h-4" />
@@ -1217,26 +1218,26 @@ export const ActivitiesTab: React.FC<ActivitiesTabProps> = ({
     <div className="space-y-4">
       {/* 👑 DECIDED SQUAD PLAN Hero Card */}
       {decidedVenue && (
-        <div className="border-2 border-[#f59e0b] bg-gradient-to-br from-[#241d0e] via-[#1a1a20] to-[#17171a] shadow-[0_0_28px_rgba(245,158,11,0.22)] rounded-2xl p-4 sm:p-5 ring-1 ring-[#f59e0b]/40 relative overflow-hidden space-y-3.5 animate-in fade-in duration-200">
+        <div className="border-2 border-secondary bg-gradient-to-br from-card via-card to-card shadow-[0_0_28px_color-mix(in_oklab,var(--good)_22%,transparent)] rounded-2xl p-4 sm:p-5 ring-1 ring-secondary/40 relative overflow-hidden space-y-3.5 animate-in fade-in duration-200">
           {/* Subtle gold crown watermark background effect */}
-          <div className="absolute -right-6 -bottom-6 text-[#f59e0b]/5 pointer-events-none select-none">
+          <div className="absolute -right-6 -bottom-6 text-secondary/5 pointer-events-none select-none">
             <Crown className="w-36 h-36" />
           </div>
 
           {/* Top Row: Crown + Status Badge + Veto Token Status */}
           <div className="flex flex-wrap items-center justify-between gap-2 relative z-10">
             <div className="flex items-center gap-2 flex-wrap">
-              <div className="w-8 h-8 rounded-xl bg-[#f59e0b]/20 border border-[#f59e0b]/50 text-[#f59e0b] flex items-center justify-center font-black shadow-sm">
+              <div className="w-8 h-8 rounded-xl bg-secondary/20 border border-secondary/50 text-secondary flex items-center justify-center font-black shadow-sm">
                 <Crown className="w-4 h-4 fill-current" />
               </div>
-              <span className="text-xs sm:text-sm font-black font-display tracking-wider uppercase text-[#f59e0b]">
+              <span className="text-xs sm:text-sm font-black font-display tracking-wider uppercase text-secondary">
                 👑 DECIDED SQUAD PLAN
               </span>
               <span
                 className={`text-[10px] font-black uppercase px-2 py-0.5 rounded-full border ${
                   isLocked
-                    ? 'bg-[#f59e0b] text-[#141a03] border-[#f59e0b]'
-                    : 'bg-[#f59e0b]/15 text-[#f59e0b] border-[#f59e0b]/40'
+                    ? 'bg-secondary text-secondary-ink border-secondary'
+                    : 'bg-secondary/15 text-secondary border-secondary/40'
                 }`}
               >
                 {isLocked ? '🔒 Locked In Final Pick' : '🎯 Front Runner Pick'}
@@ -1244,11 +1245,11 @@ export const ActivitiesTab: React.FC<ActivitiesTabProps> = ({
             </div>
 
             {me && (
-              <div className="text-[11px] font-semibold text-[#8d8d94] flex items-center gap-1.5 bg-[#17171a]/90 px-2.5 py-1 rounded-lg border border-[#2b2b2f]">
+              <div className="text-[11px] font-semibold text-muted flex items-center gap-1.5 bg-card/90 px-2.5 py-1 rounded-lg border border-line">
                 <span>🎟️</span>
                 <span>
                   Your Vetoes:{' '}
-                  <b className={myVetoesLeft > 0 ? 'text-[#c6ff3d]' : 'text-[#ef4444]'}>
+                  <b className={myVetoesLeft > 0 ? 'text-secondary' : 'text-[#ef4444]'}>
                     {myVetoesLeft} / {MAX_VETOES}
                   </b>{' '}
                   left
@@ -1259,42 +1260,42 @@ export const ActivitiesTab: React.FC<ActivitiesTabProps> = ({
 
           {/* Venue Info */}
           <div className="space-y-1 relative z-10">
-            <h2 className="text-xl sm:text-2xl font-black font-display text-[#ffffff] tracking-tight">
+            <h2 className="text-xl sm:text-2xl font-black font-display text-ink tracking-tight">
               {decidedVenue.name}
             </h2>
-            <div className="flex items-center gap-2 text-xs text-[#a1a1aa] flex-wrap">
-              <span className="flex items-center gap-1 text-[#f4f4f5]">
-                <MapPin className="w-3.5 h-3.5 text-[#ff6b57] shrink-0" />
+            <div className="flex items-center gap-2 text-xs text-muted flex-wrap">
+              <span className="flex items-center gap-1 text-ink">
+                <MapPin className="w-3.5 h-3.5 text-primary shrink-0" />
                 <span>{decidedVenue.loc}</span>
               </span>
               {decidedVenue.cost ? (
-                <span className="text-[#c6ff3d] font-bold">
+                <span className="text-secondary font-bold">
                   • £{decidedVenue.cost.replace(/[^0-9.]/g, '') || decidedVenue.cost} pp
                 </span>
               ) : null}
               {decidedVenue.when ? (
-                <span className="text-[#8d8d94]">
+                <span className="text-muted">
                   • 🕒 {decidedVenue.when}
                 </span>
               ) : null}
             </div>
             {decidedVenue.desc && (
-              <p className="text-xs sm:text-sm text-[#cfcfd4] pt-1 leading-relaxed">
+              <p className="text-xs sm:text-sm text-ink2 pt-1 leading-relaxed">
                 {decidedVenue.desc}
               </p>
             )}
           </div>
 
           {/* Action Row */}
-          <div className="flex flex-wrap items-center justify-between gap-2.5 pt-2 border-t border-[#f59e0b]/20 relative z-10">
+          <div className="flex flex-wrap items-center justify-between gap-2.5 pt-2 border-t border-secondary/20 relative z-10">
             <div className="flex items-center gap-2">
               <a
                 href={mapsUrl((decidedVenue.kind === 'combo' ? '' : decidedVenue.name + ', ') + decidedVenue.loc)}
                 target="_blank"
                 rel="noopener noreferrer"
-                className="cursor-pointer text-xs font-semibold text-[#cfcfd4] hover:text-[#ffffff] bg-[#17171a] border border-[#2b2b2f] hover:border-[#f59e0b]/50 px-3 py-1.5 rounded-xl transition flex items-center gap-1.5"
+                className="cursor-pointer text-xs font-semibold text-ink2 hover:text-ink bg-card border border-line hover:border-secondary/50 px-3 py-1.5 rounded-xl transition flex items-center gap-1.5"
               >
-                <MapIcon className="w-3.5 h-3.5 text-[#ff6b57]" />
+                <MapIcon className="w-3.5 h-3.5 text-primary" />
                 <span>Google Maps</span>
               </a>
               {Boolean(safeUrl(decidedVenue.url)) && (
@@ -1302,7 +1303,7 @@ export const ActivitiesTab: React.FC<ActivitiesTabProps> = ({
                   href={safeUrl(decidedVenue.url)}
                   target="_blank"
                   rel="noopener noreferrer"
-                  className="cursor-pointer text-xs font-semibold text-[#cfcfd4] hover:text-[#ffffff] bg-[#17171a] border border-[#2b2b2f] px-3 py-1.5 rounded-xl transition flex items-center gap-1.5"
+                  className="cursor-pointer text-xs font-semibold text-ink2 hover:text-ink bg-card border border-line px-3 py-1.5 rounded-xl transition flex items-center gap-1.5"
                 >
                   <ExternalLink className="w-3.5 h-3.5" />
                   <span>Website</span>
@@ -1315,16 +1316,16 @@ export const ActivitiesTab: React.FC<ActivitiesTabProps> = ({
                 <button
                   type="button"
                   onClick={handleUnlockWinner}
-                  className="cursor-pointer text-xs font-bold text-[#cfcfd4] hover:text-[#ffffff] bg-[#17171a] border border-[#2b2b2f] hover:border-[#3b3b40] px-3 py-1.5 rounded-xl transition flex items-center gap-1.5"
+                  className="cursor-pointer text-xs font-bold text-ink2 hover:text-ink bg-card border border-line hover:border-line2 px-3 py-1.5 rounded-xl transition flex items-center gap-1.5"
                 >
-                  <Unlock className="w-3.5 h-3.5 text-[#f59e0b]" />
+                  <Unlock className="w-3.5 h-3.5 text-secondary" />
                   <span>Unlock Plan</span>
                 </button>
               ) : (
                 <button
                   type="button"
                   onClick={() => handleLockIn(decidedVenue.id)}
-                  className="cursor-pointer text-xs font-black text-[#141a03] bg-[#f59e0b] hover:brightness-110 active:scale-95 px-3 py-1.5 rounded-xl transition flex items-center gap-1.5 shadow-sm"
+                  className="cursor-pointer text-xs font-black text-secondary-ink bg-secondary hover:brightness-110 active:scale-95 px-3 py-1.5 rounded-xl transition flex items-center gap-1.5 shadow-sm"
                 >
                   <Lock className="w-3.5 h-3.5" />
                   <span>Lock In Plan</span>
@@ -1371,7 +1372,7 @@ export const ActivitiesTab: React.FC<ActivitiesTabProps> = ({
                   💣
                 </div>
                 <div className="space-y-1 min-w-0">
-                  <h4 className="text-sm font-black text-white">
+                  <h4 className="text-sm font-black text-ink">
                     Blow up the squad's decided plan?
                   </h4>
                   <p className="text-xs text-red-200 leading-relaxed">
@@ -1383,7 +1384,7 @@ export const ActivitiesTab: React.FC<ActivitiesTabProps> = ({
                 <button
                   type="button"
                   onClick={() => setConfirmVetoWinner(false)}
-                  className="cursor-pointer text-xs font-semibold bg-[#17171a] text-[#cfcfd4] hover:text-white px-3 py-1.5 rounded-lg border border-[#2b2b2f] transition"
+                  className="cursor-pointer text-xs font-semibold bg-card text-ink2 hover:text-ink px-3 py-1.5 rounded-lg border border-line transition"
                 >
                   Cancel
                 </button>
@@ -1402,17 +1403,17 @@ export const ActivitiesTab: React.FC<ActivitiesTabProps> = ({
       )}
 
       {/* High-Contrast Hero Segmented Switcher */}
-      <div className="grid grid-cols-3 gap-2 bg-[#1a1a1e] border-2 border-[#3b3b42] p-1.5 rounded-2xl shadow-xl">
+      <div className="grid grid-cols-3 gap-2 bg-card border-2 border-line2 p-1.5 rounded-2xl shadow-xl">
         <button
           type="button"
           onClick={() => setSubTab('shortlist')}
           className={`cursor-pointer min-h-[52px] py-2 px-2 rounded-xl transition-all flex flex-col sm:flex-row items-center justify-center gap-1.5 text-center active:scale-[0.98] ${
             subTab === 'shortlist'
-              ? 'bg-[#c6ff3d] text-[#141a03] font-black shadow-[0_0_20px_rgba(198,255,61,0.35)]'
-              : 'bg-[#212124] text-[#8d8d94] hover:text-[#f4f4f5] border border-[#2b2b2f]'
+              ? 'bg-secondary text-secondary-ink font-black shadow-[0_0_20px_color-mix(in_oklab,var(--good)_35%,transparent)]'
+              : 'bg-card2 text-muted hover:text-ink border border-line'
           }`}
         >
-          <CheckCircle2 className={`w-4 h-4 shrink-0 ${subTab === 'shortlist' ? 'text-[#141a03]' : 'text-[#c6ff3d]'}`} />
+          <CheckCircle2 className={`w-4 h-4 shrink-0 ${subTab === 'shortlist' ? 'text-secondary-ink' : 'text-secondary'}`} />
           <span className="text-xs sm:text-sm font-bold truncate">Shortlist ({event.venues.length})</span>
         </button>
 
@@ -1421,8 +1422,8 @@ export const ActivitiesTab: React.FC<ActivitiesTabProps> = ({
           onClick={() => setSubTab('discover')}
           className={`cursor-pointer min-h-[52px] py-2 px-2 rounded-xl transition-all flex flex-col items-center justify-center gap-0.5 text-center active:scale-[0.98] ${
             subTab === 'discover'
-              ? 'bg-[#ff6b57] text-[#1a0703] font-black shadow-[0_0_20px_rgba(255,107,87,0.35)]'
-              : 'bg-[#212124] text-[#8d8d94] hover:text-[#f4f4f5] border border-[#2b2b2f]'
+              ? 'bg-primary text-primary-ink font-black shadow-[0_0_20px_color-mix(in_oklab,var(--accent)_35%,transparent)]'
+              : 'bg-card2 text-muted hover:text-ink border border-line'
           }`}
         >
           <div className="flex items-center justify-center leading-tight">
@@ -1431,8 +1432,8 @@ export const ActivitiesTab: React.FC<ActivitiesTabProps> = ({
           <span
             className={`text-[9px] sm:text-[10px] font-extrabold uppercase tracking-wider px-1.5 py-0.2 rounded ${
               subTab === 'discover'
-                ? 'bg-black/20 text-[#1a0703]'
-                : 'bg-[#17171a] text-[#ff8f7d] border border-[#ff6b57]/30'
+                ? 'bg-black/20 text-primary-ink'
+                : 'bg-card text-primary-hi border border-primary/30'
             }`}
           >
             BY GERG AI
@@ -1444,11 +1445,11 @@ export const ActivitiesTab: React.FC<ActivitiesTabProps> = ({
           onClick={() => setSubTab('ban')}
           className={`cursor-pointer min-h-[52px] py-2 px-2 rounded-xl transition-all flex flex-col sm:flex-row items-center justify-center gap-1.5 text-center active:scale-[0.98] ${
             subTab === 'ban'
-              ? 'bg-[#ef4444] text-[#ffffff] font-black shadow-[0_0_20px_rgba(239,68,68,0.35)]'
-              : 'bg-[#212124] text-[#8d8d94] hover:text-[#f4f4f5] border border-[#2b2b2f]'
+              ? 'bg-[#ef4444] text-white font-black shadow-[0_0_20px_rgba(239,68,68,0.35)]'
+              : 'bg-card2 text-muted hover:text-ink border border-line'
           }`}
         >
-          <ShieldAlert className={`w-4 h-4 shrink-0 ${subTab === 'ban' ? 'text-[#ffffff]' : 'text-[#ef4444]'}`} />
+          <ShieldAlert className={`w-4 h-4 shrink-0 ${subTab === 'ban' ? 'text-white' : 'text-[#ef4444]'}`} />
           <span className="text-xs sm:text-sm font-bold truncate">Ban List ({banList.length})</span>
         </button>
       </div>
@@ -1457,15 +1458,15 @@ export const ActivitiesTab: React.FC<ActivitiesTabProps> = ({
       {subTab === 'shortlist' && (
         <div className="space-y-4">
           {!isLocked && mine && (
-            <div className="bg-[rgba(255,107,87,0.1)] border border-[#ff6b57]/50 rounded-2xl p-5 space-y-3">
+            <div className="bg-[color-mix(in_oklab,var(--accent)_10%,transparent)] border border-primary/50 rounded-2xl p-5 space-y-3">
               <div className="flex items-center justify-between">
-                <div className="text-sm font-bold text-[#ff6b57] flex items-center gap-1.5">
-                  <AlertTriangle className="w-4 h-4 text-[#ff6b57]" />
+                <div className="text-sm font-bold text-primary flex items-center gap-1.5">
+                  <AlertTriangle className="w-4 h-4 text-primary" />
                   <span>Active Veto Bounty</span>
                 </div>
                 <span className="cd text-lg">{clock(mine.until - now)}</span>
               </div>
-              <div className="text-xs text-[#cfcfd4] leading-relaxed">
+              <div className="text-xs text-ink2 leading-relaxed">
                 You vetoed <b>{mine.vname}</b>. Pitch a replacement before the clock hits zero or
                 it's default-planning inertia — and you owe the squad a round!
               </div>
@@ -1474,20 +1475,20 @@ export const ActivitiesTab: React.FC<ActivitiesTabProps> = ({
                   value={bountyName}
                   onChange={(e) => setBountyName(e.target.value)}
                   placeholder="Your replacement venue / activity"
-                  className="bg-[#17171a] border border-[#2b2b2f] focus:border-[#ff6b57] text-[#f4f4f5] px-3.5 py-2.5 rounded-xl text-xs outline-none"
+                  className="bg-card border border-line focus:border-primary text-ink px-3.5 py-2.5 rounded-xl text-xs outline-none"
                 />
                 <input
                   value={bountyLoc}
                   onChange={(e) => setBountyLoc(e.target.value)}
                   placeholder="Town / Station"
-                  className="bg-[#17171a] border border-[#2b2b2f] focus:border-[#ff6b57] text-[#f4f4f5] px-3.5 py-2.5 rounded-xl text-xs outline-none"
+                  className="bg-card border border-line focus:border-primary text-ink px-3.5 py-2.5 rounded-xl text-xs outline-none"
                 />
               </div>
               <div className="flex flex-wrap items-center gap-3">
                 <button
                   type="button"
                   onClick={() => handlePitchVenue(bountyName, bountyLoc, true)}
-                  className="flex-1 cursor-pointer bg-[#ff6b57] text-[#1a0703] font-semibold text-xs px-4 py-2.5 rounded-xl hover:brightness-105 active:scale-95 transition flex items-center justify-center gap-1.5"
+                  className="flex-1 cursor-pointer bg-primary text-primary-ink font-semibold text-xs px-4 py-2.5 rounded-xl hover:brightness-105 active:scale-95 transition flex items-center justify-center gap-1.5"
                 >
                   <Send className="w-3.5 h-3.5" />
                   <span>Pitch Replacement</span>
@@ -1495,9 +1496,9 @@ export const ActivitiesTab: React.FC<ActivitiesTabProps> = ({
                 <button
                   type="button"
                   onClick={handleAskGergAI}
-                  className="cursor-pointer border border-[#2b2b2f] bg-[#212124] text-[#f4f4f5] font-semibold text-xs px-4 py-2.5 rounded-xl hover:border-[#3b3b40] transition flex items-center gap-1.5"
+                  className="cursor-pointer border border-line bg-card2 text-ink font-semibold text-xs px-4 py-2.5 rounded-xl hover:border-line2 transition flex items-center gap-1.5"
                 >
-                  <Sparkles className="w-3.5 h-3.5 text-[#ff6b57]" />
+                  <Sparkles className="w-3.5 h-3.5 text-primary" />
                   <span>Gerg AI Bailout</span>
                 </button>
               </div>
@@ -1511,7 +1512,7 @@ export const ActivitiesTab: React.FC<ActivitiesTabProps> = ({
                 (!b.done && now < b.until && b.uid !== me?.id) ||
                 (!b.done && now >= b.until && !b.hide)
             ) && (
-              <div className="bg-[#17171a] border border-[#2b2b2f] rounded-2xl p-4 space-y-2.5">
+              <div className="bg-card border border-line rounded-2xl p-4 space-y-2.5">
                 {(event.bounties || [])
                   .filter(
                     (b) =>
@@ -1524,10 +1525,10 @@ export const ActivitiesTab: React.FC<ActivitiesTabProps> = ({
                     return isLive ? (
                       <div
                         key={b.id}
-                        className="flex items-center justify-between bg-[#212124] border border-[#ff6b57]/50 rounded-xl px-3.5 py-2.5 text-xs"
+                        className="flex items-center justify-between bg-card2 border border-primary/50 rounded-xl px-3.5 py-2.5 text-xs"
                       >
-                        <span className="text-[#cfcfd4] flex items-center gap-1.5">
-                          <Clock className="w-3.5 h-3.5 text-[#ff6b57] shrink-0" />
+                        <span className="text-ink2 flex items-center gap-1.5">
+                          <Clock className="w-3.5 h-3.5 text-primary shrink-0" />
                           <span>
                             <b>{u?.emo ? `${u.emo} ` : ''}{u?.name || 'Someone'}</b> vetoed <b>{b.vname}</b> · must pitch a replacement
                           </span>
@@ -1537,10 +1538,10 @@ export const ActivitiesTab: React.FC<ActivitiesTabProps> = ({
                     ) : (
                       <div
                         key={b.id}
-                        className="flex items-center justify-between bg-[#212124] border border-[#2b2b2f] rounded-xl px-3.5 py-2.5 text-xs"
+                        className="flex items-center justify-between bg-card2 border border-line rounded-xl px-3.5 py-2.5 text-xs"
                       >
-                        <span className="text-[#ff6b57] flex items-center gap-1.5">
-                          <AlertTriangle className="w-3.5 h-3.5 text-[#ff6b57] shrink-0" />
+                        <span className="text-primary flex items-center gap-1.5">
+                          <AlertTriangle className="w-3.5 h-3.5 text-primary shrink-0" />
                           <span>
                             <b>{u?.emo ? `${u.emo} ` : ''}{u?.name || 'Someone'}</b> vetoed <b>{b.vname}</b> and pitched nothing · owes the first round
                           </span>
@@ -1548,9 +1549,9 @@ export const ActivitiesTab: React.FC<ActivitiesTabProps> = ({
                         <button
                           type="button"
                           onClick={() => handleHideBounty(b.id)}
-                          className="cursor-pointer text-xs bg-[#17171a] hover:bg-[#2b2b2f] text-[#f4f4f5] px-2.5 py-1 rounded-lg border border-[#2b2b2f] flex items-center gap-1"
+                          className="cursor-pointer text-xs bg-card hover:bg-line text-ink px-2.5 py-1 rounded-lg border border-line flex items-center gap-1"
                         >
-                          <Check className="w-3 h-3 text-[#c6ff3d]" />
+                          <Check className="w-3 h-3 text-secondary" />
                           <span>Bought it</span>
                         </button>
                       </div>
@@ -1571,25 +1572,25 @@ export const ActivitiesTab: React.FC<ActivitiesTabProps> = ({
                 );
                 if (!unpitchedHosts.length) return null;
                 return (
-                  <div className="space-y-2 pb-2 border-b border-[#2b2b2f]/70">
+                  <div className="space-y-2 pb-2 border-b border-line/70">
                     {unpitchedHosts.map((h) => (
                       <div
                         key={h.id}
-                        className="bg-[rgba(198,255,61,0.06)] border border-[#c6ff3d]/30 rounded-xl p-3.5 flex flex-col sm:flex-row sm:items-center justify-between gap-3 text-xs"
+                        className="bg-[color-mix(in_oklab,var(--good)_6%,transparent)] border border-secondary/30 rounded-xl p-3.5 flex flex-col sm:flex-row sm:items-center justify-between gap-3 text-xs"
                       >
                         <div className="space-y-0.5 min-w-0">
-                          <div className="font-bold text-[#c6ff3d] flex items-center gap-1.5 flex-wrap">
-                            <Home className="w-4 h-4 text-[#c6ff3d] shrink-0" />
+                          <div className="font-bold text-secondary flex items-center gap-1.5 flex-wrap">
+                            <Home className="w-4 h-4 text-secondary shrink-0" />
                             <span>{h.emo ? `${h.emo} ` : ''}{h.name} offered to host at their place ({h.loc})</span>
                           </div>
-                          <p className="text-[#cfcfd4] text-[11px] truncate sm:whitespace-normal">
+                          <p className="text-ink2 text-[11px] truncate sm:whitespace-normal">
                             {h.houseNote || 'House outing / pre-drinks – BYOB, games & tunes with zero pub markup.'}
                           </p>
                         </div>
                         <button
                           type="button"
                           onClick={() => onPitchHouse(h)}
-                          className="cursor-pointer bg-[#c6ff3d] text-[#141a03] font-bold text-xs px-3.5 py-1.5 rounded-lg hover:brightness-105 active:scale-95 transition whitespace-nowrap shrink-0 self-start sm:self-auto flex items-center gap-1"
+                          className="cursor-pointer bg-secondary text-secondary-ink font-bold text-xs px-3.5 py-1.5 rounded-lg hover:brightness-105 active:scale-95 transition whitespace-nowrap shrink-0 self-start sm:self-auto flex items-center gap-1"
                         >
                           <Plus className="w-3.5 h-3.5" />
                           <span>Pitch {h.name}'s Place</span>
@@ -1603,8 +1604,8 @@ export const ActivitiesTab: React.FC<ActivitiesTabProps> = ({
 
             {/* Shortlist Header Row */}
             <div className="flex flex-wrap items-center justify-between gap-2.5">
-              <h3 className="text-sm font-bold text-[#f4f4f5] font-display flex items-center gap-2">
-                <CheckCircle2 className="w-4 h-4 text-[#ff6b57]" />
+              <h3 className="text-sm font-bold text-ink font-display flex items-center gap-2">
+                <CheckCircle2 className="w-4 h-4 text-primary" />
                 <span>Squad Shortlist & Votes ({event.venues.length})</span>
               </h3>
 
@@ -1614,10 +1615,10 @@ export const ActivitiesTab: React.FC<ActivitiesTabProps> = ({
                     <button
                       type="button"
                       onClick={handleTrimSoloPitches}
-                      className="cursor-pointer border border-[#2b2b2f] bg-[#212124] hover:border-[#ff6b57]/60 text-[#cfcfd4] hover:text-white font-semibold text-xs px-3 py-1.5 rounded-xl transition whitespace-nowrap flex items-center gap-1.5 active:scale-95"
+                      className="cursor-pointer border border-line bg-card2 hover:border-primary/60 text-ink2 hover:text-ink font-semibold text-xs px-3 py-1.5 rounded-xl transition whitespace-nowrap flex items-center gap-1.5 active:scale-95"
                       title="Purge all 1-vote solo pitches that haven't been seconded"
                     >
-                      <Trash2 className="w-3.5 h-3.5 text-[#ff6b57]" />
+                      <Trash2 className="w-3.5 h-3.5 text-primary" />
                       <span>Trim Deadwood ({soloPitches.length})</span>
                     </button>
                   )}
@@ -1625,7 +1626,7 @@ export const ActivitiesTab: React.FC<ActivitiesTabProps> = ({
                     <button
                       type="button"
                       onClick={handleUndoRoulette}
-                      className="cursor-pointer border border-[#2b2b2f] bg-[#212124] text-[#cfcfd4] hover:text-[#f4f4f5] hover:border-[#ff6b57]/50 font-semibold text-xs px-3 py-1.5 rounded-xl transition whitespace-nowrap flex items-center gap-1.5"
+                      className="cursor-pointer border border-line bg-card2 text-ink2 hover:text-ink hover:border-primary/50 font-semibold text-xs px-3 py-1.5 rounded-xl transition whitespace-nowrap flex items-center gap-1.5"
                     >
                       <RotateCcw className="w-3.5 h-3.5" />
                       <span>Undo</span>
@@ -1634,7 +1635,7 @@ export const ActivitiesTab: React.FC<ActivitiesTabProps> = ({
                   <button
                     type="button"
                     onClick={handleSpinRoulette}
-                    className="cursor-pointer bg-[#ff6b57] text-[#1a0703] font-bold text-xs px-3.5 py-1.5 rounded-xl hover:brightness-105 active:scale-95 transition whitespace-nowrap flex items-center gap-1.5 shadow-[0_0_12px_rgba(255,107,87,0.25)]"
+                    className="cursor-pointer bg-primary text-primary-ink font-bold text-xs px-3.5 py-1.5 rounded-xl hover:brightness-105 active:scale-95 transition whitespace-nowrap flex items-center gap-1.5 shadow-[0_0_12px_color-mix(in_oklab,var(--accent)_25%,transparent)]"
                   >
                     <Dices className="w-4 h-4" />
                     <span>Spin Roulette</span>
@@ -1644,9 +1645,9 @@ export const ActivitiesTab: React.FC<ActivitiesTabProps> = ({
             </div>
 
             {spinMsg && (
-              <div className="flex flex-wrap items-center justify-between gap-2 text-xs font-bold text-[#ff6b57] bg-[#212124] border border-[#ff6b57]/40 px-3.5 py-2.5 rounded-xl">
+              <div className="flex flex-wrap items-center justify-between gap-2 text-xs font-bold text-primary bg-card2 border border-primary/40 px-3.5 py-2.5 rounded-xl">
                 <span className="flex items-center gap-1.5">
-                  <Sparkles className="w-4 h-4 text-[#ff6b57]" />
+                  <Sparkles className="w-4 h-4 text-primary" />
                   <span>{spinMsg}</span>
                 </span>
                 {!isLocked && !spinningId && (
@@ -1654,7 +1655,7 @@ export const ActivitiesTab: React.FC<ActivitiesTabProps> = ({
                     <button
                       type="button"
                       onClick={handleUndoRoulette}
-                      className="cursor-pointer bg-[#17171a] border border-[#2b2b2f] hover:border-[#ff6b57] text-[#f4f4f5] font-semibold text-[11px] px-2.5 py-1 rounded-lg transition whitespace-nowrap flex items-center gap-1"
+                      className="cursor-pointer bg-card border border-line hover:border-primary text-ink font-semibold text-[11px] px-2.5 py-1 rounded-lg transition whitespace-nowrap flex items-center gap-1"
                     >
                       <RotateCcw className="w-3 h-3" />
                       <span>Undo Roulette</span>
@@ -1663,7 +1664,7 @@ export const ActivitiesTab: React.FC<ActivitiesTabProps> = ({
                       type="button"
                       title="Remove message"
                       onClick={() => setSpinMsg('')}
-                      className="cursor-pointer text-[#8d8d94] hover:text-[#f4f4f5] p-1 rounded transition"
+                      className="cursor-pointer text-muted hover:text-ink p-1 rounded transition"
                     >
                       <X className="w-3.5 h-3.5" />
                     </button>
@@ -1673,15 +1674,15 @@ export const ActivitiesTab: React.FC<ActivitiesTabProps> = ({
             )}
 
             {event.venues.length === 0 ? (
-              <div className="bg-[#17171a] border-2 border-dashed border-[#2b2b2f] rounded-2xl p-6 sm:p-8 text-center space-y-4 shadow-lg">
-                <div className="w-12 h-12 rounded-2xl bg-[rgba(255,107,87,0.12)] text-[#ff6b57] flex items-center justify-center mx-auto text-xl shadow-inner">
+              <div className="bg-card border-2 border-dashed border-line rounded-2xl p-6 sm:p-8 text-center space-y-4 shadow-lg">
+                <div className="w-12 h-12 rounded-2xl bg-[color-mix(in_oklab,var(--accent)_12%,transparent)] text-primary flex items-center justify-center mx-auto text-xl shadow-inner">
                   <CheckCircle2 className="w-6 h-6" />
                 </div>
                 <div>
-                  <h4 className="font-display font-black text-base sm:text-lg text-[#ffffff]">
+                  <h4 className="font-display font-black text-base sm:text-lg text-ink">
                     No ideas on the shortlist yet
                   </h4>
-                  <p className="text-xs text-[#cfcfd4] mt-1 max-w-sm mx-auto leading-relaxed">
+                  <p className="text-xs text-ink2 mt-1 max-w-sm mx-auto leading-relaxed">
                     Kick off the squad plan by generating ideas with Gerg AI, swiping matches in Pintdr, or browsing the interactive map.
                   </p>
                 </div>
@@ -1689,7 +1690,7 @@ export const ActivitiesTab: React.FC<ActivitiesTabProps> = ({
                   <button
                     type="button"
                     onClick={() => setSubTab('discover')}
-                    className="w-full sm:w-auto cursor-pointer bg-[#ff6b57] hover:brightness-110 active:scale-95 text-[#1a0703] font-bold text-xs py-2.5 px-4 rounded-xl transition flex items-center justify-center gap-1.5 shadow-md shadow-[#ff6b57]/20"
+                    className="w-full sm:w-auto cursor-pointer bg-primary hover:brightness-110 active:scale-95 text-primary-ink font-bold text-xs py-2.5 px-4 rounded-xl transition flex items-center justify-center gap-1.5 shadow-md shadow-primary/20"
                   >
                     <Sparkles className="w-3.5 h-3.5 fill-current" />
                     <span>✨ Go to Gerg AI Generator</span>
@@ -1697,9 +1698,9 @@ export const ActivitiesTab: React.FC<ActivitiesTabProps> = ({
                   <button
                     type="button"
                     onClick={() => setIsPintdrOpen(true)}
-                    className="w-full sm:w-auto cursor-pointer bg-[#212124] hover:bg-[#2b2b2f] border border-[#ff6b57]/40 hover:border-[#ff6b57] text-[#f4f4f5] font-bold text-xs py-2.5 px-4 rounded-xl transition flex items-center justify-center gap-1.5 active:scale-95 shadow-md"
+                    className="w-full sm:w-auto cursor-pointer bg-card2 hover:bg-line border border-primary/40 hover:border-primary text-ink font-bold text-xs py-2.5 px-4 rounded-xl transition flex items-center justify-center gap-1.5 active:scale-95 shadow-md"
                   >
-                    <Flame className="w-3.5 h-3.5 text-[#ff6b57] fill-current" />
+                    <Flame className="w-3.5 h-3.5 text-primary fill-current" />
                     <span>Launch Pintdr Swipe Deck</span>
                   </button>
                 </div>
@@ -1713,12 +1714,12 @@ export const ActivitiesTab: React.FC<ActivitiesTabProps> = ({
                 {/* Tier 1: Top Contenders (2+ Keen or Outing Winner) */}
                 {topContenders.length > 0 && (
                   <div className="space-y-2.5">
-                    <div className="text-xs font-bold text-[#c6ff3d] flex items-center justify-between px-1">
+                    <div className="text-xs font-bold text-secondary flex items-center justify-between px-1">
                       <span className="flex items-center gap-1.5">
                         <Flame className="w-3.5 h-3.5 fill-current" />
                         <span>Top Contenders (2+ Keen / Majority)</span>
                       </span>
-                      <span className="text-[10px] text-[#8d8d94]">{topContenders.length} spots</span>
+                      <span className="text-[10px] text-muted">{topContenders.length} spots</span>
                     </div>
                     <div className="space-y-2">
                       {topContenders.map((v) => renderVenueAccordionPill(v))}
@@ -1733,28 +1734,28 @@ export const ActivitiesTab: React.FC<ActivitiesTabProps> = ({
                       <button
                         type="button"
                         onClick={() => setShowSoloPitches(!showSoloPitches)}
-                        className="w-full cursor-pointer flex items-center justify-between bg-[#17171a] border border-[#2b2b2f] hover:border-[#3b3b40] rounded-xl px-4 py-2.5 text-xs text-[#cfcfd4] font-semibold transition"
+                        className="w-full cursor-pointer flex items-center justify-between bg-card border border-line hover:border-line2 rounded-xl px-4 py-2.5 text-xs text-ink2 font-semibold transition"
                       >
                         <span className="flex items-center gap-1.5">
                           <span>🌱 Solo Pitches (Needs a Seconder - 1 Vote)</span>
-                          <span className="bg-[#212124] text-[#8d8d94] px-2 py-0.5 rounded-full text-[10px]">
+                          <span className="bg-card2 text-muted px-2 py-0.5 rounded-full text-[10px]">
                             {soloPitches.length}
                           </span>
                         </span>
-                        <span className="text-[11px] text-[#ff6b57]">
+                        <span className="text-[11px] text-primary">
                           {showSoloPitches ? '▴ Hide Solo Pitches' : `▾ Show ${soloPitches.length} Solo Pitches`}
                         </span>
                       </button>
 
                       {showSoloPitches && (
-                        <div className="space-y-2 pl-1 border-l-2 border-[#2b2b2f]/60 animate-in fade-in duration-150">
+                        <div className="space-y-2 pl-1 border-l-2 border-line/60 animate-in fade-in duration-150">
                           {soloPitches.map((v) => renderVenueAccordionPill(v))}
                         </div>
                       )}
                     </div>
                   ) : (
                     <div className="space-y-2.5 pt-1">
-                      <div className="text-xs font-semibold text-[#8d8d94] flex items-center justify-between px-1">
+                      <div className="text-xs font-semibold text-muted flex items-center justify-between px-1">
                         <span>🌱 Solo Pitches (Needs a Seconder)</span>
                         <span className="text-[10px]">{soloPitches.length} spots</span>
                       </div>
@@ -1767,17 +1768,17 @@ export const ActivitiesTab: React.FC<ActivitiesTabProps> = ({
 
                 {/* Tier 3: Cold / Passed Drawer (0 Keen & 2+ Pass votes) */}
                 {coldPassedVenues.length > 0 && (
-                  <div className="space-y-2 pt-3 border-t border-[#2b2b2f]/80">
+                  <div className="space-y-2 pt-3 border-t border-line/80">
                     <button
                       type="button"
                       onClick={() => setShowGraveyard(!showGraveyard)}
-                      className="w-full cursor-pointer flex items-center justify-between bg-[#17171a] border border-[#2b2b2f] hover:border-[#3b3b40] rounded-xl px-4 py-2.5 text-xs text-[#8d8d94] hover:text-[#cfcfd4] font-semibold transition"
+                      className="w-full cursor-pointer flex items-center justify-between bg-card border border-line hover:border-line2 rounded-xl px-4 py-2.5 text-xs text-muted hover:text-ink2 font-semibold transition"
                     >
                       <span className="flex items-center gap-1.5">
-                        <ThumbsDown className="w-4 h-4 text-[#8d8d94]" />
+                        <ThumbsDown className="w-4 h-4 text-muted" />
                         <span>Cold / Passed Venues ({coldPassedVenues.length} dropped by squad)</span>
                       </span>
-                      <span className="text-[11px] text-[#ff6b57]">
+                      <span className="text-[11px] text-primary">
                         {showGraveyard ? '▴ Hide Passed' : `▾ Show ${coldPassedVenues.length} Passed`}
                       </span>
                     </button>
@@ -1802,7 +1803,7 @@ export const ActivitiesTab: React.FC<ActivitiesTabProps> = ({
       <button
         type="button"
         onClick={() => setIsPintdrOpen(true)}
-        className="w-full cursor-pointer bg-gradient-to-r from-[#ff6b57] to-[#ff8f7d] hover:brightness-110 active:scale-[0.99] text-[#1a0703] font-display font-black text-sm sm:text-base py-3.5 px-6 rounded-2xl transition flex items-center justify-center gap-2.5 shadow-[0_0_24px_rgba(255,107,87,0.3)]"
+        className="w-full cursor-pointer bg-gradient-to-r from-primary to-primary-hi hover:brightness-110 active:scale-[0.99] text-primary-ink font-display font-black text-sm sm:text-base py-3.5 px-6 rounded-2xl transition flex items-center justify-center gap-2.5 shadow-[0_0_24px_color-mix(in_oklab,var(--accent)_30%,transparent)]"
       >
         <Flame className="w-5 h-5 fill-current" />
         <span>Launch Pintdr Swipe Deck</span>
@@ -1815,11 +1816,11 @@ export const ActivitiesTab: React.FC<ActivitiesTabProps> = ({
           onClick={() => setDiscoverTool('ai')}
           className={`min-h-[42px] cursor-pointer text-xs sm:text-sm px-3 py-2 rounded-xl transition-all flex items-center justify-center gap-1.5 whitespace-nowrap shadow-sm font-bold ${
             discoverTool === 'ai'
-              ? 'bg-[#f4f4f5] text-[#17171a]'
-              : 'bg-[#212124] text-[#8d8d94] hover:text-[#f4f4f5] border border-[#2b2b2f]'
+              ? 'bg-ink text-card'
+              : 'bg-card2 text-muted hover:text-ink border border-line'
           }`}
         >
-          <Sparkles className={`w-4 h-4 ${discoverTool === 'ai' ? 'text-[#17171a]' : 'text-[#c6ff3d]'}`} />
+          <Sparkles className={`w-4 h-4 ${discoverTool === 'ai' ? 'text-card' : 'text-secondary'}`} />
           <span>Ask Gerg AI</span>
         </button>
         <button
@@ -1827,11 +1828,11 @@ export const ActivitiesTab: React.FC<ActivitiesTabProps> = ({
           onClick={() => setDiscoverTool('map')}
           className={`min-h-[42px] cursor-pointer text-xs sm:text-sm px-3 py-2 rounded-xl transition-all flex items-center justify-center gap-1.5 whitespace-nowrap shadow-sm font-bold ${
             discoverTool === 'map'
-              ? 'bg-[#f4f4f5] text-[#17171a]'
-              : 'bg-[#212124] text-[#8d8d94] hover:text-[#f4f4f5] border border-[#2b2b2f]'
+              ? 'bg-ink text-card'
+              : 'bg-card2 text-muted hover:text-ink border border-line'
           }`}
         >
-          <MapIcon className={`w-4 h-4 ${discoverTool === 'map' ? 'text-[#17171a]' : 'text-[#ff6b57]'}`} />
+          <MapIcon className={`w-4 h-4 ${discoverTool === 'map' ? 'text-card' : 'text-primary'}`} />
           <span>Interactive Map</span>
         </button>
         <button
@@ -1842,11 +1843,11 @@ export const ActivitiesTab: React.FC<ActivitiesTabProps> = ({
           }}
           className={`min-h-[42px] cursor-pointer text-xs sm:text-sm px-3 py-2 rounded-xl transition-all flex items-center justify-center gap-1.5 whitespace-nowrap shadow-sm font-bold ${
             discoverTool === 'manual'
-              ? 'bg-[#f4f4f5] text-[#17171a]'
-              : 'bg-[#212124] text-[#8d8d94] hover:text-[#f4f4f5] border border-[#2b2b2f]'
+              ? 'bg-ink text-card'
+              : 'bg-card2 text-muted hover:text-ink border border-line'
           }`}
         >
-          <Plus className={`w-4 h-4 ${discoverTool === 'manual' ? 'text-[#17171a] stroke-[3]' : 'text-[#f4f4f5]'}`} />
+          <Plus className={`w-4 h-4 ${discoverTool === 'manual' ? 'text-card stroke-[3]' : 'text-ink'}`} />
           <span>Pitch Custom</span>
         </button>
       </div>
@@ -1854,23 +1855,23 @@ export const ActivitiesTab: React.FC<ActivitiesTabProps> = ({
           {/* Child Panel: Mode 1 - Interactive Map & Curated Spots */}
           {discoverTool === 'map' && (
             <div className="space-y-4 pt-1">
-              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 bg-[#212124] border border-[#2b2b2f] rounded-xl p-3.5">
-                <div className="text-xs text-[#cfcfd4]">
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 bg-card2 border border-line rounded-xl p-3.5">
+                <div className="text-xs text-ink2">
                   Browse real venues in <b>{aiLoc || event.where || 'your area'}</b> with Google Map pins, Tinder swipe cards, or grid.
                 </div>
                 <div className="flex items-center gap-2 shrink-0">
                   <button
                     type="button"
                     onClick={handleRollFree}
-                    className="cursor-pointer bg-[#17171a] border border-[#2b2b2f] hover:border-[#ff6b57] text-[#f4f4f5] font-semibold text-xs px-3.5 py-2 rounded-xl active:scale-95 transition whitespace-nowrap flex items-center gap-1.5"
+                    className="cursor-pointer bg-card border border-line hover:border-primary text-ink font-semibold text-xs px-3.5 py-2 rounded-xl active:scale-95 transition whitespace-nowrap flex items-center gap-1.5"
                   >
-                    <Dices className="w-3.5 h-3.5 text-[#ff6b57]" />
+                    <Dices className="w-3.5 h-3.5 text-primary" />
                     <span>Roll 3 Instant Spots</span>
                   </button>
                 </div>
               </div>
               {freeMsg && (
-                <div className="text-xs text-[#cfcfd4] bg-[#212124] border border-[#2b2b2f] px-3.5 py-2.5 rounded-xl">
+                <div className="text-xs text-ink2 bg-card2 border border-line px-3.5 py-2.5 rounded-xl">
                   {freeMsg}
                 </div>
               )}
@@ -1897,11 +1898,11 @@ export const ActivitiesTab: React.FC<ActivitiesTabProps> = ({
             <div className="space-y-4 pt-1">
               <div className="flex flex-wrap items-center justify-between gap-2">
                 <div>
-                  <div className="text-xs font-bold text-[#f4f4f5] flex items-center gap-1.5">
-                    <Sparkles className="w-4 h-4 text-[#ff6b57]" />
+                  <div className="text-xs font-bold text-ink flex items-center gap-1.5">
+                    <Sparkles className="w-4 h-4 text-primary" />
                     <span>Gerg AI Idea Engine</span>
                   </div>
-                  <div className="text-[11px] text-[#8d8d94]">
+                  <div className="text-[11px] text-muted">
                     {MODES[aiMode]?.sub || 'Tailored ideas, live events & multi-stop combos'}
                   </div>
                 </div>
@@ -1911,13 +1912,13 @@ export const ActivitiesTab: React.FC<ActivitiesTabProps> = ({
                   onClick={() => setFastMode(!fastMode)}
                   className={`cursor-pointer text-[11px] font-bold px-3 py-1 rounded-lg border transition flex items-center gap-1.5 shrink-0 ${
                     fastMode
-                      ? 'bg-[rgba(198,255,61,0.12)] text-[#c6ff3d] border-[#c6ff3d]/40'
-                      : 'bg-[#212124] text-[#8d8d94] border-[#2b2b2f]'
+                      ? 'bg-[color-mix(in_oklab,var(--good)_12%,transparent)] text-secondary border-secondary/40'
+                      : 'bg-card2 text-muted border-line'
                   }`}
                 >
                   {fastMode ? (
                     <>
-                      <Zap className="w-3 h-3 text-[#c6ff3d]" />
+                      <Zap className="w-3 h-3 text-secondary" />
                       <span>Fast Mode: ON</span>
                     </>
                   ) : (
@@ -1939,8 +1940,8 @@ export const ActivitiesTab: React.FC<ActivitiesTabProps> = ({
                       onClick={() => setAiMode(k)}
                       className={`cursor-pointer text-xs font-semibold px-3 py-2 rounded-xl border transition whitespace-nowrap flex items-center justify-center gap-1.5 ${
                         aiMode === k
-                          ? 'border-[#ff6b57] bg-[#212124] text-[#f4f4f5]'
-                          : 'border-[#2b2b2f] bg-[#212124] text-[#8d8d94] hover:text-[#f4f4f5]'
+                          ? 'border-primary bg-card2 text-ink'
+                          : 'border-line bg-card2 text-muted hover:text-ink'
                       }`}
                     >
                       <ModeIcon className="w-3.5 h-3.5" />
@@ -1956,13 +1957,13 @@ export const ActivitiesTab: React.FC<ActivitiesTabProps> = ({
                 disabled={isAiStreaming}
                 className={`w-full cursor-pointer font-bold text-xs sm:text-sm px-4 py-3 rounded-xl transition flex items-center justify-center gap-2 ${
                   isAiStreaming
-                    ? 'border border-[#ff6b57] bg-[#2a1a17] text-[#ff6b57] animate-pulse cursor-wait'
-                    : 'bg-[#ff6b57] text-[#1a0703] hover:brightness-105 active:scale-[0.99]'
+                    ? 'border border-primary bg-card text-primary animate-pulse cursor-wait'
+                    : 'bg-primary text-primary-ink hover:brightness-105 active:scale-[0.99]'
                 }`}
               >
                 {isAiStreaming ? (
                   <>
-                    <span className="w-2.5 h-2.5 rounded-full bg-[#ff6b57] animate-ping" />
+                    <span className="w-2.5 h-2.5 rounded-full bg-primary animate-ping" />
                     <span>Generating ideas for {aiLoc || 'your area'}...</span>
                   </>
                 ) : (
@@ -1975,7 +1976,7 @@ export const ActivitiesTab: React.FC<ActivitiesTabProps> = ({
 
               {/* Animated Flickering Flame Loading State */}
               {isAiStreaming && streamingIdeas.length === 0 && (
-                <div className="bg-[#17171a] border border-[#ff6b57]/30 rounded-2xl p-6 shadow-xl my-2">
+                <div className="bg-card border border-primary/30 rounded-2xl p-6 shadow-xl my-2">
                   <FlickeringFlameLoader
                     statusText={`🔥 Gerg AI is uncorking "${aiVib || 'anti-default'}" spots near ${aiLoc || 'your area'}...`}
                     subText="Scanning Google Search, live tickets, and tailored venues"
@@ -1986,10 +1987,10 @@ export const ActivitiesTab: React.FC<ActivitiesTabProps> = ({
 
               {/* Real-time Streaming Rack */}
               {streamingIdeas.length > 0 && (
-                <div className="p-3.5 bg-[#212124] border border-[#ff6b57]/40 rounded-xl space-y-2.5">
-                  <div className="flex items-center justify-between text-xs font-bold text-[#ff6b57]">
+                <div className="p-3.5 bg-card2 border border-primary/40 rounded-xl space-y-2.5">
+                  <div className="flex items-center justify-between text-xs font-bold text-primary">
                     <span className="flex items-center gap-1.5">
-                      <Zap className="w-3.5 h-3.5 text-[#ff6b57]" />
+                      <Zap className="w-3.5 h-3.5 text-primary" />
                       <span>Incoming ideas ({streamingIdeas.length} of 3)</span>
                     </span>
                   </div>
@@ -1997,23 +1998,23 @@ export const ActivitiesTab: React.FC<ActivitiesTabProps> = ({
                     {streamingIdeas.map((idea, idx) => (
                       <div
                         key={idx}
-                        className="bg-[#17171a] border border-[#2b2b2f] rounded-lg p-3 text-xs"
+                        className="bg-card border border-line rounded-lg p-3 text-xs"
                       >
-                        <div className="font-bold text-[#f4f4f5] truncate flex items-center gap-1.5">
+                        <div className="font-bold text-ink truncate flex items-center gap-1.5">
                           {idea.kind === 'combo' ? (
-                            <Route className="w-3.5 h-3.5 text-[#c6ff3d] shrink-0" />
+                            <Route className="w-3.5 h-3.5 text-secondary shrink-0" />
                           ) : idea.live ? (
-                            <Ticket className="w-3.5 h-3.5 text-[#ff6b57] shrink-0" />
+                            <Ticket className="w-3.5 h-3.5 text-primary shrink-0" />
                           ) : (
-                            <Sparkles className="w-3.5 h-3.5 text-[#38bdf8] shrink-0" />
+                            <Sparkles className="w-3.5 h-3.5 text-secondary shrink-0" />
                           )}
                           <span className="truncate">{idea.name}</span>
                         </div>
-                        <div className="text-[11px] text-[#8d8d94] truncate mt-0.5 flex items-center gap-1">
-                          <MapPin className="w-3 h-3 text-[#ff6b57]" />
+                        <div className="text-[11px] text-muted truncate mt-0.5 flex items-center gap-1">
+                          <MapPin className="w-3 h-3 text-primary" />
                           <span>{idea.loc}</span>
                         </div>
-                        <p className="text-[11px] text-[#cfcfd4] mt-1 line-clamp-2">{idea.desc}</p>
+                        <p className="text-[11px] text-ink2 mt-1 line-clamp-2">{idea.desc}</p>
                       </div>
                     ))}
                   </div>
@@ -2021,12 +2022,12 @@ export const ActivitiesTab: React.FC<ActivitiesTabProps> = ({
               )}
 
               {aiMsg && (
-                <div className="text-xs text-[#cfcfd4] whitespace-pre-line bg-[#212124] border border-[#2b2b2f] p-3 rounded-xl">
+                <div className="text-xs text-ink2 whitespace-pre-line bg-card2 border border-line p-3 rounded-xl">
                   {aiMsg}
                 </div>
               )}
               {aiSources.length > 0 && (
-                <div className="text-xs text-[#8d8d94] flex flex-wrap items-center gap-1">
+                <div className="text-xs text-muted flex flex-wrap items-center gap-1">
                   <Search className="w-3.5 h-3.5 mr-0.5 inline" />
                   <span>Checked:</span>
                   {aiSources.map((s, idx) => (
@@ -2036,7 +2037,7 @@ export const ActivitiesTab: React.FC<ActivitiesTabProps> = ({
                         href={s.uri}
                         target="_blank"
                         rel="noopener noreferrer"
-                        className="text-[#cfcfd4] hover:underline"
+                        className="text-ink2 hover:underline"
                       >
                         {s.title}
                       </a>
@@ -2047,14 +2048,14 @@ export const ActivitiesTab: React.FC<ActivitiesTabProps> = ({
 
               {/* Fresh Gerg AI Rolls Staging Area */}
               {stagedIdeas.length > 0 && (
-                <div className="bg-[#1a1a1e] border-2 border-[#ff6b57]/40 rounded-2xl p-4 sm:p-5 space-y-3.5 shadow-xl">
-                  <div className="flex flex-wrap items-center justify-between gap-2 border-b border-[#2b2b2f]/80 pb-3">
+                <div className="bg-card border-2 border-primary/40 rounded-2xl p-4 sm:p-5 space-y-3.5 shadow-xl">
+                  <div className="flex flex-wrap items-center justify-between gap-2 border-b border-line/80 pb-3">
                     <div>
-                      <div className="font-display font-black text-sm sm:text-base text-[#ffffff] flex items-center gap-2">
-                        <Sparkles className="w-4 h-4 text-[#ff6b57]" />
+                      <div className="font-display font-black text-sm sm:text-base text-ink flex items-center gap-2">
+                        <Sparkles className="w-4 h-4 text-primary" />
                         <span>Fresh Gerg AI Rolls ({stagedIdeas.length})</span>
                       </div>
-                      <div className="text-[11px] text-[#8d8d94] mt-0.5">
+                      <div className="text-[11px] text-muted mt-0.5">
                         Staged ideas · tap <strong>➕ Shortlist This</strong> to promote any idea to the squad shortlist.
                       </div>
                     </div>
@@ -2063,7 +2064,7 @@ export const ActivitiesTab: React.FC<ActivitiesTabProps> = ({
                       onClick={() => {
                         stagedIdeas.forEach((idea) => handlePromoteStagedIdea(idea));
                       }}
-                      className="cursor-pointer text-xs font-bold text-[#c6ff3d] hover:underline bg-[rgba(198,255,61,0.1)] px-2.5 py-1 rounded-lg border border-[#c6ff3d]/30"
+                      className="cursor-pointer text-xs font-bold text-secondary hover:underline bg-[color-mix(in_oklab,var(--good)_10%,transparent)] px-2.5 py-1 rounded-lg border border-secondary/30"
                     >
                       ➕ Shortlist All
                     </button>
@@ -2075,50 +2076,50 @@ export const ActivitiesTab: React.FC<ActivitiesTabProps> = ({
                       return (
                         <div
                           key={idea.id}
-                          className={`bg-[#212124] border rounded-xl p-3.5 space-y-2.5 flex flex-col justify-between transition ${
+                          className={`bg-card2 border rounded-xl p-3.5 space-y-2.5 flex flex-col justify-between transition ${
                             isGreedy
                               ? 'border-red-500/80 bg-red-950/30 shadow-[0_0_12px_rgba(239,68,68,0.25)] animate-pulse'
-                              : 'border-[#2b2b2f] hover:border-[#3b3b40]'
+                              : 'border-line hover:border-line2'
                           }`}
                         >
                           <div>
                             <div className="flex items-start justify-between gap-2">
-                              <h4 className="font-display font-black text-sm sm:text-base text-[#ffffff] leading-snug">
+                              <h4 className="font-display font-black text-sm sm:text-base text-ink leading-snug">
                                 {idea.name}
                               </h4>
                               {idea.kind === 'combo' && (
-                                <span className="text-[10px] font-bold text-[#c6ff3d] bg-[#c6ff3d]/10 px-1.5 py-0.5 rounded border border-[#c6ff3d]/20 shrink-0">
+                                <span className="text-[10px] font-bold text-secondary bg-secondary/10 px-1.5 py-0.5 rounded border border-secondary/20 shrink-0">
                                   Combo
                                 </span>
                               )}
                             </div>
-                            <div className="text-[11px] text-[#ff8f7d] font-semibold flex items-center gap-1 mt-1 flex-wrap">
-                              <MapPin className="w-3 h-3 text-[#ff6b57] shrink-0" />
+                            <div className="text-[11px] text-primary-hi font-semibold flex items-center gap-1 mt-1 flex-wrap">
+                              <MapPin className="w-3 h-3 text-primary shrink-0" />
                               <span className="truncate">{idea.loc}</span>
                               {idea.cost ? (
-                                <span className="text-[#cfcfd4]">
+                                <span className="text-ink2">
                                   • £{idea.cost.replace(/[^0-9.]/g, '') || idea.cost} pp
                                 </span>
                               ) : null}
                               {idea.when ? (
-                                <span className="text-[#8d8d94]">• 🕒 {idea.when}</span>
+                                <span className="text-muted">• 🕒 {idea.when}</span>
                               ) : null}
                             </div>
                             {Boolean(idea.desc) && (
-                              <p className="text-xs text-[#cfcfd4] mt-2 line-clamp-3 leading-relaxed">
+                              <p className="text-xs text-ink2 mt-2 line-clamp-3 leading-relaxed">
                                 {idea.desc}
                               </p>
                             )}
                           </div>
 
-                          <div className="pt-2 border-t border-[#2b2b2f] flex items-center justify-between gap-2">
+                          <div className="pt-2 border-t border-line flex items-center justify-between gap-2">
                             <button
                               type="button"
                               onClick={() => handlePromoteStagedIdea(idea)}
                               className={`flex-1 cursor-pointer font-bold text-xs py-2 px-3 rounded-xl transition flex items-center justify-center gap-1.5 shadow-md active:scale-95 ${
                                 isGreedy
                                   ? 'bg-red-600 hover:bg-red-500 text-white font-black'
-                                  : 'bg-[#ff6b57] hover:brightness-110 text-[#1a0703]'
+                                  : 'bg-primary hover:brightness-110 text-primary-ink'
                               }`}
                             >
                               <Plus className="w-3.5 h-3.5" />
@@ -2127,7 +2128,7 @@ export const ActivitiesTab: React.FC<ActivitiesTabProps> = ({
                             <button
                               type="button"
                               onClick={() => setStagedIdeas((prev) => prev.filter((i) => i.id !== idea.id))}
-                              className="cursor-pointer text-[#8d8d94] hover:text-[#ff6b57] p-2 rounded-xl border border-[#2b2b2f] bg-[#17171a]"
+                              className="cursor-pointer text-muted hover:text-primary p-2 rounded-xl border border-line bg-card"
                               title="Discard idea"
                             >
                               <X className="w-3.5 h-3.5" />
@@ -2144,14 +2145,14 @@ export const ActivitiesTab: React.FC<ActivitiesTabProps> = ({
 
           {/* Child Panel: Mode 3 - Manual Pitch */}
           {discoverTool === 'manual' && (
-            <div className="bg-[#212124] border border-[#2b2b2f] rounded-xl p-4 sm:p-5 space-y-4">
+            <div className="bg-card2 border border-line rounded-xl p-4 sm:p-5 space-y-4">
               <div className="flex flex-wrap items-center justify-between gap-2">
                 <div>
-                  <div className="text-sm font-bold text-[#f4f4f5] font-display flex items-center gap-1.5">
-                    <Plus className="w-4 h-4 text-[#c6ff3d]" />
+                  <div className="text-sm font-bold text-ink font-display flex items-center gap-1.5">
+                    <Plus className="w-4 h-4 text-secondary" />
                     <span>Pitch Custom Activity</span>
                   </div>
-                  <div className="text-xs text-[#8d8d94]">
+                  <div className="text-xs text-muted">
                     Add your own venue or custom activity directly to the squad shortlist
                   </div>
                 </div>
@@ -2162,7 +2163,7 @@ export const ActivitiesTab: React.FC<ActivitiesTabProps> = ({
                       setPitchName(`${currentUser.name}'s Place`);
                       setPitchLoc(currentUser.loc || aiLoc || 'Local');
                     }}
-                    className="cursor-pointer text-xs font-bold text-[#c6ff3d] hover:underline transition whitespace-nowrap flex items-center gap-1"
+                    className="cursor-pointer text-xs font-bold text-secondary hover:underline transition whitespace-nowrap flex items-center gap-1"
                   >
                     <Home className="w-3.5 h-3.5" />
                     <span>Pitch My Place</span>
@@ -2172,25 +2173,25 @@ export const ActivitiesTab: React.FC<ActivitiesTabProps> = ({
 
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                 <div>
-                  <label className="block text-[11px] font-medium text-[#8d8d94] mb-1">
+                  <label className="block text-[11px] font-medium text-muted mb-1">
                     Venue or Activity Name
                   </label>
                   <input
                     value={pitchName}
                     onChange={(e) => setPitchName(e.target.value)}
                     placeholder="e.g. Flight Club Darts"
-                    className="w-full bg-[#17171a] border border-[#2b2b2f] focus:border-[#ff6b57] text-[#f4f4f5] px-3.5 py-2.5 rounded-xl text-xs sm:text-sm outline-none"
+                    className="w-full bg-card border border-line focus:border-primary text-ink px-3.5 py-2.5 rounded-xl text-xs sm:text-sm outline-none"
                   />
                 </div>
                 <div>
-                  <label className="block text-[11px] font-medium text-[#8d8d94] mb-1">
+                  <label className="block text-[11px] font-medium text-muted mb-1">
                     Town / Station (Defaults to parent location)
                   </label>
                   <input
                     value={pitchLoc || aiLoc}
                     onChange={(e) => setPitchLoc(e.target.value)}
                     placeholder="e.g. Rochester"
-                    className="w-full bg-[#17171a] border border-[#2b2b2f] focus:border-[#ff6b57] text-[#f4f4f5] px-3.5 py-2.5 rounded-xl text-xs sm:text-sm outline-none"
+                    className="w-full bg-card border border-line focus:border-primary text-ink px-3.5 py-2.5 rounded-xl text-xs sm:text-sm outline-none"
                   />
                 </div>
               </div>
@@ -2198,7 +2199,7 @@ export const ActivitiesTab: React.FC<ActivitiesTabProps> = ({
               <button
                 type="button"
                 onClick={() => handlePitchVenue(pitchName, pitchLoc || aiLoc, false)}
-                className="w-full cursor-pointer bg-[rgba(198,255,61,0.12)] border border-[#c6ff3d]/30 text-[#c6ff3d] font-bold text-xs sm:text-sm px-4 py-2.5 rounded-xl hover:bg-[rgba(198,255,61,0.2)] active:scale-95 transition flex items-center justify-center gap-1.5"
+                className="w-full cursor-pointer bg-[color-mix(in_oklab,var(--good)_12%,transparent)] border border-secondary/30 text-secondary font-bold text-xs sm:text-sm px-4 py-2.5 rounded-xl hover:bg-[color-mix(in_oklab,var(--good)_20%,transparent)] active:scale-95 transition flex items-center justify-center gap-1.5"
               >
                 <Plus className="w-4 h-4" />
                 <span>Add Custom Pitch to Shortlist</span>
@@ -2210,14 +2211,14 @@ export const ActivitiesTab: React.FC<ActivitiesTabProps> = ({
 
       {/* Sub-Tab 3: The Squad Ban List */}
       {subTab === 'ban' && (
-        <div className="bg-[#17171a] border border-[#2b2b2f] rounded-2xl p-5 space-y-4">
+        <div className="bg-card border border-line rounded-2xl p-5 space-y-4">
           <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
             <div>
-              <div className="text-sm font-bold text-[#ff6b57] font-display flex items-center gap-1.5">
-                <ShieldAlert className="w-4 h-4 text-[#ff6b57]" />
+              <div className="text-sm font-bold text-primary font-display flex items-center gap-1.5">
+                <ShieldAlert className="w-4 h-4 text-primary" />
                 <span>The Ban List ({banList.length})</span>
               </div>
-              <div className="text-xs text-[#8d8d94] mt-0.5">
+              <div className="text-xs text-muted mt-0.5">
                 Blacklisted chains & default pubs automatically excluded across all rolls and searches
               </div>
             </div>
@@ -2225,7 +2226,7 @@ export const ActivitiesTab: React.FC<ActivitiesTabProps> = ({
 
           <div className="space-y-1.5 max-h-48 overflow-y-auto pr-1">
             {banList.length === 0 ? (
-              <div className="bg-[#212124] border border-[#2b2b2f] text-xs text-[#8d8d94] px-3.5 py-2.5 rounded-xl">
+              <div className="bg-card2 border border-line text-xs text-muted px-3.5 py-2.5 rounded-xl">
                 No pubs banned right now — add any chain or spot below to exclude it from all rolls and searches.
               </div>
             ) : (
@@ -2233,14 +2234,14 @@ export const ActivitiesTab: React.FC<ActivitiesTabProps> = ({
                 {banList.map((b) => (
                   <div
                     key={b.id}
-                    className="inline-flex items-center gap-1.5 bg-[#212124] border border-[#2b2b2f] text-xs px-3 py-1.5 rounded-xl"
+                    className="inline-flex items-center gap-1.5 bg-card2 border border-line text-xs px-3 py-1.5 rounded-xl"
                   >
-                    <Ban className="w-3.5 h-3.5 text-[#ff6b57] shrink-0" />
-                    <span className="text-[#f4f4f5] font-semibold">{b.name}</span>
+                    <Ban className="w-3.5 h-3.5 text-primary shrink-0" />
+                    <span className="text-ink font-semibold">{b.name}</span>
                     <button
                       type="button"
                       onClick={() => onRemoveBan(b.id)}
-                      className="cursor-pointer text-[#8d8d94] hover:text-[#ff6b57] text-xs p-1"
+                      className="cursor-pointer text-muted hover:text-primary text-xs p-1"
                       title="Remove ban"
                     >
                       <X className="w-3.5 h-3.5" />
@@ -2257,12 +2258,12 @@ export const ActivitiesTab: React.FC<ActivitiesTabProps> = ({
               onChange={(e) => setNewBan(e.target.value)}
               onKeyDown={(e) => e.key === 'Enter' && handleAddBan()}
               placeholder="Ban another pub or chain (e.g. Wetherspoon, Greene King)..."
-              className="flex-1 bg-[#212124] border border-[#2b2b2f] focus:border-[#ff6b57] text-[#f4f4f5] px-3.5 py-2.5 rounded-xl text-xs sm:text-sm outline-none"
+              className="flex-1 bg-card2 border border-line focus:border-primary text-ink px-3.5 py-2.5 rounded-xl text-xs sm:text-sm outline-none"
             />
             <button
               type="button"
               onClick={handleAddBan}
-              className="cursor-pointer bg-[rgba(255,107,87,0.13)] border border-[#ff6b57]/30 text-[#ff6b57] font-semibold text-xs sm:text-sm px-4 py-2.5 rounded-xl hover:bg-[rgba(255,107,87,0.2)] transition whitespace-nowrap"
+              className="cursor-pointer bg-[color-mix(in_oklab,var(--accent)_13%,transparent)] border border-primary/30 text-primary font-semibold text-xs sm:text-sm px-4 py-2.5 rounded-xl hover:bg-[color-mix(in_oklab,var(--accent)_20%,transparent)] transition whitespace-nowrap"
             >
               Ban Venue
             </button>
