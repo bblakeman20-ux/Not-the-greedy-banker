@@ -1,39 +1,20 @@
-export type ThemeMode = 'dark' | 'light';
+export type ThemeMode = 'dark';
 
-const THEME_KEY = 'pintdr_theme';
-
-export const getSavedTheme = (): ThemeMode => {
-  if (typeof window === 'undefined') return 'dark';
-  try {
-    const saved = localStorage.getItem(THEME_KEY);
-    if (saved === 'light' || saved === 'dark') {
-      return saved;
-    }
-  } catch (e) {
-    // ignore
-  }
-  return 'dark';
-};
-
-export const applyThemeClass = (theme: ThemeMode): void => {
+export const applyThemeClass = (_theme?: string): void => {
   if (typeof document === 'undefined') return;
   const root = document.documentElement;
-  if (theme === 'light') {
-    root.classList.remove('dark');
-    root.classList.add('light');
-    root.setAttribute('data-theme', 'light');
-  } else {
-    root.classList.remove('light');
-    root.classList.add('dark');
-    root.setAttribute('data-theme', 'dark');
-  }
+  root.classList.remove('light');
+  root.classList.add('dark');
+  root.setAttribute('data-theme', 'dark');
 };
 
-export const setSavedTheme = (theme: ThemeMode): void => {
+export const getSavedTheme = (): ThemeMode => 'dark';
+
+export const setSavedTheme = (_theme?: string): void => {
   try {
-    localStorage.setItem(THEME_KEY, theme);
+    localStorage.removeItem('pintdr_theme');
   } catch (e) {
     // ignore
   }
-  applyThemeClass(theme);
+  applyThemeClass();
 };

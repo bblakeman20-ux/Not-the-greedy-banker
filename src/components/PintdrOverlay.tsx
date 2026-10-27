@@ -3,7 +3,7 @@ import { AppConfig, BanItem, OutingEvent, User, Venue } from '../types';
 import { fetchPlaces, makeIdeas, miles } from '../utils/osm';
 import { askGergAI, MODES } from '../utils/gemini';
 import { isBanned, normName, safeUrl } from '../utils/storage';
-import { getLocalCuratedIdeas } from '../utils/localPlaces';
+import { FlickeringFlameLoader } from './FlickeringFlameLoader';
 import {
   Flame,
   X,
@@ -96,19 +96,29 @@ export const PintdrOverlay: React.FC<PintdrOverlayProps> = ({
 
   const seenIdsRef = useRef<Set<string>>(new Set());
   const isFetchingRef = useRef(false);
+  const deckCacheRef = useRef<Record<string, PintdrCard[]>>({});
 
   // Sound / haptic feedback simulation via micro animations
   const currentCard = deck[0] || null;
   const nextCard = deck[1] || null;
 
-  // Initialize and check if deck is empty on open
+  // Sync parameters with active event when opened
   useEffect(() => {
     if (isOpen) {
-      if (deck.length === 0 && !isFetchingRef.current) {
-        replenishDeck(true);
+      const targetArea = event.where || (event.mid && event.mid.name) || currentUser?.loc || 'Rochester';
+      const targetVibe = event.vibe || '';
+      setArea(targetArea);
+      setVibe(targetVibe);
+
+      const cacheKey = `${targetArea.trim().toLowerCase()}__${targetVibe.trim().toLowerCase()}__${sourceFilter}`;
+      const cached = deckCacheRef.current[cacheKey];
+      if (cached && cached.length > 0) {
+        setDeck(cached);
+      } else if (!isFetchingRef.current) {
+        replenishDeck(true, targetArea, targetVibe);
       }
     }
-  }, [isOpen]);
+  }, [isOpen, event.id, event.where, event.vibe]);
 
   // Keyboard navigation shortcuts
   useEffect(() => {
@@ -137,48 +147,30 @@ export const PintdrOverlay: React.FC<PintdrOverlayProps> = ({
     return () => window.removeEventListener('keydown', handleKeyDown);
   }, [isOpen, currentCard, deck, history]);
 
-  // Main Generator Pipeline: Fetches and interleaves AI + OSM
+  // Main Generator Pipeline: Fetches and interleaves AI + OSM (100% theme-aware from Card #1)
   const replenishDeck = useCallback(
-    async (resetDeck = false) => {
+    async (resetDeck = false, overrideArea?: string, overrideVibe?: string) => {
       if (isFetchingRef.current) return;
       isFetchingRef.current = true;
       setIsLoadingMore(true);
 
+      const targetArea = (overrideArea ?? area).trim() || 'Rochester';
+      const targetVibe = (overrideVibe ?? vibe).trim();
+      const cacheKey = `${targetArea.toLowerCase()}__${targetVibe.toLowerCase()}__${sourceFilter}`;
+
       if (resetDeck) {
         seenIdsRef.current.clear();
         event.venues.forEach((v) => seenIdsRef.current.add(normName(v.name)));
+        delete deckCacheRef.current[cacheKey];
+        setDeck([]);
+      } else if (deckCacheRef.current[cacheKey] && deckCacheRef.current[cacheKey].length > 0) {
+        setDeck(deckCacheRef.current[cacheKey]);
+        setIsLoadingMore(false);
+        isFetchingRef.current = false;
+        return;
       }
-
-      const targetArea = area.trim() || 'Rochester';
-      setStatusMessage(`🔥 Scouting fresh ideas around ${targetArea}...`);
 
       const newBatch: PintdrCard[] = [];
-
-      // 0. Instantly seed initial cards from curated UK registry for zero-delay UX
-      const instantSpots = getLocalCuratedIdeas(targetArea, vibe, banList, seenIdsRef.current, 3);
-      if (instantSpots.length > 0) {
-        const instantCards: PintdrCard[] = instantSpots.map((item, idx) => {
-          seenIdsRef.current.add(normName(item.name || ''));
-          return {
-            id: `instant_${Date.now()}_${idx}`,
-            name: item.name || 'Local Spot',
-            loc: item.loc || targetArea,
-            desc: item.desc || '',
-            kind: item.kind || 'spot',
-            category: item.kind === 'combo' ? 'Combo Route' : 'Curated Spot',
-            emoji: item.kind === 'combo' ? '🔀' : '🎯',
-            cost: item.cost,
-            when: item.when,
-            steps: item.steps,
-            url: item.url,
-            source: 'ai',
-          };
-        });
-
-        setDeck((prev) => (resetDeck || prev.length === 0 ? instantCards : [...prev, ...instantCards]));
-        setIsLoadingMore(false);
-        setStatusMessage(`✨ Ideas ready! Scouting more in the background...`);
-      }
 
       try {
         const canUseAI = sourceFilter === 'mixed' || sourceFilter === 'ai';
@@ -249,7 +241,7 @@ export const PintdrOverlay: React.FC<PintdrOverlayProps> = ({
         let aiCards: PintdrCard[] = [];
         if (canUseAI) {
           try {
-            setStatusMessage('⚡ Gerg AI is streaming fast wildcards...');
+            setStatusMessage(`⚡ Gerg AI is streaming spots for "${targetVibe || 'anti-default'}"...`);
             const handleStreamIdea = (idea: Partial<Venue>, index: number) => {
               if (!idea.name) return;
               const norm = normName(idea.name);
@@ -260,7 +252,7 @@ export const PintdrOverlay: React.FC<PintdrOverlayProps> = ({
                 id: `ai_${Date.now()}_${index}_${Math.random().toString(36).slice(2, 5)}`,
                 name: idea.name,
                 loc: idea.loc || targetArea,
-                desc: idea.desc || 'Generative wildcard for the squad',
+                desc: idea.desc || 'Generative tailored idea for the squad',
                 kind: idea.kind || 'spot',
                 when: idea.when,
                 cost: idea.cost,
@@ -268,13 +260,15 @@ export const PintdrOverlay: React.FC<PintdrOverlayProps> = ({
                 steps: idea.steps,
                 live: idea.live,
                 source: 'ai',
-                emoji: idea.kind === 'combo' ? '🔀' : idea.live ? '🎟️' : '🤖',
-                category: idea.kind === 'combo' ? 'AI Combo' : 'AI Wildcard',
+                emoji: idea.kind === 'combo' ? '🔀' : idea.live ? '🎟️' : targetVibe.toLowerCase().includes('wine') ? '🍷' : '🤖',
+                category: idea.kind === 'combo' ? 'AI Combo' : idea.live ? 'Live Event' : 'Tailored Spot',
               };
 
               setDeck((prev) => {
                 if (prev.some((c) => normName(c.name) === norm)) return prev;
-                return [...prev, card];
+                const next = [...prev, card];
+                deckCacheRef.current[cacheKey] = next;
+                return next;
               });
               setIsLoadingMore(false);
               setStatusMessage(`⚡ Card ${index + 1} ready: "${card.name}" – swipe or pitch now!`);
@@ -287,12 +281,13 @@ export const PintdrOverlay: React.FC<PintdrOverlayProps> = ({
               event,
               banList,
               targetArea,
-              vibe,
+              targetVibe,
               event.when || '',
               '',
               (msg) => setStatusMessage(msg),
               handleStreamIdea,
-              true // fastMode: zero delay
+              true, // fastMode: zero delay
+              8 // 8 tailored cards for a rich swipe deck
             );
 
             aiResult.ideas.forEach((idea, i) => {
@@ -310,11 +305,29 @@ export const PintdrOverlay: React.FC<PintdrOverlayProps> = ({
                   steps: idea.steps,
                   live: idea.live,
                   source: 'ai',
-                  emoji: idea.kind === 'combo' ? '🔀' : idea.live ? '🎟️' : '🤖',
+                  emoji: idea.kind === 'combo' ? '🔀' : idea.live ? '🎟️' : targetVibe.toLowerCase().includes('wine') ? '🍷' : '🤖',
                   category: idea.kind === 'combo' ? 'AI Combo' : 'AI Wildcard',
                 });
               }
             });
+
+            // 1-in-8 cheeky trap card for The Greedy Banker (if not banned) to test squad vigilance
+            const bankerNorm = normName('The Greedy Banker');
+            if (!seenIdsRef.current.has(bankerNorm) && !isBanned('The Greedy Banker', banList) && Math.random() < 0.2) {
+              seenIdsRef.current.add(bankerNorm);
+              const trapCard: PintdrCard = {
+                id: `trap_${Date.now()}`,
+                name: 'The Greedy Banker',
+                loc: targetArea,
+                desc: 'The eternal default pub with sticky carpets and no excitement. Swiping right commits high squad treason!',
+                kind: 'spot',
+                category: '🚨 Default Inertia Trap',
+                emoji: '🐍',
+                source: 'ai',
+              };
+              const insertIdx = Math.min(2, aiCards.length);
+              aiCards.splice(insertIdx, 0, trapCard);
+            }
           } catch (e: any) {
             console.warn('AI fetch error in Pintdr:', e);
           }
@@ -328,39 +341,86 @@ export const PintdrOverlay: React.FC<PintdrOverlayProps> = ({
         }
 
         if (newBatch.length === 0 && deck.length === 0) {
-          const fallbackSpots: PintdrCard[] = [
-            {
-              id: `fallback_1_${Date.now()}`,
-              name: 'Social Darts & Craft Pint Showdown',
-              loc: targetArea,
-              desc: 'High-tech interactive darts with craft beers and sharing platters. Fast and fun.',
-              kind: 'spot',
-              category: 'Activity Bar',
-              emoji: '🎯',
-              source: 'ai',
-            },
-            {
-              id: `fallback_2_${Date.now()}`,
-              name: 'Secret Underground Arcade & Pinball',
-              loc: targetArea,
-              desc: 'Retro Japanese arcade cabinets, multiplayer pinball, and rotating guest taps.',
-              kind: 'spot',
-              category: 'Retro Gaming',
-              emoji: '🕹️',
-              source: 'ai',
-            },
-            {
-              id: `fallback_3_${Date.now()}`,
-              name: 'Axe Throwing & Smoked BBQ Combo',
-              loc: targetArea,
-              desc: 'Tournament-style axe throwing followed by pitmaster brisket platters.',
-              kind: 'combo',
-              category: 'Combo Night',
-              emoji: '🔀',
-              steps: ['6:30pm Axe throwing tournament', '8:00pm Low-and-slow BBQ platter'],
-              source: 'ai',
-            },
-          ];
+          const vLower = targetVibe.toLowerCase();
+          let fallbackSpots: PintdrCard[] = [];
+
+          if (vLower.includes('wine') || vLower.includes('vineyard')) {
+            fallbackSpots = [
+              {
+                id: `fallback_wine_1_${Date.now()}`,
+                name: `${targetArea} Boutique Wine & Tapas Flight`,
+                loc: targetArea,
+                desc: 'Sommelier-curated natural wines paired with artisan British charcuterie.',
+                kind: 'combo',
+                category: 'Wine Flight',
+                emoji: '🍷',
+                cost: '£30',
+                steps: ['6:30pm Sparkling wine flight', '7:45pm Tapas & regional reds', '9:30pm Port & cheese board'],
+                source: 'ai',
+              },
+              {
+                id: `fallback_wine_2_${Date.now()}`,
+                name: 'The Cellar Vault Tasting Experience',
+                loc: targetArea,
+                desc: 'Intimate candlelit brick arch vault with over 40 organic wines by the glass.',
+                kind: 'spot',
+                category: 'Wine Bar',
+                emoji: '🍷',
+                cost: '£25',
+                source: 'ai',
+              },
+            ];
+          } else if (vLower.includes('craft') || vLower.includes('brew') || vLower.includes('taproom')) {
+            fallbackSpots = [
+              {
+                id: `fallback_craft_1_${Date.now()}`,
+                name: 'Microbrewery Tank-to-Glass Tour',
+                loc: targetArea,
+                desc: 'Behind-the-scenes tasting straight from fermentation vessels, then street pizza.',
+                kind: 'combo',
+                category: 'Taproom Combo',
+                emoji: '🍻',
+                cost: '£24',
+                steps: ['6:00pm Tank sampling', '7:30pm Neapolitan pizza & fresh hazy IPAs'],
+                source: 'ai',
+              },
+            ];
+          } else {
+            fallbackSpots = [
+              {
+                id: `fallback_1_${Date.now()}`,
+                name: 'Social Darts & Craft Pint Showdown',
+                loc: targetArea,
+                desc: 'High-tech interactive darts with craft beers and sharing platters. Fast and fun.',
+                kind: 'spot',
+                category: 'Activity Bar',
+                emoji: '🎯',
+                source: 'ai',
+              },
+              {
+                id: `fallback_2_${Date.now()}`,
+                name: 'Secret Underground Arcade & Pinball',
+                loc: targetArea,
+                desc: 'Retro Japanese arcade cabinets, multiplayer pinball, and rotating guest taps.',
+                kind: 'spot',
+                category: 'Retro Gaming',
+                emoji: '🕹️',
+                source: 'ai',
+              },
+              {
+                id: `fallback_3_${Date.now()}`,
+                name: 'Axe Throwing & Smoked BBQ Combo',
+                loc: targetArea,
+                desc: 'Tournament-style axe throwing followed by pitmaster brisket platters.',
+                kind: 'combo',
+                category: 'Combo Night',
+                emoji: '🔀',
+                steps: ['6:30pm Axe throwing tournament', '8:00pm Low-and-slow BBQ platter'],
+                source: 'ai',
+              },
+            ];
+          }
+
           fallbackSpots.forEach((f) => {
             if (!seenIdsRef.current.has(normName(f.name))) {
               newBatch.push(f);
@@ -380,6 +440,7 @@ export const PintdrOverlay: React.FC<PintdrOverlayProps> = ({
             const existingNames = new Set(prev.map((c) => normName(c.name)));
             const deduplicated = newBatch.filter((c) => !existingNames.has(normName(c.name)));
             const combined = resetDeck && prev.length === 0 ? deduplicated : [...prev, ...deduplicated];
+            deckCacheRef.current[cacheKey] = combined;
             setStatusMessage(`✨ Loaded ${combined.length} swipeable venues!`);
             return combined;
           });
@@ -434,6 +495,8 @@ export const PintdrOverlay: React.FC<PintdrOverlayProps> = ({
       return;
     }
 
+    const isGreedyBanker = /greedy\s*banker/i.test(card.name);
+
     const newVenue: Partial<Venue> = {
       name: card.name,
       loc: card.loc,
@@ -455,14 +518,22 @@ export const PintdrOverlay: React.FC<PintdrOverlayProps> = ({
       particleCount: makeWinner ? 75 : 45,
       spread: makeWinner ? 85 : 60,
       origin: { y: 0.6 },
-      colors: makeWinner ? ['#ff6b57', '#ffd700', '#c6ff3d'] : ['#c6ff3d', '#4ade80', '#ffffff'],
+      colors: isGreedyBanker
+        ? ['#ef4444', '#dc2626', '#b91c1c']
+        : makeWinner
+        ? ['#ff6b57', '#ffd700', '#c6ff3d']
+        : ['#c6ff3d', '#4ade80', '#ffffff'],
     });
 
-    onShowToast(
-      makeWinner
-        ? `⭐ SUPERLIKE! "${card.name}" pitched and marked as winning spot!`
-        : `💖 Pitched "${card.name}" to the squad list!`
-    );
+    if (isGreedyBanker) {
+      onShowToast(`🚨 TREASON! ${currentUser.name} caved and pitched The Greedy Banker! £5 Traitor Tax logged!`);
+    } else {
+      onShowToast(
+        makeWinner
+          ? `⭐ SUPERLIKE! "${card.name}" pitched and marked as winning spot!`
+          : `💖 Pitched "${card.name}" to the squad list!`
+      );
+    }
   };
 
   const handleBan = (card: PintdrCard) => {
@@ -588,8 +659,18 @@ export const PintdrOverlay: React.FC<PintdrOverlayProps> = ({
           </div>
         </div>
 
-        {/* Filter Toggle & Close Buttons */}
+        {/* Fresh Deal, Filter Toggle & Close Buttons */}
         <div className="flex items-center gap-1.5">
+          <button
+            type="button"
+            onClick={() => replenishDeck(true)}
+            disabled={isLoadingMore}
+            className="px-2.5 py-1.5 rounded-xl border border-[#2b2b2f] bg-[#17171a] text-[#8d8d94] hover:text-[#c6ff3d] hover:border-[#c6ff3d]/50 transition cursor-pointer flex items-center gap-1.5 text-xs"
+            title="Deal fresh tailored cards for current theme & area"
+          >
+            <RefreshCw className={`w-3.5 h-3.5 ${isLoadingMore ? 'animate-spin text-[#c6ff3d]' : ''}`} />
+            <span className="text-[11px] font-bold text-[#cfcfd4] hidden sm:inline">Fresh Deal</span>
+          </button>
           <button
             type="button"
             onClick={() => setShowFilters(!showFilters)}
@@ -741,6 +822,20 @@ export const PintdrOverlay: React.FC<PintdrOverlayProps> = ({
         </div>
       </div>
 
+      {/* Swipe Pool Waiting Counter */}
+      {(() => {
+        const waitingInPool = Object.values(event.swipePool || {}).filter((item) => (item.likes || []).length === 1).length;
+        if (waitingInPool <= 0) return null;
+        return (
+          <div className="w-full max-w-md bg-[#212124]/90 border border-[#ff6b57]/30 rounded-xl px-3 py-1 my-1 text-[11px] text-[#ff8f7d] flex items-center justify-center gap-1.5 shrink-0 shadow-sm animate-in fade-in">
+            <span>🕵️</span>
+            <span>
+              <strong>{waitingInPool} spot{waitingInPool === 1 ? '' : 's'}</strong> in background swipe pool (waiting for a 2nd match)
+            </span>
+          </div>
+        );
+      })()}
+
       {/* Main Tinder Card Deck Area */}
       <div className="w-full max-w-md flex-1 flex flex-col items-center justify-center my-auto min-h-[380px] max-h-[490px] relative">
         {currentCard ? (
@@ -772,178 +867,223 @@ export const PintdrOverlay: React.FC<PintdrOverlayProps> = ({
             )}
 
             {/* Active Top Card */}
-            <div
-              style={{
-                transform: getTransform(),
-                transition: isDragging ? 'none' : 'transform 0.22s ease-out',
-                cursor: isDragging ? 'grabbing' : 'grab',
-              }}
-              className="absolute inset-0 bg-gradient-to-b from-[#212124] via-[#1a1a1d] to-[#141417] border-2 border-[#3b3b40] rounded-3xl p-5 shadow-2xl flex flex-col justify-between overflow-hidden"
-            >
-              {/* Dynamic Stamps Overlay */}
-              <div
-                style={{ opacity: likeOpacity }}
-                className="absolute top-5 right-5 border-3 border-[#c6ff3d] text-[#c6ff3d] font-display font-black text-sm px-3.5 py-1 rounded-xl rotate-12 bg-black/60 backdrop-blur-md pointer-events-none tracking-wider shadow-lg"
-              >
-                KEEN / PITCH
-              </div>
-              <div
-                style={{ opacity: passOpacity }}
-                className="absolute top-5 left-5 border-3 border-[#ff6b57] text-[#ff6b57] font-display font-black text-sm px-3.5 py-1 rounded-xl -rotate-12 bg-black/60 backdrop-blur-md pointer-events-none tracking-wider shadow-lg"
-              >
-                PASS / BIN
-              </div>
-              <div
-                style={{ opacity: superOpacity }}
-                className="absolute top-8 inset-x-0 mx-auto w-fit border-3 border-[#ffd700] text-[#ffd700] font-display font-black text-sm px-4 py-1.5 rounded-xl bg-black/70 backdrop-blur-md pointer-events-none tracking-wider shadow-xl"
-              >
-                SUPERLIKE
-              </div>
+            {(() => {
+              const isGreedyBanker = Boolean(currentCard && /greedy\s*banker/i.test(currentCard.name));
+              return (
+                <div
+                  style={{
+                    transform: getTransform(),
+                    transition: isDragging ? 'none' : 'transform 0.22s ease-out',
+                    cursor: isDragging ? 'grabbing' : 'grab',
+                  }}
+                  className={`absolute inset-0 rounded-3xl p-5 shadow-2xl flex flex-col justify-between overflow-hidden transition-colors ${
+                    isGreedyBanker
+                      ? 'bg-gradient-to-b from-red-950/80 via-[#1c1214] to-[#141417] border-2 border-red-500 animate-pulse shadow-[0_0_30px_rgba(239,68,68,0.4)]'
+                      : 'bg-gradient-to-b from-[#212124] via-[#1a1a1d] to-[#141417] border-2 border-[#3b3b40]'
+                  }`}
+                >
+                  {/* Dynamic Stamps Overlay */}
+                  <div
+                    style={{ opacity: likeOpacity }}
+                    className={`absolute top-5 right-5 border-3 font-display font-black text-sm px-3.5 py-1 rounded-xl rotate-12 bg-black/80 backdrop-blur-md pointer-events-none tracking-wider shadow-lg ${
+                      isGreedyBanker ? 'border-red-500 text-red-400' : 'border-[#c6ff3d] text-[#c6ff3d]'
+                    }`}
+                  >
+                    {isGreedyBanker ? '🐍 COMMIT TREASON' : 'KEEN / PITCH'}
+                  </div>
+                  <div
+                    style={{ opacity: passOpacity }}
+                    className="absolute top-5 left-5 border-3 border-[#ff6b57] text-[#ff6b57] font-display font-black text-sm px-3.5 py-1 rounded-xl -rotate-12 bg-black/80 backdrop-blur-md pointer-events-none tracking-wider shadow-lg"
+                  >
+                    PASS / BIN
+                  </div>
+                  <div
+                    style={{ opacity: superOpacity }}
+                    className="absolute top-8 inset-x-0 mx-auto w-fit border-3 border-[#ffd700] text-[#ffd700] font-display font-black text-sm px-4 py-1.5 rounded-xl bg-black/80 backdrop-blur-md pointer-events-none tracking-wider shadow-xl"
+                  >
+                    SUPERLIKE
+                  </div>
 
-              {/* Card Header & Badges */}
-              <div>
-                <div className="flex items-center justify-between gap-2 mb-2">
-                  <div className="flex items-center gap-1.5 flex-wrap">
-                    <span
-                      className={`text-[11px] font-bold px-2.5 py-0.5 rounded-full border flex items-center gap-1.5 ${
-                        currentCard.source === 'ai'
-                          ? 'bg-[rgba(255,107,87,0.15)] text-[#ff6b57] border-[#ff6b57]/30'
-                          : 'bg-[rgba(198,255,61,0.15)] text-[#c6ff3d] border-[#c6ff3d]/30'
+                  {/* Card Header & Badges */}
+                  <div>
+                    {/* Treason Alert Hazard Banner */}
+                    {isGreedyBanker && (
+                      <div className="mb-2 bg-red-950/90 border border-red-500/80 rounded-xl p-2 text-center shadow-md animate-pulse">
+                        <div className="text-[10px] font-black uppercase tracking-wider text-red-300 flex items-center justify-center gap-1.5">
+                          <span>🚨 HIGH TREASON: DEFAULT PLANNING INERTIA</span>
+                        </div>
+                        <div className="text-[10px] text-red-200 mt-0.5">
+                          ⚠️ Swiping right caves into lazy pub inertia! £5 Traitor Tax + squad public shaming.
+                        </div>
+                      </div>
+                    )}
+
+                    <div className="flex items-center justify-between gap-2 mb-2">
+                      <div className="flex items-center gap-1.5 flex-wrap">
+                        <span
+                          className={`text-[11px] font-bold px-2.5 py-0.5 rounded-full border flex items-center gap-1.5 ${
+                            isGreedyBanker
+                              ? 'bg-red-950 text-red-300 border-red-500/60'
+                              : currentCard.source === 'ai'
+                              ? 'bg-[rgba(255,107,87,0.15)] text-[#ff6b57] border-[#ff6b57]/30'
+                              : 'bg-[rgba(198,255,61,0.15)] text-[#c6ff3d] border-[#c6ff3d]/30'
+                          }`}
+                        >
+                          {isGreedyBanker ? (
+                            <span>🐍</span>
+                          ) : currentCard.source === 'ai' ? (
+                            <Sparkles className="w-3 h-3 text-[#ff6b57]" />
+                          ) : (
+                            <MapIcon className="w-3 h-3 text-[#c6ff3d]" />
+                          )}
+                          <span>
+                            {isGreedyBanker
+                              ? 'Treason Hazard'
+                              : currentCard.source === 'ai'
+                              ? currentCard.category || 'Gerg AI'
+                              : currentCard.category || 'Map Spot'}
+                          </span>
+                        </span>
+                        {currentCard.live ? (
+                          <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-blue-500/20 text-blue-400 border border-blue-500/30">
+                            Live Event
+                          </span>
+                        ) : null}
+                      </div>
+
+                      {currentCard.distMiles != null && (
+                        <span className="text-[11px] font-mono text-[#8d8d94]">
+                          {currentCard.distMiles.toFixed(1)} mi away
+                        </span>
+                      )}
+                    </div>
+
+                    {/* Venue Name & Location */}
+                    <h3
+                      className={`font-display font-black text-xl leading-snug line-clamp-2 mt-1 ${
+                        isGreedyBanker ? 'text-red-300' : 'text-[#f4f4f5]'
                       }`}
                     >
-                      {currentCard.source === 'ai' ? (
-                        <Sparkles className="w-3 h-3 text-[#ff6b57]" />
+                      {currentCard.name}
+                    </h3>
+                    <div className="text-xs text-[#ff8f7d] font-semibold mt-1 flex items-center gap-1">
+                      <MapPin className="w-3.5 h-3.5 text-[#ff6b57] shrink-0" />
+                      <span className="truncate">{currentCard.loc}</span>
+                    </div>
+
+                    {/* Meta details if available */}
+                    {(currentCard.when || currentCard.cost) && (
+                      <div className="flex items-center gap-2 text-xs text-[#cfcfd4] mt-2 font-mono">
+                        {currentCard.when && <span>{currentCard.when}</span>}
+                        {currentCard.cost && <span>{currentCard.cost}</span>}
+                      </div>
+                    )}
+
+                    {/* Description */}
+                    <p className="text-xs text-[#d4d4d8] mt-2.5 leading-relaxed">
+                      {currentCard.desc}
+                    </p>
+
+                    {/* Multi-step combo preview */}
+                    {currentCard.steps && currentCard.steps.length > 0 && (
+                      <div className="mt-3 bg-[#17171a]/80 p-2.5 rounded-2xl border border-[#2b2b2f]">
+                        <span className="text-[10px] font-bold text-[#ff6b57] block mb-1">
+                          COMBO ROUTE:
+                        </span>
+                        <ul className="text-[11px] text-[#cfcfd4] space-y-1">
+                          {currentCard.steps.map((st, i) => (
+                            <li key={i} className="truncate">
+                              • {st}
+                            </li>
+                          ))}
+                        </ul>
+                      </div>
+                    )}
+                  </div>
+
+                  {/* Card Footer Links & Navigation Hint */}
+                  <div className="pt-3 border-t border-[#2b2b2f] flex items-center justify-between text-xs">
+                    <div className="flex items-center gap-2">
+                      {currentCard.url ? (
+                        <a
+                          href={currentCard.url}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="text-[#c6ff3d] hover:underline flex items-center gap-1 text-[11px]"
+                          onClick={(e) => e.stopPropagation()}
+                        >
+                          <ExternalLink className="w-3 h-3" />
+                          <span>Official Link</span>
+                        </a>
                       ) : (
-                        <MapIcon className="w-3 h-3 text-[#c6ff3d]" />
+                        <a
+                          href={`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(
+                            `${currentCard.name}, ${currentCard.loc}`
+                          )}`}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="text-[#8d8d94] hover:text-[#f4f4f5] flex items-center gap-1 text-[11px]"
+                          onClick={(e) => e.stopPropagation()}
+                        >
+                          <MapIcon className="w-3 h-3" />
+                          <span>Google Maps</span>
+                        </a>
                       )}
-                      <span>
-                        {currentCard.source === 'ai'
-                          ? currentCard.category || 'Gerg AI'
-                          : currentCard.category || 'Map Spot'}
-                      </span>
-                    </span>
-                    {currentCard.live ? (
-                      <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-blue-500/20 text-blue-400 border border-blue-500/30">
-                        Live Event
-                      </span>
-                    ) : null}
+                    </div>
+
+                    <div className="text-[10px] text-[#8d8d94] font-medium hidden sm:block">
+                      {isGreedyBanker
+                        ? '🐍 Swipe Right to Commit Treason • Left to Pass'
+                        : 'Swipe Right to Pitch • Left to Pass • Up to Star'}
+                    </div>
                   </div>
-
-                  {currentCard.distMiles != null && (
-                    <span className="text-[11px] font-mono text-[#8d8d94]">
-                      {currentCard.distMiles.toFixed(1)} mi away
-                    </span>
-                  )}
                 </div>
-
-                {/* Venue Name & Location */}
-                <h3 className="font-display font-black text-xl text-[#f4f4f5] leading-snug line-clamp-2 mt-1">
-                  {currentCard.name}
-                </h3>
-                <div className="text-xs text-[#ff8f7d] font-semibold mt-1 flex items-center gap-1">
-                  <MapPin className="w-3.5 h-3.5 text-[#ff6b57] shrink-0" />
-                  <span className="truncate">{currentCard.loc}</span>
-                </div>
-
-                {/* Meta details if available */}
-                {(currentCard.when || currentCard.cost) && (
-                  <div className="flex items-center gap-2 text-xs text-[#cfcfd4] mt-2 font-mono">
-                    {currentCard.when && <span>{currentCard.when}</span>}
-                    {currentCard.cost && <span>{currentCard.cost}</span>}
-                  </div>
-                )}
-
-                {/* Description */}
-                <p className="text-xs text-[#d4d4d8] mt-2.5 leading-relaxed">
-                  {currentCard.desc}
-                </p>
-
-                {/* Multi-step combo preview */}
-                {currentCard.steps && currentCard.steps.length > 0 && (
-                  <div className="mt-3 bg-[#17171a]/80 p-2.5 rounded-2xl border border-[#2b2b2f]">
-                    <span className="text-[10px] font-bold text-[#ff6b57] block mb-1">
-                      COMBO ROUTE:
-                    </span>
-                    <ul className="text-[11px] text-[#cfcfd4] space-y-1">
-                      {currentCard.steps.map((st, i) => (
-                        <li key={i} className="truncate">
-                          • {st}
-                        </li>
-                      ))}
-                    </ul>
-                  </div>
-                )}
-              </div>
-
-              {/* Card Footer Links & Navigation Hint */}
-              <div className="pt-3 border-t border-[#2b2b2f] flex items-center justify-between text-xs">
-                <div className="flex items-center gap-2">
-                  {currentCard.url ? (
-                    <a
-                      href={currentCard.url}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="text-[#c6ff3d] hover:underline flex items-center gap-1 text-[11px]"
-                      onClick={(e) => e.stopPropagation()}
-                    >
-                      <ExternalLink className="w-3 h-3" />
-                      <span>Official Link</span>
-                    </a>
-                  ) : (
-                    <a
-                      href={`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(
-                        `${currentCard.name}, ${currentCard.loc}`
-                      )}`}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="text-[#8d8d94] hover:text-[#f4f4f5] flex items-center gap-1 text-[11px]"
-                      onClick={(e) => e.stopPropagation()}
-                    >
-                      <MapIcon className="w-3 h-3" />
-                      <span>Google Maps</span>
-                    </a>
-                  )}
-                </div>
-
-                <div className="text-[10px] text-[#8d8d94] font-medium hidden sm:block">
-                  Swipe Right to Pitch • Left to Pass • Up to Star
-                </div>
-              </div>
-            </div>
+              );
+            })()}
           </div>
         ) : (
-          /* Empty Deck State */
-          <div className="w-full bg-[#17171a] border border-[#2b2b2f] rounded-3xl p-6 text-center shadow-2xl flex flex-col items-center justify-center">
-            <div className="w-14 h-14 rounded-2xl bg-[rgba(255,107,87,0.15)] text-[#ff6b57] flex items-center justify-center text-2xl mb-3 shadow-inner">
-              <Flame className="w-7 h-7 fill-current" />
-            </div>
-            <h4 className="font-display font-black text-lg text-[#f4f4f5]">
-              You've Swiped All Cached Ideas!
-            </h4>
-            <p className="text-xs text-[#8d8d94] mt-1 mb-4 max-w-xs">
-              Keep the momentum going: roll another batch of AI wildcards and map venues nearby.
-            </p>
-            <div className="flex flex-col sm:flex-row gap-2 w-full max-w-xs">
-              <button
-                type="button"
-                onClick={() => replenishDeck(true)}
-                disabled={isLoadingMore}
-                className="flex-1 cursor-pointer bg-[#ff6b57] hover:brightness-110 active:scale-95 text-[#1a0703] font-bold text-xs py-2.5 px-4 rounded-xl transition flex items-center justify-center gap-1.5 shadow-lg disabled:opacity-50"
-              >
-                <RefreshCw className={`w-3.5 h-3.5 ${isLoadingMore ? 'animate-spin' : ''}`} />
-                <span>Roll Fresh Batch</span>
-              </button>
-              {history.length > 0 && (
-                <button
-                  type="button"
-                  onClick={handleUndo}
-                  className="cursor-pointer border border-[#2b2b2f] bg-[#212124] text-[#f4f4f5] font-semibold text-xs py-2.5 px-4 rounded-xl hover:border-[#3b3b40] transition flex items-center justify-center gap-1.5"
-                >
-                  <RotateCcw className="w-3.5 h-3.5" />
-                  <span>Undo Last Pass</span>
-                </button>
-              )}
-            </div>
+          /* Empty Deck State or Flickering Flame Loader while fetching */
+          <div className="w-full bg-[#17171a] border border-[#2b2b2f] rounded-3xl p-6 text-center shadow-2xl flex flex-col items-center justify-center min-h-[340px]">
+            {isLoadingMore ? (
+              <FlickeringFlameLoader
+                statusText={statusMessage || `🔥 Gerg AI is uncorking "${vibe || 'fresh'}" spots near ${area}...`}
+                subText="Tailoring ideas directly to your theme & location"
+                size="md"
+              />
+            ) : (
+              <>
+                <div className="w-14 h-14 rounded-2xl bg-[rgba(255,107,87,0.15)] text-[#ff6b57] flex items-center justify-center text-2xl mb-3 shadow-inner">
+                  <Flame className="w-7 h-7 fill-current" />
+                </div>
+                <h4 className="font-display font-black text-lg text-[#f4f4f5]">
+                  You've Swiped All Cached Ideas!
+                </h4>
+                <p className="text-xs text-[#8d8d94] mt-1 mb-4 max-w-xs">
+                  Keep the momentum going: roll another batch of AI wildcards and map venues nearby.
+                </p>
+                <div className="flex flex-col sm:flex-row gap-2 w-full max-w-xs">
+                  <button
+                    type="button"
+                    onClick={() => replenishDeck(true)}
+                    disabled={isLoadingMore}
+                    className="flex-1 cursor-pointer bg-[#ff6b57] hover:brightness-110 active:scale-95 text-[#1a0703] font-bold text-xs py-2.5 px-4 rounded-xl transition flex items-center justify-center gap-1.5 shadow-lg disabled:opacity-50"
+                  >
+                    <RefreshCw className={`w-3.5 h-3.5 ${isLoadingMore ? 'animate-spin' : ''}`} />
+                    <span>Roll Fresh Batch</span>
+                  </button>
+                  {history.length > 0 && (
+                    <button
+                      type="button"
+                      onClick={handleUndo}
+                      className="cursor-pointer border border-[#2b2b2f] bg-[#212124] text-[#f4f4f5] font-semibold text-xs py-2.5 px-4 rounded-xl hover:border-[#3b3b40] transition flex items-center justify-center gap-1.5"
+                    >
+                      <RotateCcw className="w-3.5 h-3.5" />
+                      <span>Undo Last Pass</span>
+                    </button>
+                  )}
+                </div>
+              </>
+            )}
           </div>
         )}
       </div>
@@ -995,15 +1135,24 @@ export const PintdrOverlay: React.FC<PintdrOverlayProps> = ({
         </button>
 
         {/* Like (Pitch) Button */}
-        <button
-          type="button"
-          onClick={() => triggerSwipe('right')}
-          disabled={!currentCard}
-          title="Pitch to Squad & Vote Keen (Right Arrow / L)"
-          className="cursor-pointer p-4 rounded-full bg-[#ff6b57] text-[#1a0703] font-bold hover:brightness-110 active:scale-95 transition disabled:opacity-30 disabled:pointer-events-none shadow-xl shadow-[#ff6b57]/20"
-        >
-          <ThumbsUp className="w-6 h-6 fill-current" />
-        </button>
+        {(() => {
+          const isGreedy = Boolean(currentCard && /greedy\s*banker/i.test(currentCard.name));
+          return (
+            <button
+              type="button"
+              onClick={() => triggerSwipe('right')}
+              disabled={!currentCard}
+              title={isGreedy ? 'Commit High Treason: £5 Traitor Tax' : 'Pitch to Squad & Vote Keen (Right Arrow / L)'}
+              className={`cursor-pointer p-4 rounded-full font-bold active:scale-95 transition disabled:opacity-30 disabled:pointer-events-none shadow-xl ${
+                isGreedy
+                  ? 'bg-red-600 hover:bg-red-500 text-white shadow-red-600/40 animate-pulse'
+                  : 'bg-[#ff6b57] text-[#1a0703] hover:brightness-110 shadow-[#ff6b57]/20'
+              }`}
+            >
+              {isGreedy ? <span className="text-xl">🐍</span> : <ThumbsUp className="w-6 h-6 fill-current" />}
+            </button>
+          );
+        })()}
       </div>
 
       {/* Keyboard Helper Hint */}

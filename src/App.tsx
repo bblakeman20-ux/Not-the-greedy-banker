@@ -10,11 +10,20 @@ import {
   newEvent,
   normName,
   saveUserProfile,
+  getRoomMetaMap,
+  humanizeRoomCode,
+  saveRecentRoom,
+  getClaimedUserForRoom,
+  setClaimedUserForRoom,
+  clearClaimedUserForRoom,
+  sanitizeSquad,
+  getDeviceId,
 } from './utils/storage';
-import { getSavedTheme, setSavedTheme, applyThemeClass, ThemeMode } from './utils/theme';
+import { applyThemeClass } from './utils/theme';
 import { FirebaseSync } from './utils/firebase';
 import { Header } from './components/Header';
 import { SetupModal } from './components/SetupModal';
+import { WhoAreYouModal } from './components/WhoAreYouModal';
 import { SummaryModal } from './components/SummaryModal';
 import { ProfileBar } from './components/ProfileBar';
 import { ProfileModal } from './components/ProfileModal';
@@ -24,13 +33,13 @@ import { DatesTab } from './components/Tabs/DatesTab';
 import { TravelTab } from './components/Tabs/TravelTab';
 import { KittyTab } from './components/Tabs/KittyTab';
 import { QrCodeModal } from './components/QrCodeModal';
-import { Target, Calendar, Train, Coins, Lock, Check, MapPin, Sparkles, Plus } from 'lucide-react';
+import { ShareDrawer } from './components/ShareDrawer';
+import { BottomNav, TabType } from './components/BottomNav';
+import { Sparkles, Plus } from 'lucide-react';
 import { fetchPlaces, makeIdeas } from './utils/osm';
 import { getLocalCuratedIdeas } from './utils/localPlaces';
 import { parseWhen, isoLocal } from './utils/dates';
 import { calculateLedger } from './utils/kitty';
-
-type TabType = 'act' | 'dat' | 'trv' | 'kit';
 
 export const App: React.FC = () => {
   const [config, setConfig] = useState<AppConfig>(loadInitialConfig);
@@ -41,6 +50,7 @@ export const App: React.FC = () => {
       if (snap && snap.room === (config.rm || '').replace(/\W/g, '') && snap.S) {
         return {
           ...snap.S,
+          squad: sanitizeSquad(snap.S.squad || []),
           ban: (snap.S.ban || []).filter((b: any) => !/greedy\s*banker/i.test(b?.name || '')),
         };
       }
@@ -52,6 +62,7 @@ export const App: React.FC = () => {
   const [isSetupOpen, setIsSetupOpen] = useState(false);
   const [isSummaryOpen, setIsSummaryOpen] = useState(false);
   const [isQrOpen, setIsQrOpen] = useState(false);
+  const [isShareOpen, setIsShareOpen] = useState(false);
   const [profileModal, setProfileModal] = useState<{
     isOpen: boolean;
     user: User | null;
@@ -71,17 +82,9 @@ export const App: React.FC = () => {
   const [now, setNow] = useState(Date.now());
   const [toastMsg, setToastMsg] = useState<string | null>(null);
 
-  const [theme, setTheme] = useState<ThemeMode>(getSavedTheme);
-
   useEffect(() => {
-    applyThemeClass(theme);
-  }, [theme]);
-
-  const handleToggleTheme = () => {
-    const next = theme === 'dark' ? 'light' : 'dark';
-    setTheme(next);
-    setSavedTheme(next);
-  };
+    applyThemeClass();
+  }, []);
 
   const showToast = (msg: string) => {
     setToastMsg(msg);
@@ -98,7 +101,10 @@ export const App: React.FC = () => {
       config.db,
       config.rm,
       (remoteState) => {
-        setState(remoteState);
+        setState({
+          ...remoteState,
+          squad: sanitizeSquad(remoteState.squad || []),
+        });
       },
       (status) => {
         setSyncStatus(status);
@@ -138,6 +144,7 @@ export const App: React.FC = () => {
           if (snap && snap.room === (rmUrl || '').replace(/\W/g, '') && snap.S) {
             roomState = {
               ...snap.S,
+              squad: sanitizeSquad(snap.S.squad || []),
               ban: (snap.S.ban || []).filter((b: any) => !/greedy\s*banker/i.test(b?.name || '')),
             };
           }
@@ -233,43 +240,72 @@ export const App: React.FC = () => {
     state.events[0] ||
     null;
 
-  const savedProfile = getSavedUserProfile();
+  // Current user resolution: must be claimed on this device for this room!
+  const claimedId = getClaimedUserForRoom(config.rm);
   const currentUser: User | null =
-    state.squad.find((u) => u.id === config.u) ||
-    (savedProfile
-      ? state.squad.find(
-          (u) =>
-            u.id === savedProfile.id ||
-            u.name.trim().toLowerCase() === savedProfile.name.trim().toLowerCase()
-        )
-      : null) ||
-    state.squad[0] ||
+    (claimedId ? state.squad.find((u) => u.id === claimedId) : null) ||
     null;
 
-  // Auto-connect saved user profile if matching member exists in room
+  const [showWhoAreYou, setShowWhoAreYou] = useState(false);
+  const isWhoAreYouModalVisible = !currentUser || showWhoAreYou;
+
+  // Compute readable room name from saved metadata or humanized slug
+  const roomMetaMap = getRoomMetaMap();
+  const roomFriendlyName = roomMetaMap[config.rm]?.name || humanizeRoomCode(config.rm);
+
+  // Sync active room to Recent Rooms on this device with live stats
   useEffect(() => {
-    const saved = getSavedUserProfile();
-    if (!saved) return;
-    const match = state.squad.find(
-      (u) =>
-        u.id === config.u ||
-        (saved.name && u.name.trim().toLowerCase() === saved.name.trim().toLowerCase())
-    );
-    if (match && match.id !== config.u) {
-      handleSelectUser(match.id);
+    if (config.rm) {
+      saveRecentRoom(
+        config.rm,
+        undefined,
+        currentEvent?.name || undefined,
+        state.squad.length
+      );
     }
-  }, [state.squad]);
+  }, [config.rm, currentEvent?.name, state.squad.length]);
+
+  const handleJoinNewUser = (newUser: User) => {
+    const squad = sanitizeSquad([...state.squad, newUser]);
+    persistState({ ...state, squad });
+    setClaimedUserForRoom(config.rm, newUser.id);
+    setConfig((prev) => ({ ...prev, u: newUser.id }));
+    saveUserProfile(newUser);
+    setShowWhoAreYou(false);
+    showToast(`🍻 Welcome to the squad, ${newUser.name}!`);
+  };
+
+  const handleClaimExistingUser = (member: User) => {
+    const deviceId = getDeviceId();
+    const updatedMember: User = {
+      ...member,
+      claimedDeviceId: deviceId,
+      claimedAt: Date.now(),
+    };
+    const squad = state.squad.map((u) => (u.id === member.id ? updatedMember : u));
+    persistState({ ...state, squad });
+    setClaimedUserForRoom(config.rm, member.id);
+    setConfig((prev) => ({ ...prev, u: member.id }));
+    saveUserProfile(updatedMember);
+    setShowWhoAreYou(false);
+    showToast(`🍻 You're logged in as ${member.name}!`);
+  };
 
   const handleJoinWithSavedProfile = (saved: User) => {
     const id = saved.id || ('u' + Date.now());
+    const cleanName = /^you$/i.test((saved.name || '').trim()) ? 'Ben' : saved.name;
     const newUser: User = {
       ...saved,
+      name: cleanName,
       id,
+      claimedDeviceId: getDeviceId(),
+      claimedAt: Date.now(),
     };
-    const squad = [...state.squad, newUser];
+    const squad = sanitizeSquad([...state.squad, newUser]);
     persistState({ ...state, squad });
+    setClaimedUserForRoom(config.rm, id);
     handleSelectUser(id);
-    showToast(`🍻 Added ${saved.name} to this room's squad!`);
+    showToast(`🍻 Added ${cleanName} to this room's squad!`);
   };
 
   const persistState = (newState: AppState) => {
@@ -284,28 +320,38 @@ export const App: React.FC = () => {
   };
 
   const handleSelectUser = (id: string) => {
+    setClaimedUserForRoom(config.rm, id);
     const updated = { ...config, u: id };
     setConfig(updated);
     setStorage('u', id);
     const target = state.squad.find((u) => u.id === id);
     if (target) {
-      saveUserProfile(target);
+      const deviceId = getDeviceId();
+      const updatedMember: User = {
+        ...target,
+        claimedDeviceId: deviceId,
+        claimedAt: Date.now(),
+      };
+      const squad = state.squad.map((u) => (u.id === id ? updatedMember : u));
+      persistState({ ...state, squad });
+      saveUserProfile(updatedMember);
+      showToast(`Switched profile to ${target.name}`);
     }
   };
 
   const handleSaveProfile = (data: Partial<User>, isEdit: boolean) => {
     let squad: User[];
     const targetId = (data as any).id || profileModal.user?.id || currentUser?.id;
+    const cleanName = /^you$/i.test((data.name || '').trim()) ? 'Ben' : (data.name || 'Mate');
 
     if (isEdit && targetId) {
       const updatedUser = {
         ...(state.squad.find((u) => u.id === targetId) || {}),
         ...data,
+        name: cleanName,
         id: targetId,
       } as User;
-      squad = state.squad.map((u) =>
-        u.id === targetId ? updatedUser : u
-      );
+      squad = sanitizeSquad(state.squad.map((u) => (u.id === targetId ? updatedUser : u)));
       persistState({ ...state, squad });
       saveUserProfile(updatedUser);
       handleSelectUser(targetId);
@@ -314,18 +360,21 @@ export const App: React.FC = () => {
       const id = 'u' + Date.now();
       const newUser: User = {
         id,
-        name: data.name || 'Mate',
+        name: cleanName,
         emo: data.emo || '🍺',
         loc: data.loc || 'Local',
         mode: 'Train',
         pay: data.pay || 'Monzo',
+        claimedDeviceId: getDeviceId(),
+        claimedAt: Date.now(),
         ...data,
       };
-      squad = [...state.squad, newUser];
+      squad = sanitizeSquad([...state.squad, newUser]);
       persistState({ ...state, squad });
       saveUserProfile(newUser);
+      setClaimedUserForRoom(config.rm, id);
       handleSelectUser(id);
-      showToast(`🍻 Welcome to the squad, ${data.name || 'Mate'}!`);
+      showToast(`🍻 Welcome to the squad, ${cleanName}!`);
     }
   };
 
@@ -337,9 +386,10 @@ export const App: React.FC = () => {
     const removed = state.squad.find((u) => u.id === id);
     const squad = state.squad.filter((u) => u.id !== id);
     persistState({ ...state, squad });
-    if (config.u === id) {
-      const fallbackId = squad[0]?.id || '';
-      handleSelectUser(fallbackId);
+    if (config.u === id || claimedId === id) {
+      clearClaimedUserForRoom(config.rm);
+      setConfig((prev) => ({ ...prev, u: '' }));
+      setShowWhoAreYou(true);
     }
     if (removed) showToast(`🗑️ Removed ${removed.name}'s profile`);
   };
@@ -568,39 +618,97 @@ export const App: React.FC = () => {
   const kittyTotal = currentEvent ? Math.round(calculateLedger(currentEvent, state.squad).tot) : 0;
 
   return (
-    <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-6 pb-24 space-y-6">
-      {/* Top Main Card */}
-      <div className="bg-[#17171a] border border-[#2b2b2f] rounded-2xl p-5 sm:p-6 shadow-xl">
+    <div className="max-w-6xl mx-auto px-3 sm:px-6 lg:px-8 py-4 pb-28 space-y-4">
+      {/* Top Header Card & Squad Profile Strip */}
+      <div className="bg-[#17171a] border border-[#2b2b2f] rounded-2xl p-3.5 sm:p-5 shadow-xl space-y-3">
         <Header
           statusText={syncStatus.text}
           isDenied={syncStatus.ok === 401 || syncStatus.ok === 403}
           onOpenSetup={() => setIsSetupOpen(!isSetupOpen)}
-          onOpenSummary={() => setIsSummaryOpen(!isSummaryOpen)}
+          onOpenShare={() => setIsShareOpen(true)}
           onOpenQrCode={() => setIsQrOpen(true)}
           showInstall={Boolean(installPrompt)}
           onInstall={handleInstallClick}
-          theme={theme}
-          onToggleTheme={handleToggleTheme}
+          roomFriendlyName={roomFriendlyName}
+          onAdminUnlock={() => {
+            setIsSetupOpen(true);
+            showToast('🛠️ Builder Admin Mode Unlocked!');
+          }}
         />
 
-        {/* QR Code Modal for Camera Onboarding */}
-        <QrCodeModal
-          isOpen={isQrOpen}
-          onClose={() => setIsQrOpen(false)}
-          roomCode={config.rm}
-          dbUrl={config.db}
-          eventId={currentEvent?.id}
+        {/* Squad Profile Single-Row Horizontal Scrolling Strip */}
+        <ProfileBar
+          squad={state.squad}
+          currentUserId={config.u}
+          onSelectUser={handleSelectUser}
+          onEditUser={() => {
+            if (currentUser) {
+              setProfileModal({ isOpen: true, user: currentUser });
+            } else {
+              setShowWhoAreYou(true);
+            }
+          }}
+          onEditSpecificUser={(targetUser) => setProfileModal({ isOpen: true, user: targetUser })}
+          onNewUser={() => setProfileModal({ isOpen: true, user: null })}
+          onJoinWithSavedProfile={handleJoinWithSavedProfile}
+          currentEvent={currentEvent}
+          onPitchHouse={handlePitchHouse}
+          boardTally={boardTally}
+          onOpenWhoAreYou={() => setShowWhoAreYou(true)}
         />
+      </div>
 
-        {/* Setup Accordion */}
-        <SetupModal
-          isOpen={isSetupOpen}
-          onClose={() => setIsSetupOpen(false)}
-          config={config}
-          onSave={handleSaveConfig}
-        />
+      {/* "Who are you?" First-Visit & Identity Gate Modal */}
+      <WhoAreYouModal
+        isOpen={isWhoAreYouModalVisible}
+        roomCode={config.rm}
+        squad={state.squad}
+        onJoinNew={handleJoinNewUser}
+        onClaimExisting={handleClaimExistingUser}
+        canDismiss={Boolean(currentUser)}
+        onClose={() => setShowWhoAreYou(false)}
+      />
 
-        {/* Summary Accordion */}
+      {/* Share Drawer (WhatsApp / Messenger / Copy Link / QR / Outing Summary) */}
+      <ShareDrawer
+        isOpen={isShareOpen}
+        onClose={() => setIsShareOpen(false)}
+        event={currentEvent}
+        configDb={config.db}
+        configRm={config.rm}
+        onOpenSummary={() => {
+          setIsShareOpen(false);
+          setIsSummaryOpen(true);
+        }}
+        onOpenQrCode={() => {
+          setIsShareOpen(false);
+          setIsQrOpen(true);
+        }}
+        onShowToast={showToast}
+      />
+
+      {/* QR Code Modal for Camera Onboarding */}
+      <QrCodeModal
+        isOpen={isQrOpen}
+        onClose={() => setIsQrOpen(false)}
+        roomCode={config.rm}
+        dbUrl={config.db}
+        eventId={currentEvent?.id}
+      />
+
+      {/* Setup Accordion */}
+      <SetupModal
+        isOpen={isSetupOpen}
+        onClose={() => setIsSetupOpen(false)}
+        config={config}
+        onSave={handleSaveConfig}
+        currentPlanName={currentEvent?.name}
+        squadCount={state.squad.length}
+        onShowToast={showToast}
+      />
+
+      {/* Summary Accordion */}
+      {isSummaryOpen && currentEvent && (
         <SummaryModal
           isOpen={isSummaryOpen}
           onClose={() => setIsSummaryOpen(false)}
@@ -608,34 +716,22 @@ export const App: React.FC = () => {
           squad={state.squad}
           config={config}
           now={now}
+          onShowToast={showToast}
         />
+      )}
 
-        {/* Squad Profile Bar */}
-        <ProfileBar
-          squad={state.squad}
-          currentUserId={config.u}
-          onSelectUser={handleSelectUser}
-          onEditUser={() => setProfileModal({ isOpen: true, user: currentUser })}
-          onEditSpecificUser={(targetUser) => setProfileModal({ isOpen: true, user: targetUser })}
-          onNewUser={() => setProfileModal({ isOpen: true, user: null })}
-          onJoinWithSavedProfile={handleJoinWithSavedProfile}
-          currentEvent={currentEvent}
-          onPitchHouse={handlePitchHouse}
-        />
+      {/* Profile Edit/Create Modal */}
+      <ProfileModal
+        isOpen={profileModal.isOpen}
+        onClose={() => setProfileModal({ isOpen: false, user: null })}
+        user={profileModal.user}
+        onSave={handleSaveProfile}
+        onDelete={handleDeleteProfile}
+        canDelete={state.squad.length > 1}
+        onPitchHouse={handlePitchHouse}
+      />
 
-        {/* Profile Edit/Create Modal */}
-        <ProfileModal
-          isOpen={profileModal.isOpen}
-          onClose={() => setProfileModal({ isOpen: false, user: null })}
-          user={profileModal.user}
-          onSave={handleSaveProfile}
-          onDelete={handleDeleteProfile}
-          canDelete={state.squad.length > 1}
-          onPitchHouse={handlePitchHouse}
-        />
-      </div>
-
-      {/* Events Selector */}
+      {/* Collapsible Outing Context Bar & Events Manager */}
       <EventSelector
         events={state.events}
         currentEvent={currentEvent}
@@ -644,6 +740,7 @@ export const App: React.FC = () => {
         onLockEvent={handleLockEvent}
         onUnlockEvent={handleUnlockEvent}
         onDeleteEvent={handleDeleteEvent}
+        onUpdateEvent={handleUpdateCurrentEvent}
         squad={state.squad}
         currentUser={currentUser}
         configDb={config.db}
@@ -697,75 +794,7 @@ export const App: React.FC = () => {
 
       {/* Event Details and Tabs */}
       {currentEvent && (
-        <div className="space-y-5">
-          {/* Navigation Tabs with Vector Icons & Status Indicators */}
-          <div className="grid grid-cols-4 gap-2 bg-[#17171a] border border-[#2b2b2f] p-2 rounded-2xl sticky top-3 z-10 backdrop-blur-md shadow-xl">
-            <button
-              type="button"
-              onClick={() => setActiveTab('act')}
-              className={`py-3 px-3 text-xs sm:text-sm font-bold rounded-xl transition cursor-pointer whitespace-nowrap truncate flex items-center justify-center gap-1.5 ${
-                activeTab === 'act'
-                  ? 'bg-[#24252a] text-[#ffffff] shadow-[inset_0_0_0_1.5px_#ff6b57,0_0_12px_rgba(255,107,87,0.18)]'
-                  : 'text-[#a1a1aa] hover:text-[#ffffff] hover:bg-[#1f1f23]'
-              }`}
-            >
-              <Target className={`w-4 h-4 shrink-0 ${activeTab === 'act' ? 'text-[#ff6b57]' : 'text-[#8d8d94]'}`} />
-              <span>Activities</span>
-              {currentEvent.locked ? (
-                <Lock className="w-3.5 h-3.5 text-[#c6ff3d] ml-1 shrink-0" />
-              ) : actCount > 0 ? (
-                <span className="text-[#8d8d94] ml-0.5 text-xs font-normal">· {actCount}</span>
-              ) : null}
-            </button>
-            <button
-              type="button"
-              onClick={() => setActiveTab('dat')}
-              className={`py-3 px-3 text-xs sm:text-sm font-bold rounded-xl transition cursor-pointer whitespace-nowrap truncate flex items-center justify-center gap-1.5 ${
-                activeTab === 'dat'
-                  ? 'bg-[#24252a] text-[#ffffff] shadow-[inset_0_0_0_1.5px_#ff6b57,0_0_12px_rgba(255,107,87,0.18)]'
-                  : 'text-[#a1a1aa] hover:text-[#ffffff] hover:bg-[#1f1f23]'
-              }`}
-            >
-              <Calendar className={`w-4 h-4 shrink-0 ${activeTab === 'dat' ? 'text-[#ff6b57]' : 'text-[#8d8d94]'}`} />
-              <span>Dates</span>
-              {hasAlignedDate ? (
-                <Check className="w-3.5 h-3.5 text-[#c6ff3d] ml-1 shrink-0" />
-              ) : dateCount > 0 ? (
-                <span className="text-[#8d8d94] ml-0.5 text-xs font-normal">· {dateCount}</span>
-              ) : null}
-            </button>
-            <button
-              type="button"
-              onClick={() => setActiveTab('trv')}
-              className={`py-3 px-3 text-xs sm:text-sm font-bold rounded-xl transition cursor-pointer whitespace-nowrap truncate flex items-center justify-center gap-1.5 ${
-                activeTab === 'trv'
-                  ? 'bg-[#24252a] text-[#ffffff] shadow-[inset_0_0_0_1.5px_#ff6b57,0_0_12px_rgba(255,107,87,0.18)]'
-                  : 'text-[#a1a1aa] hover:text-[#ffffff] hover:bg-[#1f1f23]'
-              }`}
-            >
-              <Train className={`w-4 h-4 shrink-0 ${activeTab === 'trv' ? 'text-[#ff6b57]' : 'text-[#8d8d94]'}`} />
-              <span>Travel</span>
-              {hasMidpoint && <MapPin className="w-3.5 h-3.5 text-[#ff6b57] ml-1 shrink-0" />}
-            </button>
-            <button
-              type="button"
-              onClick={() => setActiveTab('kit')}
-              className={`py-3 px-3 text-xs sm:text-sm font-bold rounded-xl transition cursor-pointer whitespace-nowrap truncate flex items-center justify-center gap-1.5 ${
-                activeTab === 'kit'
-                  ? 'bg-[#24252a] text-[#ffffff] shadow-[inset_0_0_0_1.5px_#ff6b57,0_0_12px_rgba(255,107,87,0.18)]'
-                  : 'text-[#a1a1aa] hover:text-[#ffffff] hover:bg-[#1f1f23]'
-              }`}
-            >
-              <Coins className={`w-4 h-4 shrink-0 ${activeTab === 'kit' ? 'text-[#ff6b57]' : 'text-[#8d8d94]'}`} />
-              <span>Kitty</span>
-              {kittyTotal > 0 && (
-                <span className="text-[#c6ff3d] ml-0.5 text-xs font-normal tabular-nums">
-                  · £{kittyTotal}
-                </span>
-              )}
-            </button>
-          </div>
-
+        <div className="space-y-4">
           {/* Tab Views */}
           {activeTab === 'act' && (
             <ActivitiesTab
@@ -819,9 +848,23 @@ export const App: React.FC = () => {
         </div>
       )}
 
+      {/* Fixed Frosted-Glass Bottom Navigation Bar */}
+      {currentEvent && (
+        <BottomNav
+          activeTab={activeTab}
+          onChangeTab={setActiveTab}
+          actCount={actCount}
+          isLocked={Boolean(currentEvent.locked)}
+          hasAlignedDate={hasAlignedDate}
+          dateCount={dateCount}
+          hasMidpoint={hasMidpoint}
+          kittyTotal={kittyTotal}
+        />
+      )}
+
       {/* Floating In-App Toast Notification */}
       {toastMsg && (
-        <div className="fixed bottom-5 left-1/2 -translate-x-1/2 z-50 bg-[#212124] border border-[#ff6b57] text-[#f4f4f5] px-4 py-2.5 rounded-2xl shadow-2xl text-xs font-semibold flex items-center gap-2 max-w-[90vw] transition-all animate-in fade-in slide-in-from-bottom-2">
+        <div className="fixed bottom-20 left-1/2 -translate-x-1/2 z-50 bg-[#212124] border border-[#ff6b57] text-[#f4f4f5] px-4 py-2.5 rounded-2xl shadow-2xl text-xs font-semibold flex items-center gap-2 max-w-[90vw] transition-all animate-in fade-in slide-in-from-bottom-2">
           <span>{toastMsg}</span>
         </div>
       )}

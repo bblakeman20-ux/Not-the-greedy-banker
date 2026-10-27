@@ -3,6 +3,7 @@ import { BanItem, OutingEvent, User, Venue, VenueStop } from '../types';
 import { fetchPlaces, makeIdeas, PlacesPool, CATS, miles, placeName } from '../utils/osm';
 import { isBanned, normName, safeUrl } from '../utils/storage';
 import { LeafletMapView } from './LeafletMapView';
+import { FlickeringFlameLoader } from './FlickeringFlameLoader';
 import {
   Search,
   MapPin,
@@ -53,6 +54,7 @@ export interface DiscoveredCard {
 
 const CATEGORY_CHIPS = [
   { label: 'All', vibe: '' },
+  { label: 'Wine & Vineyard', vibe: 'wine bar vineyard tasting cellar bistro' },
   { label: 'Axe & Darts', vibe: 'axe throwing darts competitive' },
   { label: 'Craft Beer', vibe: 'craft beer taproom brewery microbrewery' },
   { label: 'Curry & Spice', vibe: 'curry indian grill smokehouse' },
@@ -599,6 +601,14 @@ export const VenueExplorer: React.FC<VenueExplorerProps> = ({
                   <ThumbsUp className="w-5 h-5" />
                 </button>
               </div>
+            </div>
+          ) : loading ? (
+            <div className="text-center py-8 px-4 bg-[#212124] rounded-2xl border border-[#2b2b2f]">
+              <FlickeringFlameLoader
+                statusText={`🗺️ Searching "${queryInput || 'venues'}" in ${areaInput}...`}
+                subText="Filtering real OpenStreetMap pins matching your vibe"
+                size="sm"
+              />
             </div>
           ) : (
             /* Empty Deck State */

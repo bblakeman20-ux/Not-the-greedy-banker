@@ -6,7 +6,7 @@
   "scripts": {
     "dev": "tsx server.ts",
     "build": "tsc -b && vite build",
-    "start": "tsx server.ts",
+    "start": "node server.ts",
     "lint": "tsc -b --noEmit"
   },
   "dependencies": {
@@ -18,7 +18,8 @@
     "lucide-react": "^1.16.0",
     "qrcode.react": "^4.2.0",
     "react": "^19.0.0",
-    "react-dom": "^19.0.0"
+    "react-dom": "^19.0.0",
+    "tsx": "^4.23.15"
   },
   "devDependencies": {
     "@tailwindcss/vite": "^4.0.9",

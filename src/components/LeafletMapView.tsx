@@ -94,10 +94,11 @@ export const LeafletMapView: React.FC<LeafletMapViewProps> = ({
         attributionControl: true,
       });
 
-      // Add OpenStreetMap raster tiles
-      L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+      // Add CartoDB Dark Matter raster tiles for seamless dark theme
+      L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png', {
         maxZoom: 19,
-        attribution: '© <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>',
+        subdomains: 'abcd',
+        attribution: '© <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors © <a href="https://carto.com/attributions">CARTO</a>',
       }).addTo(map);
 
       // Add zoom control in top right

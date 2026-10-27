@@ -22,77 +22,11 @@
     --display: 'Bricolage Grotesque', Inter, system-ui, sans-serif;
   }
 
-  html.light, [data-theme='light'] {
-    --bg: #f8fafc;
-    --card: #ffffff;
-    --card-2: #f1f5f9;
-    --line: #cbd5e1;
-    --line-2: #94a3b8;
-    --text: #0f172a;
-    --text-2: #334155;
-    --muted: #475569;
-    --accent: #ea580c;
-    --accent-ink: #ffffff;
-    --accent-soft: rgba(234, 88, 12, 0.12);
-    --good: #16a34a;
-    --good-ink: #ffffff;
-    --good-soft: rgba(22, 163, 74, 0.14);
-    --bad: #dc2626;
-    --bad-soft: rgba(220, 38, 38, 0.12);
-  }
-
   body {
     background-color: var(--bg);
     color: var(--text);
     font-family: Inter, system-ui, -apple-system, sans-serif;
     -webkit-tap-highlight-color: transparent;
-    transition: background-color 0.2s ease, color 0.2s ease;
-  }
-
-  html.light body {
-    background-color: #f1f5f9;
-    color: #0f172a;
-  }
-
-  /* High-Contrast Light Theme Mappings */
-  html.light .bg-\[\#17171a\] {
-    background-color: #ffffff !important;
-    box-shadow: 0 1px 3px 0 rgb(0 0 0 / 0.05), 0 1px 2px -1px rgb(0 0 0 / 0.05);
-  }
-  html.light .bg-\[\#212124\] {
-    background-color: #f8fafc !important;
-  }
-  html.light .bg-\[\#1a1b1e\], html.light .bg-\[\#181a20\] {
-    background-color: #f1f5f9 !important;
-  }
-  html.light .bg-\[\#24252a\], html.light .bg-\[\#22242b\], html.light .bg-\[\#252529\] {
-    background-color: #e2e8f0 !important;
-  }
-  html.light .border-\[\#2b2b2f\], 
-  html.light .border-\[\#2b2b2f\]\/80, 
-  html.light .border-\[\#2b2b2f\]\/70,
-  html.light .border-\[\#2b2b2f\]\/60 {
-    border-color: #cbd5e1 !important;
-  }
-  html.light .border-\[\#3b3b40\] {
-    border-color: #94a3b8 !important;
-  }
-  html.light .text-\[\#f4f4f5\], html.light .text-\[\#ffffff\] {
-    color: #0f172a !important;
-  }
-  html.light .text-\[\#cfcfd4\], html.light .text-\[\#d4d4d8\], html.light .text-\[\#e4e4e7\] {
-    color: #334155 !important;
-  }
-  html.light .text-\[\#8d8d94\], html.light .text-\[\#a1a1aa\] {
-    color: #475569 !important;
-  }
-  html.light input, html.light select, html.light textarea {
-    background-color: #ffffff !important;
-    color: #0f172a !important;
-    border-color: #cbd5e1 !important;
-  }
-  html.light input::placeholder, html.light textarea::placeholder {
-    color: #94a3b8 !important;
   }
 
   h1, h2, h3, h4, .font-display {

@@ -51,9 +51,8 @@ export const ProfileModal: React.FC<ProfileModalProps> = ({
       setTx(user.tx || '');
       setOffersHouse(Boolean(user.offersHouse));
       setHouseNote(user.houseNote || '');
-    } else {
       const saved = getSavedUserProfile();
-      setName(saved?.name || '');
+      setName(saved?.name && !/^you$/i.test(saved.name.trim()) ? saved.name : (saved?.name ? 'Ben' : ''));
       setEmo(saved?.emo || '🍺');
       setLoc(saved?.loc || 'Local');
       setPay(saved?.pay || 'Monzo');
@@ -71,10 +70,13 @@ export const ProfileModal: React.FC<ProfileModalProps> = ({
   }, [user, isOpen]);
 
   const handleSave = () => {
-    const cleanName = name.trim();
+    let cleanName = name.trim();
     if (!cleanName) {
       setMsg('⚠️ Add your name');
       return;
+    }
+    if (/^you$/i.test(cleanName)) {
+      cleanName = 'Ben';
     }
 
     const dig = (s: any) => String(s || '').replace(/\D/g, '');

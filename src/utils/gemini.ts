@@ -173,7 +173,8 @@ export async function askGergAI(
   customBud: string,
   onStatus: (msg: string) => void,
   onStreamIdea?: (idea: Partial<Venue>, index: number) => void,
-  fastMode: boolean = true
+  fastMode: boolean = true,
+  count: number = 3
 ): Promise<GergAiResult> {
   const mode = MODES[modeKey] || MODES.gems;
   const t0 = Date.now();
@@ -188,6 +189,11 @@ export async function askGergAI(
 
   const shape =
     'Each object has keys: "name" (punchy title), "kind" ("spot", "event" or "combo"), "loc" (town or area), "when" (date and time for events, else ""), "cost" (rough £ per head, e.g. "£25"), "desc" (max 20 words: why it beats the default for this group), "steps" (for combos: 2-4 short strings like "6pm – crazy golf @ Venue", else []), "url" (official or ticket link if known, else "").';
+
+  const vibeInstruction = customVib.trim()
+    ? `CRITICAL THEME / VIBE MANDATE: Every single suggestion MUST strictly match the requested theme/vibe: "${customVib.trim()}". For example, if the vibe is "Wine", suggest real wine bars, vineyards, cellars, tasting rooms, or wine bistros. If "Axe throwing", suggest axe throwing / target sport venues. If "Taproom", suggest microbreweries and craft beer houses. NEVER fall back to generic high street pubs unless the vibe explicitly requests it.`
+    : '';
+
   const prompt = `You are Gerg AI, the anti-default outing planner for a UK group of mates who always end up in the same pub.\n${squadBrief(
     squad,
     event,
@@ -196,7 +202,7 @@ export async function askGergAI(
     customVib,
     customWhen,
     customBud
-  )}\n\nTask: suggest ${mode.ask}\nMake the ideas fit the group: easy to reach from their stations, in budget, and genuinely more fun than the default.\nReturn ONLY a JSON array of 3 objects, no other text. ${shape}`;
+  )}\n\n${vibeInstruction}\nTask: suggest ${count} distinct ideas matching "${customVib.trim() || 'anti-default fun'}". ${mode.ask}\nMake the ideas fit the group: easy to reach from their stations, in budget, and genuinely more fun than the default.\nReturn ONLY a JSON array of ${count} objects, no other text. ${shape}`;
 
   const have = new Set(event.venues.map((v) => normName(v.name)));
   const streamedIdeas: Partial<Venue>[] = [];
@@ -347,31 +353,100 @@ export async function askGergAI(
   // Resilient fallback: If no ideas could be generated (e.g. rate limit, offline), provide curated anti-default suggestions
   if (streamedIdeas.length === 0) {
     const loc = customLoc || (event.mid ? event.mid.name : 'Rochester');
-    const fallbackIdeas: Partial<Venue>[] = [
-      {
-        name: `Shuffleboard & Craft Pint Showdown`,
-        loc,
-        kind: 'combo' as const,
-        desc: `High-energy interactive games followed by independent local brews. Beats sitting in the usual booth!`,
-        cost: '£20',
-        steps: ['6:30pm Table shuffleboard tournament', '8:15pm Street food & guest taps'],
-      },
-      {
-        name: `Secret Cellar Comedy Club`,
-        loc,
-        kind: 'event' as const,
-        desc: `Underground comedy night featuring circuit headliners and wildcard sets.`,
-        cost: '£15',
-        when: 'Fri & Sat 8pm',
-      },
-      {
-        name: `Axe Throwing & Smoked BBQ Pit`,
-        loc,
-        kind: 'spot' as const,
-        desc: `Competitive target games with pitmaster platters to share. Zero chance of pub boredom.`,
-        cost: '£25',
-      },
-    ].filter((f) => !isBanned(f.name || '', banList) && !have.has(normName(f.name || '')));
+    const vLower = (customVib || '').toLowerCase();
+    let fallbackIdeas: Partial<Venue>[] = [];
+
+    if (vLower.includes('wine') || vLower.includes('vineyard')) {
+      fallbackIdeas = [
+        {
+          name: `${loc} Boutique Wine & Tapas Flight`,
+          loc,
+          kind: 'combo' as const,
+          desc: `Sommelier-curated natural wines paired with artisan British charcuterie.`,
+          cost: '£30',
+          steps: ['6:30pm Sparkling wine flight', '7:45pm Tapas & regional reds', '9:30pm Port & cheese board'],
+        },
+        {
+          name: `The Cellar Vault Tasting Experience`,
+          loc,
+          kind: 'spot' as const,
+          desc: `Intimate candlelit brick arch vault with over 40 natural and organic wines by the glass.`,
+          cost: '£25',
+        },
+        {
+          name: `Sunset Vineyard & Orchard Tour`,
+          loc,
+          kind: 'event' as const,
+          desc: `Guided walk through Kent grapevines followed by private outdoor tasting flight.`,
+          cost: '£28',
+          when: 'Sat 4:00pm',
+        },
+      ];
+    } else if (vLower.includes('curry') || vLower.includes('spice') || vLower.includes('indian')) {
+      fallbackIdeas = [
+        {
+          name: `Grand Tandoori Feast & Craft Ciders`,
+          loc,
+          kind: 'combo' as const,
+          desc: `Clay-oven sizzling mixed grill platters followed by dry-hopped fruit ciders.`,
+          cost: '£28',
+          steps: ['7:00pm Starter samosas & poppadoms', '8:15pm Chef special karahi & naan'],
+        },
+        {
+          name: `The Spice Route Tasting Banquet`,
+          loc,
+          kind: 'spot' as const,
+          desc: `Regional street-food chaat and slow-cooked Kashmiri lamb shanks.`,
+          cost: '£25',
+        },
+      ];
+    } else if (vLower.includes('taproom') || vLower.includes('craft') || vLower.includes('brew')) {
+      fallbackIdeas = [
+        {
+          name: `Microbrewery Tank-to-Glass Tour`,
+          loc,
+          kind: 'combo' as const,
+          desc: `Behind-the-scenes tasting straight from fermentation vessels, then street pizza.`,
+          cost: '£24',
+          steps: ['6:00pm Tank sampling', '7:30pm Neapolitan pizza & fresh hazy IPAs'],
+        },
+        {
+          name: `The Hop Exchange Taproom`,
+          loc,
+          kind: 'spot' as const,
+          desc: `16 rotating craft lines, sour beers, and outdoor heated shipping container courtyard.`,
+          cost: '£20',
+        },
+      ];
+    } else {
+      fallbackIdeas = [
+        {
+          name: `Shuffleboard & Craft Pint Showdown`,
+          loc,
+          kind: 'combo' as const,
+          desc: `High-energy interactive games followed by independent local brews. Beats sitting in the usual booth!`,
+          cost: '£20',
+          steps: ['6:30pm Table shuffleboard tournament', '8:15pm Street food & guest taps'],
+        },
+        {
+          name: `Secret Cellar Comedy Club`,
+          loc,
+          kind: 'event' as const,
+          desc: `Underground comedy night featuring circuit headliners and wildcard sets.`,
+          cost: '£15',
+          when: 'Fri & Sat 8pm',
+        },
+        {
+          name: `Axe Throwing & Smoked BBQ Pit`,
+          loc,
+          kind: 'spot' as const,
+          desc: `Competitive target games with pitmaster platters to share. Zero chance of pub boredom.`,
+          cost: '£25',
+        },
+      ];
+    }
+
+    fallbackIdeas = fallbackIdeas.filter((f) => !isBanned(f.name || '', banList) && !have.has(normName(f.name || '')));
 
     fallbackIdeas.forEach((idea, idx) => {
       streamedIdeas.push(idea);

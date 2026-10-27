@@ -11,6 +11,7 @@ interface SummaryModalProps {
   squad: User[];
   config: AppConfig;
   now: number;
+  onShowToast?: (msg: string) => void;
 }
 
 export const SummaryModal: React.FC<SummaryModalProps> = ({
@@ -20,6 +21,7 @@ export const SummaryModal: React.FC<SummaryModalProps> = ({
   squad,
   config,
   now,
+  onShowToast,
 }) => {
   const [msg, setMsg] = useState('');
 
@@ -97,12 +99,16 @@ export const SummaryModal: React.FC<SummaryModalProps> = ({
 
   const handleCopy = async () => {
     const ok = await copyStr(fullShareText);
-    setMsg(ok ? '📋 Copied full summary & link to clipboard!' : "❌ Couldn't copy");
+    const m = ok ? '📋 Copied full summary & link to clipboard!' : "❌ Couldn't copy";
+    setMsg(m);
+    if (onShowToast) onShowToast(m);
   };
 
   const handleMessengerShare = async () => {
     await copyStr(fullShareText);
-    setMsg('📋 Copied summary & link! Paste it into your Messenger chat.');
+    const m = '📋 Copied summary & link! Paste it into your Messenger chat.';
+    setMsg(m);
+    if (onShowToast) onShowToast(m);
   };
 
   const handleNativeShare = async () => {
@@ -113,7 +119,9 @@ export const SummaryModal: React.FC<SummaryModalProps> = ({
           text: summaryText,
           url: config.db ? groupLink : '',
         });
-        setMsg('✅ Shared summary!');
+        const m = '✅ Shared summary!';
+        setMsg(m);
+        if (onShowToast) onShowToast(m);
         return;
       } catch (e: any) {
         if (e.name === 'AbortError') return;

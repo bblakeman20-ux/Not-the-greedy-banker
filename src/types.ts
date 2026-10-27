@@ -13,6 +13,9 @@ export interface User {
   tx?: string;
   offersHouse?: boolean;
   houseNote?: string;
+  isTraitor?: boolean;
+  claimedDeviceId?: string;
+  claimedAt?: number;
 }
 
 export interface BanItem {
@@ -46,7 +49,7 @@ export interface Venue {
   lon?: number;
   live?: number;
   src?: string;
-  votes?: Record<string, 'k' | 'v' | null>;
+  votes?: Record<string, 'k' | 'p' | 'v' | null>;
 }
 
 export interface Slot {
@@ -113,6 +116,9 @@ export interface OutingEvent {
   bounties: Bounty[];
   paid: PaidRecord[];
   by?: string;
+  traitors?: string[];
+  swipePool?: Record<string, { venue: Partial<Venue>; likes: string[]; timestamp: number }>;
+  planVetoes?: Record<string, number>;
 }
 
 export interface AppState {
