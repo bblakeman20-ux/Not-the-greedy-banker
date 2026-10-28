@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { lazy, Suspense, useRef, useState } from 'react';
 import confetti from 'canvas-confetti';
 import { AppConfig, BanItem, OutingEvent, User, Venue } from '../../types';
 import { isBanned, realPlace } from '../../utils/storage';
@@ -17,7 +17,6 @@ import {
   vetoWinner,
   vetoesLeft,
 } from '../../utils/eventActions';
-import { PintdrOverlay } from '../PintdrOverlay';
 import { DecidedPlanCard } from '../activities/DecidedPlanCard';
 import { ShortlistPanel } from '../activities/ShortlistPanel';
 import { DiscoverPanel } from '../activities/DiscoverPanel';
@@ -40,6 +39,8 @@ interface ActivitiesTabProps {
   onPitchHouse?: (user: User) => void;
 }
 
+const PintdrOverlay = lazy(() => import('../PintdrOverlay').then((m) => ({ default: m.PintdrOverlay })));
+
 const NEED_PROFILE = '👆 Tap your profile first in the squad bar above (or + New Profile)';
 
 // Coordinates the Activities tab: owns the plan-changing handlers (built on the
@@ -59,6 +60,9 @@ export const ActivitiesTab: React.FC<ActivitiesTabProps> = ({
   onPitchHouse,
 }) => {
   const [isPintdrOpen, setIsPintdrOpen] = useState(false);
+  // Load the swipe deck on first open, then keep it mounted so its card cache survives closing
+  const pintdrLoaded = useRef(false);
+  if (isPintdrOpen) pintdrLoaded.current = true;
   const [subTab, setSubTab] = useState<'shortlist' | 'discover' | 'ban'>('shortlist');
   const [askToken, setAskToken] = useState(0);
   const [spinningId, setSpinningId] = useState<string | null>(null);
@@ -372,6 +376,8 @@ export const ActivitiesTab: React.FC<ActivitiesTabProps> = ({
       {subTab === 'ban' && <BanListPanel banList={banList} onAddBan={onAddBan} onRemoveBan={onRemoveBan} />}
 
       {/* PINTDR™ Immersive Swiper Overlay Modal */}
+      {pintdrLoaded.current && (
+        <Suspense fallback={null}>
       <PintdrOverlay
         isOpen={isPintdrOpen}
         onClose={() => setIsPintdrOpen(false)}
@@ -385,6 +391,8 @@ export const ActivitiesTab: React.FC<ActivitiesTabProps> = ({
         onShowToast={notify}
         onOpenSetup={onOpenSetup}
       />
+        </Suspense>
+      )}
     </div>
   );
 };

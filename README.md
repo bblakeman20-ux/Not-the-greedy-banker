@@ -19,6 +19,7 @@ Rewritten as a modern React + TypeScript + Tailwind CSS application powered by V
 - **Free Map Ideas Engine**: Query real independent spots and multi-stop combo nights using OpenStreetMap Overpass API and Photon with zero API keys required.
 - **Gerg AI Venue Engine (Gemini)**: 4 smart planning modes (Hidden gems, What's on with live Google Search grounding, Combo night, and Surprise me wildcard).
 - **Squad Travel & Midpoint Finder**: Calculate geographic centroid between all squad stations and measure distances to the midpoint and winning venue.
+- **Room Colour Themes**: Pick, cycle or customise a 4–5 colour palette for the whole UI; it's saved with the room so everyone sees the same theme.
 - **Sherlock's Open Bank Mode & Kitty**: Track group expenses, view squad pay details (Monzo, PayPal.me, Revolut, bank details), compute simplified settlement payments with one-click payment links, and keep an audit log of paid debts.
 
 ---
@@ -55,6 +56,31 @@ npm run build
 
 ## 3. Gerg AI (Gemini API Key)
 
+Gerg AI runs on the server, so the key never reaches the browser.
+
 1. Get an API key at [Google AI Studio](https://aistudio.google.com/apikey).
-2. In the app: tap **⚙️ Setup** → paste the API key → tap **💾 Save & Connect**.
-3. The key is securely stored in local browser storage on that device and is **never** shared with the room or synced over the network.
+2. Set it as `GEMINI_API_KEY` in the server's environment (see `.env.example`).
+3. Optional: set `GEMINI_MODELS` (comma-separated) to pin models. By default the server uses Google's `gemini-flash-latest` and `gemini-flash-lite-latest` aliases and skips any model the key can't use.
+
+If Gerg AI is unavailable (no key, rejected key, usage limit, offline) the app says so and falls back to real map spots – it never shows made-up venues.
+
+A Builder Admin (tap the logo 5 times) can also enter their own key under **Setup → Builder Admin**. It stays on that device and is sent with that device's Gerg AI requests only.
+
+---
+
+## 4. Checks
+
+```bash
+npm run lint   # typecheck app and server
+npm run test   # Vitest suite (kitty maths, dates, sync, themes, plan actions)
+npm run build
+```
+
+GitHub Actions runs all three on every push.
+
+## 5. Project layout
+
+- `server.ts` – Express server (Vite in dev, `dist/` in production); `api/index.ts` is the Vercel entry. Both use the Gerg AI routes in `server/gemini.ts`.
+- `src/App.tsx` – room state, Firebase sync and tab routing.
+- `src/utils/` – pure logic: `eventActions.ts` (votes, vetoes, shortlist), `kitty.ts` (ledger and settle-up), `firebase.ts` (sync), `theme.ts` (palettes), `dates.ts`, `osm.ts` / `mapRoll.ts` (map search), `gemini.ts` (Gerg AI client). Tests live in `src/utils/__tests__/`.
+- `src/components/Tabs/` – the four tabs; `src/components/activities/` – the Activities tab's panels.

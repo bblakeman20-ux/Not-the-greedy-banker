@@ -1,11 +1,10 @@
-import React, { useEffect, useState } from 'react';
+import React, { lazy, Suspense, useEffect, useState } from 'react';
 import confetti from 'canvas-confetti';
 import { AppConfig, BanItem, OutingEvent, User, Venue } from '../../types';
 import { normName, realPlace } from '../../utils/storage';
 import { askGergAI, MODES } from '../../utils/gemini';
 import { rollMapSpots } from '../../utils/mapRoll';
 import { themeConfetti } from '../../utils/theme';
-import { VenueExplorer } from '../VenueExplorer';
 import { FlickeringFlameLoader } from '../FlickeringFlameLoader';
 import { Dices, Flame, Gem, Home, MapPin, Plus, Route, Search, Sparkles, Ticket, X, Zap, Map as MapIcon } from 'lucide-react';
 
@@ -24,6 +23,9 @@ interface DiscoverPanelProps {
   onAddBan: (name: string) => void;
   askToken: number; // bump to run Gerg AI straight away (the bounty "bailout")
 }
+
+// The explorer pulls in the Leaflet map library, so it only loads when the map tool is opened
+const VenueExplorer = lazy(() => import('../VenueExplorer').then((m) => ({ default: m.VenueExplorer })));
 
 const NEED_PROFILE = '👆 Tap your profile first in the squad bar above (or + New Profile)';
 
@@ -263,6 +265,7 @@ export const DiscoverPanel: React.FC<DiscoverPanelProps> = ({
               </div>
             )}
 
+            <Suspense fallback={<div className="text-xs text-muted p-4 text-center animate-pulse">Loading map…</div>}>
             <VenueExplorer
               event={event}
               squad={squad}
@@ -277,6 +280,7 @@ export const DiscoverPanel: React.FC<DiscoverPanelProps> = ({
               onShowToast={notify}
               onOpenPintdr={onOpenPintdr}
             />
+            </Suspense>
           </div>
         )}
 

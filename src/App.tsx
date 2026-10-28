@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, lazy, Suspense } from 'react';
 import { AppConfig, AppState, OutingEvent, RoomTheme, SyncState, User, Venue } from './types';
 import {
   getInitialDemoState,
@@ -23,25 +23,31 @@ import {
 import { applyRoomTheme, presetName, sanitizeTheme } from './utils/theme';
 import { FirebaseSync } from './utils/firebase';
 import { Header } from './components/Header';
-import { SetupModal } from './components/SetupModal';
 import { WhoAreYouModal } from './components/WhoAreYouModal';
-import { SummaryModal } from './components/SummaryModal';
 import { ProfileBar } from './components/ProfileBar';
 import { ProfileModal } from './components/ProfileModal';
 import { EventSelector } from './components/EventSelector';
 import { ActivitiesTab } from './components/Tabs/ActivitiesTab';
-import { DatesTab } from './components/Tabs/DatesTab';
-import { TravelTab } from './components/Tabs/TravelTab';
-import { KittyTab } from './components/Tabs/KittyTab';
-import { QrCodeModal } from './components/QrCodeModal';
-import { ShareDrawer } from './components/ShareDrawer';
-import { ThemePicker } from './components/ThemePicker';
 import { BottomNav, TabType } from './components/BottomNav';
 import { Sparkles, Plus } from 'lucide-react';
 import { fetchPlaces, makeIdeas } from './utils/osm';
 import { getLocalCuratedIdeas } from './utils/localPlaces';
 import { parseWhen, isoLocal } from './utils/dates';
 import { calculateLedger } from './utils/kitty';
+
+// Screens most visits never open are loaded on demand to keep the first load small
+const SetupModal = lazy(() => import('./components/SetupModal').then((m) => ({ default: m.SetupModal })));
+const SummaryModal = lazy(() => import('./components/SummaryModal').then((m) => ({ default: m.SummaryModal })));
+const QrCodeModal = lazy(() => import('./components/QrCodeModal').then((m) => ({ default: m.QrCodeModal })));
+const ShareDrawer = lazy(() => import('./components/ShareDrawer').then((m) => ({ default: m.ShareDrawer })));
+const ThemePicker = lazy(() => import('./components/ThemePicker').then((m) => ({ default: m.ThemePicker })));
+const DatesTab = lazy(() => import('./components/Tabs/DatesTab').then((m) => ({ default: m.DatesTab })));
+const TravelTab = lazy(() => import('./components/Tabs/TravelTab').then((m) => ({ default: m.TravelTab })));
+const KittyTab = lazy(() => import('./components/Tabs/KittyTab').then((m) => ({ default: m.KittyTab })));
+
+const TabLoading = () => (
+  <div className="bg-card border border-line rounded-2xl p-6 text-center text-xs text-muted animate-pulse">Loading…</div>
+);
 
 export const App: React.FC = () => {
   const [config, setConfig] = useState<AppConfig>(loadInitialConfig);
@@ -689,7 +695,9 @@ export const App: React.FC = () => {
         onClose={() => setShowWhoAreYou(false)}
       />
 
+      <Suspense fallback={null}>
       {/* Share Drawer (WhatsApp / Messenger / Copy Link / QR / Outing Summary) */}
+      {isShareOpen && (
       <ShareDrawer
         isOpen={isShareOpen}
         onClose={() => setIsShareOpen(false)}
@@ -706,15 +714,19 @@ export const App: React.FC = () => {
         }}
         onShowToast={showToast}
       />
+      )}
 
-      {/* QR Code Modal for Camera Onboarding */}
+      {isThemeOpen && (
       <ThemePicker
         isOpen={isThemeOpen}
         onClose={() => setIsThemeOpen(false)}
         theme={state.theme}
         onApply={handleSetTheme}
       />
+      )}
 
+      {/* QR Code Modal for Camera Onboarding */}
+      {isQrOpen && (
       <QrCodeModal
         isOpen={isQrOpen}
         onClose={() => setIsQrOpen(false)}
@@ -722,8 +734,10 @@ export const App: React.FC = () => {
         dbUrl={config.db}
         eventId={currentEvent?.id}
       />
+      )}
 
       {/* Setup Accordion */}
+      {isSetupOpen && (
       <SetupModal
         isOpen={isSetupOpen}
         onClose={() => setIsSetupOpen(false)}
@@ -734,6 +748,7 @@ export const App: React.FC = () => {
         onShowToast={showToast}
         syncState={syncState}
       />
+      )}
 
       {/* Summary Accordion */}
       {isSummaryOpen && currentEvent && (
@@ -747,6 +762,7 @@ export const App: React.FC = () => {
           onShowToast={showToast}
         />
       )}
+      </Suspense>
 
       {/* Profile Edit/Create Modal */}
       <ProfileModal
@@ -842,6 +858,7 @@ export const App: React.FC = () => {
             />
           )}
 
+          <Suspense fallback={<TabLoading />}>
           {activeTab === 'dat' && (
             <DatesTab
               event={currentEvent}
@@ -873,6 +890,7 @@ export const App: React.FC = () => {
               onShowToast={showToast}
             />
           )}
+          </Suspense>
         </div>
       )}
 
