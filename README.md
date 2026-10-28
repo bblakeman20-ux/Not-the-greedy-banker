@@ -1,4 +1,4 @@
-# Not The Greedy Banker 🍻
+# Pintdr 🍻
 
 Anti-default outing planner for a group of mates: pitch and vote on venues (with the Veto Bounty), find a date everyone's free, work out the fairest midpoint, ask **Gerg AI** for hidden gems, live events and combo nights, and split the kitty with pay links.
 
