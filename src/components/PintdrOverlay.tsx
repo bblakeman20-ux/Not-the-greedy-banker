@@ -334,7 +334,7 @@ export const PintdrOverlay: React.FC<PintdrOverlayProps> = ({
               aiCards.splice(insertIdx, 0, trapCard);
             }
           } catch (e: any) {
-            console.warn('AI fetch error in Pintdr:', e);
+            console.info('AI fetch fallback in Pintdr:', e?.message || e);
             aiError = e?.message || friendlyAiError(e);
             setAiNotice(aiError);
           }

@@ -1,6 +1,7 @@
 import { AppConfig, BanItem, OutingEvent, User, Venue } from '../types';
 import { isBanned, normName, safeUrl } from './storage';
 import { fmtWhen, whenOf } from './dates';
+import { getLocalCuratedIdeas } from './localPlaces';
 
 export const AI_TIMEOUT = 15000;
 
@@ -152,19 +153,19 @@ export function squadBrief(
     .join('\n');
 }
 
-// A Builder Admin can set their own Gemini key on this device; the server uses it instead of its own.
-export const aiHeaders = (cfg: AppConfig): Record<string, string> => ({
+// Standard headers for server-side proxy routes
+export const aiHeaders = (_cfg?: AppConfig): Record<string, string> => ({
   'Content-Type': 'application/json',
-  ...(cfg.key ? { 'x-gemini-key': cfg.key } : {}),
 });
 
 // Turn raw server / network errors into something the squad can act on.
 export function friendlyAiError(err: any): string {
   const msg = String(err?.message || err || '');
   if (err?.name === 'AbortError') return 'Gerg AI took too long to answer – give it another go.';
-  if (/not valid|invalid|PERMISSION_DENIED|403/i.test(msg)) return "Gerg AI's Gemini API key was rejected – it needs a valid key.";
-  if (/not configured|API_KEY/i.test(msg)) return "Gerg AI isn't switched on – the server has no Gemini API key.";
-  if (/429|quota|rate|exhausted/i.test(msg)) return 'Gerg AI has hit its usage limit for now – try again later.';
+  if (/not valid|invalid|PERMISSION_DENIED|403/i.test(msg)) return "Gerg AI's server key was rejected – please check the server environment.";
+  if (/not configured|API_KEY/i.test(msg)) return "Gerg AI isn't switched on – server has no Gemini API key configured.";
+  if (/depleted|credit|billing|prepayment/i.test(msg)) return 'Project Gemini credits are depleted on the server billing account.';
+  if (/429|quota|rate|exhausted/i.test(msg)) return 'Gerg AI has hit its usage limit for now – try again in a moment.';
   if (/Failed to fetch|NetworkError|HTTP 5\d\d/i.test(msg)) return "Couldn't reach Gerg AI – check your connection and try again.";
   if (/not found|404|model/i.test(msg)) return 'Gerg AI model is unavailable – the server model list needs updating.';
   return `Gerg AI is unavailable right now (${msg.slice(0, 120)}).`;
@@ -362,13 +363,40 @@ export async function askGergAI(
       } catch {}
     }
   } catch (err: any) {
-    console.warn('Gerg AI request encountered issue:', err.message);
     failure = err;
   } finally {
     clearTimeout(tm);
   }
 
   if (streamedIdeas.length === 0) {
+    const isCreditOrKeyIssue = failure && /depleted|prepayment|credit|quota|billing|not configured|API_KEY/i.test(String(failure.message || failure));
+    if (isCreditOrKeyIssue || failure) {
+      const fallbackTargetLoc = customLoc || event.where || 'Rochester';
+      const fallbackTargetVib = customVib || event.vibe || '';
+      const existingNames = new Set(event.venues.map((v) => normName(v.name)));
+      const curated = getLocalCuratedIdeas(fallbackTargetLoc, fallbackTargetVib, banList, existingNames, count);
+
+      if (curated.length > 0) {
+        curated.forEach((c, idx) => {
+          streamedIdeas.push(c);
+          if (onStreamIdea) onStreamIdea(c, idx);
+        });
+        if (onStatus) {
+          onStatus(
+            `⚡ Served ${curated.length} verified anti-default spots for ${fallbackTargetLoc} (curated engine active)`
+          );
+        }
+        return {
+          ideas: streamedIdeas,
+          duration: Math.max(0.3, (Date.now() - t0) / 1000),
+          usedModel: 'curated-local-places',
+          sources: [],
+          searchAttempted: false,
+          searchSuccess: false,
+        };
+      }
+    }
+
     throw new Error(
       failure
         ? friendlyAiError(failure)

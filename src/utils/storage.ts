@@ -331,7 +331,10 @@ export const loadInitialConfig = (): AppConfig => {
     md = 'gemini-flash-latest';
     setStorage('md', md);
   }
-  const key = getStorage('key', DEFAULT_GEMINI_KEY);
+  try {
+    localStorage.removeItem('key');
+  } catch {}
+  const key = '';
   const claimedId = getClaimedUserForRoom(rm);
   const u = claimedId || '';
   const evKey = 'ev:' + (db ? rm.replace(/\W/g, '') : 'local');

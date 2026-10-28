@@ -209,7 +209,6 @@ export const App: React.FC = () => {
     setStorage('db', newCfg.db);
     setStorage('rm', newCfg.rm);
     setStorage('md', newCfg.md);
-    setStorage('key', newCfg.key);
 
     if (was !== newCfg.db + newCfg.rm) {
       let roomState: AppState = freshRoomState();

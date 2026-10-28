@@ -32,6 +32,7 @@ import {
   Home,
   Copy,
   Users,
+  ExternalLink,
 } from 'lucide-react';
 
 interface SetupModalProps {
@@ -58,7 +59,6 @@ export const SetupModal: React.FC<SetupModalProps> = ({
   const [db, setDb] = useState(config.db || DEFAULT_FIREBASE_DB);
   const [rm, setRm] = useState(config.rm);
   const [md, setMd] = useState(config.md);
-  const [key, setKey] = useState(config.key);
   const [msg, setMsg] = useState('');
   const [recentRooms, setRecentRooms] = useState<RoomMeta[]>([]);
 
@@ -86,7 +86,6 @@ export const SetupModal: React.FC<SetupModalProps> = ({
       setDb(config.db || DEFAULT_FIREBASE_DB);
       setRm(config.rm);
       setMd(config.md);
-      setKey(config.key);
       setMsg('');
       setIsAdmin(isBuilderAdmin());
       setRecentRooms(getRecentRoomList());
@@ -119,7 +118,6 @@ export const SetupModal: React.FC<SetupModalProps> = ({
       db: cleanDb,
       rm: roomCode,
       md: md.trim() || 'gemini-flash-latest',
-      key: key.trim(),
     });
 
     if (typeof window !== 'undefined' && window.history && window.history.replaceState) {
@@ -154,7 +152,6 @@ export const SetupModal: React.FC<SetupModalProps> = ({
       db: cleanDb,
       rm: cleanCode,
       md: md.trim() || 'gemini-flash-latest',
-      key: key.trim(),
     });
 
     if (typeof window !== 'undefined' && window.history && window.history.replaceState) {
@@ -219,13 +216,11 @@ export const SetupModal: React.FC<SetupModalProps> = ({
   const handleSaveAdminSettings = () => {
     const cleanDb = db.trim().replace(/\/$/, '') || DEFAULT_FIREBASE_DB;
     const cleanMd = md.trim() || 'gemini-flash-latest';
-    const cleanKey = key.trim();
 
     onSave({
       ...config,
       db: cleanDb,
       md: cleanMd,
-      key: cleanKey,
     });
     notify('✅ Saved Builder Admin backend & model settings!');
   };
@@ -722,18 +717,15 @@ export const SetupModal: React.FC<SetupModalProps> = ({
                   </div>
                 </div>
 
-                {/* Optional Key */}
-                <div>
-                  <label className="text-[10px] font-semibold text-muted block mb-1">
-                    Custom Gemini API Key (Optional)
-                  </label>
-                  <input
-                    type="password"
-                    value={key}
-                    onChange={(e) => setKey(e.target.value)}
-                    placeholder="AIzaSy..."
-                    className="w-full bg-card2 border border-line focus:border-amber-400 text-ink px-2.5 py-1.5 rounded-xl text-xs font-mono outline-none"
-                  />
+                {/* Secure Server Managed AI */}
+                <div className="p-2.5 rounded-xl bg-card2/80 border border-line text-xs">
+                  <div className="flex items-center gap-2 text-emerald-400 font-semibold text-[11px] mb-1">
+                    <ShieldCheck className="w-3.5 h-3.5" />
+                    Server Gemini Key Configured
+                  </div>
+                  <p className="text-[10px] text-muted leading-relaxed">
+                    AI generation is managed securely on the backend server via environment variables. Client devices do not hold, enter, or expose API keys.
+                  </p>
                 </div>
 
                 <button
