@@ -67,6 +67,15 @@ export const ThemePicker: React.FC<ThemePickerProps> = ({ isOpen, onClose, theme
     preview(secondary ? { ...rest, id: 'custom' } : { ...draft, id: 'custom', secondary: draft.primary });
   };
 
+  // Heading style is independent of the palette: switching palettes keeps it,
+  // except presets that bring their own (Retro Arcade turns pixel on).
+  const pick = (p: RoomTheme) => onApply({ ...p, font: p.font || active.font });
+  const pixelOn = active.font === 'pixel';
+  const togglePixel = () => {
+    const { font, ...rest } = active;
+    onApply(pixelOn ? rest : { ...rest, font: 'pixel' });
+  };
+
   const lowContrast = contrast(draft.text, draft.surface) < 4.5;
   const colourCount = new Set([draft.bg, draft.surface, draft.text, draft.primary, draft.secondary].filter(Boolean)).size;
 
@@ -93,12 +102,30 @@ export const ThemePicker: React.FC<ThemePickerProps> = ({ isOpen, onClose, theme
 
         <button
           type="button"
-          onClick={() => onApply(nextPreset(active))}
+          onClick={() => pick(nextPreset(active))}
           className="w-full flex items-center justify-center gap-2 cursor-pointer bg-primary text-primary-ink font-bold text-sm py-2.5 rounded-xl hover:brightness-105 active:scale-95 transition mb-4"
         >
           <Shuffle className="w-4 h-4" />
           Cycle palette
           <span className="opacity-70 font-semibold">· next: {nextPreset(active).name}</span>
+        </button>
+
+        <button
+          type="button"
+          role="switch"
+          aria-checked={pixelOn}
+          onClick={togglePixel}
+          className="w-full flex items-center justify-between gap-3 mb-4 px-3 py-2.5 rounded-xl border border-line bg-card2 hover:border-line2 cursor-pointer transition"
+        >
+          <span className="text-left">
+            <span className="block text-xs font-bold text-ink">Pixel headings</span>
+            <span className="block text-[11px] text-muted">Arcade-style titles with any palette</span>
+          </span>
+          <span className={`relative w-10 h-6 rounded-full transition shrink-0 ${pixelOn ? 'bg-primary' : 'bg-line2'}`}>
+            <span
+              className={`absolute top-1 w-4 h-4 rounded-full transition-all ${pixelOn ? 'left-5 bg-primary-ink' : 'left-1 bg-card'}`}
+            />
+          </span>
         </button>
 
         <div className="grid grid-cols-2 gap-2 mb-4">
@@ -108,7 +135,7 @@ export const ThemePicker: React.FC<ThemePickerProps> = ({ isOpen, onClose, theme
               <button
                 key={p.id}
                 type="button"
-                onClick={() => onApply(p)}
+                onClick={() => pick(p)}
                 className={`flex flex-col items-start gap-2 p-2.5 rounded-xl border text-left cursor-pointer transition active:scale-95 ${
                   on ? 'border-primary bg-primary/10' : 'border-line bg-card2 hover:border-line2'
                 }`}
@@ -168,19 +195,6 @@ export const ThemePicker: React.FC<ThemePickerProps> = ({ isOpen, onClose, theme
                   </label>
                 );
               })}
-
-              <label className="flex items-center justify-between gap-3 text-xs">
-                <span className="text-ink2 font-semibold">Pixel headings</span>
-                <input
-                  type="checkbox"
-                  checked={draft.font === 'pixel'}
-                  onChange={(e) => {
-                    const { font, ...rest } = draft;
-                    preview(e.target.checked ? { ...rest, id: 'custom', font: 'pixel' } : { ...rest, id: 'custom' });
-                  }}
-                  className="w-4 h-4 accent-primary cursor-pointer"
-                />
-              </label>
 
               <p className="text-[11px] text-muted">
                 {colourCount}-colour palette
