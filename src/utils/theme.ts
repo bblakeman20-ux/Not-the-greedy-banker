@@ -52,7 +52,9 @@ export const inkFor = (fill: string): string => {
   const dark = contrast(fill, '#000000') >= contrast(fill, '#ffffff');
   const base = dark ? [0, 0, 0] : [255, 255, 255];
   const tint = toRgb(fill);
-  return toHex(base.map((v, i) => v * 0.9 + tint[i] * 0.1));
+  const tinted = toHex(base.map((v, i) => v * 0.9 + tint[i] * 0.1));
+  // Drop the tint if it would push the text below readable contrast
+  return contrast(tinted, fill) >= 4.5 ? tinted : toHex(base);
 };
 
 export const isLightTheme = (t: RoomTheme): boolean => luminance(t.bg) > 0.4;
