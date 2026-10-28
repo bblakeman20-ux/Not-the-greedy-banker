@@ -72,7 +72,7 @@ export const BottomNav: React.FC<BottomNavProps> = ({
   return (
     <nav
       aria-label="Squad Navigation"
-      className="fixed bottom-0 left-0 right-0 z-40 bg-card/95 backdrop-blur-xl border-t border-line shadow-[0_-4px_24px_rgba(0,0,0,0.4)]"
+      className="fixed bottom-0 left-0 right-0 z-40 bg-card/95 backdrop-blur-xl border-t border-line shadow-[0_-4px_24px_var(--shade)]"
       style={{ paddingBottom: 'max(env(safe-area-inset-bottom, 0px), 6px)' }}
     >
       <div className="max-w-lg mx-auto px-3 pt-1.5 pb-1 flex items-center justify-around gap-1">

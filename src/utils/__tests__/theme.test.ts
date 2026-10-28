@@ -32,6 +32,14 @@ describe('presets', () => {
     THEME_PRESETS.forEach((p) => expect(contrast(p.text, p.surface), p.name).toBeGreaterThanOrEqual(7));
   });
 
+  it('keep accents readable when used as text on cards', () => {
+    THEME_PRESETS.forEach((p) => {
+      [p.primary, p.secondary].filter(Boolean).forEach((c) => {
+        expect(contrast(c as string, p.surface), `${p.name} ${c}`).toBeGreaterThanOrEqual(4.5);
+      });
+    });
+  });
+
   it('give every accent a readable button ink', () => {
     THEME_PRESETS.forEach((p) => {
       [p.primary, p.secondary].filter(Boolean).forEach((c) => {

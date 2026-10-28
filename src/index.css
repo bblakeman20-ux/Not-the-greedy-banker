@@ -26,6 +26,7 @@
     --accent-ink: #1a0703;
     --good: #c6ff3d;
     --good-ink: #141a03;
+    --shade: rgba(0, 0, 0, 0.4); /* drop shadows: strong on dark themes, soft on light */
 
     /* Derived from the palette, so every theme stays within its 4-5 colours */
     --card: var(--surface);

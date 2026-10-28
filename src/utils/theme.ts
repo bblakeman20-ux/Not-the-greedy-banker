@@ -16,8 +16,11 @@ export const THEME_PRESETS: ThemePreset[] = [
   { id: 'neon', name: 'Neon Arcade', bg: '#0d0a14', surface: '#171223', text: '#f5f0ff', primary: '#ff3ea5', secondary: '#3ef0ff' },
   { id: 'racing', name: 'Racing Green', bg: '#0c1410', surface: '#14201a', text: '#f1f5ee', primary: '#e3b23c' },
   { id: 'mono', name: 'Mono', bg: '#0a0a0a', surface: '#161616', text: '#f5f5f5', primary: '#f5f5f5' },
-  { id: 'garden', name: 'Beer Garden', bg: '#f4f1ea', surface: '#ffffff', text: '#1d1b16', primary: '#2f7d4f', secondary: '#b5620e' },
+  { id: 'arcade', name: 'Retro Arcade', bg: '#06061c', surface: '#10103f', text: '#fff6d6', primary: '#ffd400', secondary: '#ff6b9d' },
+  { id: 'garden', name: 'Beer Garden', bg: '#f4f1ea', surface: '#ffffff', text: '#1d1b16', primary: '#2f7d4f', secondary: '#ad5e0d' },
   { id: 'seaside', name: 'Seaside', bg: '#edf5f7', surface: '#ffffff', text: '#102a33', primary: '#0f7c90', secondary: '#c8472a' },
+  { id: 'lavender', name: 'Lavender Haze', bg: '#eceef6', surface: '#f8f8fc', text: '#2e3047', primary: '#5f5ca6', secondary: '#46719a' },
+  { id: 'oat', name: 'Oat Milk', bg: '#f3ece1', surface: '#fbf7f0', text: '#3e352c', primary: '#975b50', secondary: '#4f7457' },
 ];
 
 export const DEFAULT_THEME: ThemePreset = THEME_PRESETS[0];
@@ -103,6 +106,7 @@ export const applyRoomTheme = (theme?: RoomTheme): void => {
   };
   Object.entries(vars).forEach(([k, v]) => root.style.setProperty(k, v));
   const light = isLightTheme(t);
+  root.style.setProperty('--shade', light ? 'rgba(30, 30, 50, 0.08)' : 'rgba(0, 0, 0, 0.4)');
   root.classList.toggle('dark', !light);
   root.classList.toggle('light', light);
   root.setAttribute('data-theme', light ? 'light' : 'dark');
