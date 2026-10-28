@@ -1,5 +1,5 @@
 {
-  "name": "not-the-greedy-banker",
+  "name": "pintdr",
   "private": true,
   "version": "3.0.0",
   "type": "module",
@@ -8,7 +8,8 @@
     "build": "tsc -b && vite build",
     "start": "node server.ts",
     "lint": "tsc -b --noEmit && tsc -p tsconfig.server.json",
-    "test": "vitest run"
+    "test": "vitest run",
+    "test:rules": "npx -y firebase-tools@13 emulators:exec --only database --project demo-pintdr \"node scripts/rules-test.mjs\""
   },
   "dependencies": {
     "@google/genai": "^2.31.0",

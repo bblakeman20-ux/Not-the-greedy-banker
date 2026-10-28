@@ -1,6 +1,6 @@
 {
-  "name": "Not The Greedy Banker",
-  "short_name": "Greedy Banker",
+  "name": "Pintdr",
+  "short_name": "Pintdr",
   "description": "Anti-Default Outing Engine",
   "start_url": "./",
   "scope": "./",

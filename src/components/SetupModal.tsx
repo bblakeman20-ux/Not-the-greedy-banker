@@ -5,6 +5,7 @@ import {
   copyStr,
   DEFAULT_FIREBASE_DB,
   generateRoomCode,
+  withRandomPart,
   getRecentRoomList,
   humanizeRoomCode,
   isBuilderAdmin,
@@ -138,7 +139,8 @@ export const SetupModal: React.FC<SetupModalProps> = ({
   };
 
   const handleConfirmCreateNew = () => {
-    const cleanCode = newRoomCode.trim().toLowerCase().replace(/[^a-z0-9_-]/g, '-') || generateRoomCode();
+    const typed = newRoomCode.trim().toLowerCase().replace(/[^a-z0-9_-]/g, '-');
+    const cleanCode = typed ? withRandomPart(typed) : generateRoomCode();
     const cleanLabel = newRoomLabel.trim() || humanizeRoomCode(cleanCode);
 
     setRm(cleanCode);
@@ -451,7 +453,7 @@ export const SetupModal: React.FC<SetupModalProps> = ({
                 <input
                   value={newRoomCode}
                   onChange={(e) => setNewRoomCode(e.target.value)}
-                  placeholder="e.g. medway-pints or custom-code"
+                  placeholder="e.g. medway-pints (a random tail is added)"
                   className="w-full bg-card2 border border-transparent focus:border-primary text-ink px-3 py-1.5 rounded-xl text-xs font-mono outline-none"
                 />
               </div>

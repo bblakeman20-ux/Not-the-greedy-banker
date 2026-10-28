@@ -50,3 +50,15 @@ describe('Gerg AI streaming', () => {
     expect(friendlyAiError(new Error('Failed to fetch'))).toMatch(/connection/);
   });
 });
+
+describe('sign-in', () => {
+  it('is used for our own database and local emulators only', async () => {
+    const { dbUsesSignIn } = await import('../auth');
+    const { DEFAULT_FIREBASE_DB } = await import('../storage');
+    expect(dbUsesSignIn(DEFAULT_FIREBASE_DB)).toBe(true);
+    expect(dbUsesSignIn('http://demo-pintdr.localhost:9000')).toBe(true);
+    expect(dbUsesSignIn('http://127.0.0.1:9000')).toBe(true);
+    expect(dbUsesSignIn('https://someone-else-default-rtdb.firebaseio.com')).toBe(false);
+    expect(dbUsesSignIn('')).toBe(false);
+  });
+});
