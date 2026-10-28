@@ -6,7 +6,25 @@
       "rooms": {
         "$room": {
           ".read": "$room.length >= 12",
-          ".write": "$room.length >= 12 && newData.exists() && newData.child('ver').isNumber()"
+          ".write": "$room.length >= 12 && auth != null && newData.child('ver').val() === 3 && (!data.exists() || !data.child('ver').exists() || data.child('ver').val() < 3)",
+          "ban": { ".write": "$room.length >= 12 && auth != null" },
+          "board": { ".write": "$room.length >= 12 && auth != null" },
+          "events": { ".write": "$room.length >= 12 && auth != null" },
+          "theme": { ".write": "$room.length >= 12 && auth != null" },
+          "squad": {
+            "$member": {
+              ".write": "$room.length >= 12 && auth != null && ((!data.exists() && (!newData.child('owner').exists() || newData.child('owner').val() === auth.uid)) || (!newData.exists() && (!data.child('owner').exists() || data.child('owner').val() === auth.uid)))",
+              "owner": { ".write": "auth != null && (!data.exists() || data.val() === auth.uid) && (!newData.exists() || newData.val() === auth.uid)" },
+              "payLink": { ".write": "auth != null && (!data.parent().child('owner').exists() || data.parent().child('owner').val() === auth.uid)" },
+              "payMail": { ".write": "auth != null && (!data.parent().child('owner').exists() || data.parent().child('owner').val() === auth.uid)" },
+              "acn": { ".write": "auth != null && (!data.parent().child('owner').exists() || data.parent().child('owner').val() === auth.uid)" },
+              "sort": { ".write": "auth != null && (!data.parent().child('owner').exists() || data.parent().child('owner').val() === auth.uid)" },
+              "acc": { ".write": "auth != null && (!data.parent().child('owner').exists() || data.parent().child('owner').val() === auth.uid)" },
+              "payAt": { ".write": "auth != null && (!data.parent().child('owner').exists() || data.parent().child('owner').val() === auth.uid)" },
+              "payBy": { ".write": "auth != null && (!data.parent().child('owner').exists() || data.parent().child('owner').val() === auth.uid)" },
+              "$field": { ".write": "$room.length >= 12 && auth != null" }
+            }
+          }
         }
       },
       "clock": {

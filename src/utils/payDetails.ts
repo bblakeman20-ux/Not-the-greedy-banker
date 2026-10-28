@@ -45,3 +45,21 @@ export function payChangeNote(u: User, squad: User[], now = Date.now()): string 
   const who = c.byOther ? ` by ${c.editorName}` : '';
   return `${u.name}'s pay details changed ${ago(now - c.at)}${who} – check with ${u.name} before paying.`;
 }
+
+// ---------- Ownership (enforced by the database rules) ----------
+
+// Only the member's own device can change their pay details once they've claimed the profile.
+export const canEditPay = (u: Partial<User> | undefined, uid: string | null): boolean =>
+  !u?.owner || u.owner === uid;
+
+// The first device to make or claim a profile owns it.
+export const claimOwner = <T extends Partial<User>>(u: T, uid: string | null): T =>
+  uid && !u.owner ? { ...u, owner: uid } : u;
+
+// Drop pay changes this device isn't allowed to make, so the rest of the edit still saves.
+export function keepLockedPay(before: User, next: User, uid: string | null): User {
+  if (canEditPay(before, uid)) return next;
+  const kept: Partial<User> = {};
+  [...FIELDS, 'payAt', 'payBy', 'owner'].forEach((k) => ((kept as any)[k] = (before as any)[k]));
+  return { ...next, ...kept };
+}

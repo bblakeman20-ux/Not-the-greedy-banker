@@ -11,6 +11,7 @@ interface ProfileModalProps {
   canDelete: boolean;
   onPitchHouse?: (user: User) => void;
   prefillFromDevice?: boolean; // creating your own first profile, not adding a mate
+  payLocked?: boolean; // the profile is owned by another device
 }
 
 export const ProfileModal: React.FC<ProfileModalProps> = ({
@@ -22,6 +23,7 @@ export const ProfileModal: React.FC<ProfileModalProps> = ({
   canDelete,
   onPitchHouse,
   prefillFromDevice = false,
+  payLocked = false,
 }) => {
   const isEdit = Boolean(user);
   const [name, setName] = useState('');
@@ -297,81 +299,88 @@ export const ProfileModal: React.FC<ProfileModalProps> = ({
           )}
         </div>
 
-        <div>
-          <div className="text-xs font-semibold text-primary mb-1">
-            💳 How to pay you (all optional)
+        {payLocked && (
+          <div className="text-[11px] font-semibold text-ink2 bg-card2 border border-line rounded-lg px-2.5 py-1.5">
+            🔒 Only {user?.name}'s own phone can change their pay details.
           </div>
-          <label className="text-[11px] text-muted block mb-1">
-            Pay link <span className="text-secondary font-semibold">· recommended</span>
-          </label>
-          <input
-            value={payLink}
-            onChange={(e) => setPayLink(e.target.value)}
-            placeholder="monzo.me/you, paypal.me/you or revolut.me/you"
-            className="w-full bg-card border border-line focus:border-primary text-ink px-3 py-2 rounded-xl text-xs outline-none"
-          />
-          <p className="text-[10px] text-muted mt-1">
-            Pay links are made to be shared and fill in the amount for your mates. Safer than bank details.
-          </p>
-        </div>
-
-        <div>
-          <label className="text-[11px] text-muted block mb-1">PayPal Email</label>
-          <input
-            type="email"
-            value={payMail}
-            onChange={(e) => setPayMail(e.target.value)}
-            placeholder="Payment email"
-            className="w-full bg-card border border-line focus:border-primary text-ink px-3 py-2 rounded-xl text-xs outline-none"
-          />
-        </div>
-
-        {showBankFields || sort || acc || acn ? (
-          <div className="space-y-2">
-            <div className="text-[11px] font-semibold text-amber-500 bg-amber-500/10 border border-amber-500/30 rounded-lg px-2.5 py-1.5">
-              ⚠️ Anyone with this room's link can see bank details, and the squad is told if they change.
-            </div>
-            <div className="grid grid-cols-1 sm:grid-cols-3 gap-2.5">
-              <div>
-                <label className="text-[11px] text-muted block mb-1">Account Name</label>
-                <input
-                  value={acn}
-                  onChange={(e) => setAcn(e.target.value)}
-                  placeholder="Account name"
-                  className="w-full bg-card border border-line focus:border-primary text-ink px-3 py-2 rounded-xl text-xs outline-none"
-                />
-              </div>
-              <div>
-                <label className="text-[11px] text-muted block mb-1">Sort Code</label>
-                <input
-                  inputMode="numeric"
-                  value={sort}
-                  onChange={(e) => setSort(e.target.value)}
-                  placeholder="12-34-56"
-                  className="w-full bg-card border border-line focus:border-primary text-ink px-3 py-2 rounded-xl text-xs outline-none"
-                />
-              </div>
-              <div>
-                <label className="text-[11px] text-muted block mb-1">Account No.</label>
-                <input
-                  inputMode="numeric"
-                  value={acc}
-                  onChange={(e) => setAcc(e.target.value)}
-                  placeholder="8 digits"
-                  className="w-full bg-card border border-line focus:border-primary text-ink px-3 py-2 rounded-xl text-xs outline-none"
-                />
-              </div>
-            </div>
-          </div>
-        ) : (
-          <button
-            type="button"
-            onClick={() => setShowBankFields(true)}
-            className="text-[11px] font-semibold text-muted hover:text-ink underline cursor-pointer"
-          >
-            Add bank details instead (visible to anyone with the room link)
-          </button>
         )}
+        <fieldset disabled={payLocked} className={`space-y-4 border-0 p-0 m-0 min-w-0 ${payLocked ? 'opacity-60' : ''}`}>
+          <div>
+            <div className="text-xs font-semibold text-primary mb-1">
+              💳 How to pay you (all optional)
+            </div>
+            <label className="text-[11px] text-muted block mb-1">
+              Pay link <span className="text-secondary font-semibold">· recommended</span>
+            </label>
+            <input
+              value={payLink}
+              onChange={(e) => setPayLink(e.target.value)}
+              placeholder="monzo.me/you, paypal.me/you or revolut.me/you"
+              className="w-full bg-card border border-line focus:border-primary text-ink px-3 py-2 rounded-xl text-xs outline-none"
+            />
+            <p className="text-[10px] text-muted mt-1">
+              Pay links are made to be shared and fill in the amount for your mates. Safer than bank details.
+            </p>
+          </div>
+
+          <div>
+            <label className="text-[11px] text-muted block mb-1">PayPal Email</label>
+            <input
+              type="email"
+              value={payMail}
+              onChange={(e) => setPayMail(e.target.value)}
+              placeholder="Payment email"
+              className="w-full bg-card border border-line focus:border-primary text-ink px-3 py-2 rounded-xl text-xs outline-none"
+            />
+          </div>
+
+          {showBankFields || sort || acc || acn ? (
+            <div className="space-y-2">
+              <div className="text-[11px] font-semibold text-amber-500 bg-amber-500/10 border border-amber-500/30 rounded-lg px-2.5 py-1.5">
+                ⚠️ Anyone with this room's link can see bank details, and the squad is told if they change.
+              </div>
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-2.5">
+                <div>
+                  <label className="text-[11px] text-muted block mb-1">Account Name</label>
+                  <input
+                    value={acn}
+                    onChange={(e) => setAcn(e.target.value)}
+                    placeholder="Account name"
+                    className="w-full bg-card border border-line focus:border-primary text-ink px-3 py-2 rounded-xl text-xs outline-none"
+                  />
+                </div>
+                <div>
+                  <label className="text-[11px] text-muted block mb-1">Sort Code</label>
+                  <input
+                    inputMode="numeric"
+                    value={sort}
+                    onChange={(e) => setSort(e.target.value)}
+                    placeholder="12-34-56"
+                    className="w-full bg-card border border-line focus:border-primary text-ink px-3 py-2 rounded-xl text-xs outline-none"
+                  />
+                </div>
+                <div>
+                  <label className="text-[11px] text-muted block mb-1">Account No.</label>
+                  <input
+                    inputMode="numeric"
+                    value={acc}
+                    onChange={(e) => setAcc(e.target.value)}
+                    placeholder="8 digits"
+                    className="w-full bg-card border border-line focus:border-primary text-ink px-3 py-2 rounded-xl text-xs outline-none"
+                  />
+                </div>
+              </div>
+            </div>
+          ) : (
+            <button
+              type="button"
+              onClick={() => setShowBankFields(true)}
+              className="text-[11px] font-semibold text-muted hover:text-ink underline cursor-pointer"
+            >
+              Add bank details instead (visible to anyone with the room link)
+            </button>
+          )}
+        </fieldset>
 
         <div>
           <label className="text-[11px] text-muted block mb-1">

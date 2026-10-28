@@ -52,6 +52,12 @@ npm run build
 5. In the app: tap **⚙️ Setup** → paste the URL → tap **🎲** for a secret room code → **💾 Save & Connect**.
 6. Tap **💬 Share Group Link** to send the invitation to your group chat. Everyone who opens it joins the room in real time.
 
+### Who can change what
+
+On the built-in database each phone signs in anonymously (**Authentication → Sign-in method → Anonymous**, with automatic clean-up off) using the Web API key in `src/utils/auth.ts`. The rules then let only a profile's own phone change its pay details; everything else in a room stays editable by anyone in it. A profile is owned by the phone that created it, or the first phone to claim it. If someone loses their phone, clear the `owner` field on their profile in the Firebase console so they can claim it again.
+
+The rules are tested against the local emulator: `firebase emulators:start --only database`, then point the app at `http://<project>.localhost:9000` in Setup.
+
 ---
 
 ## 3. Gerg AI (Gemini API Key)

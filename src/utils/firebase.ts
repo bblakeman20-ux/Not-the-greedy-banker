@@ -1,5 +1,6 @@
 import { AppState, OutingEvent } from '../types';
 import { APP_VER, getStorage, setStorage, freshRoomState } from './storage';
+import { dbUsesSignIn, getIdToken } from './auth';
 import { sanitizeTheme } from './theme';
 
 const EV_LISTS = ['venues', 'slots', 'exp', 'bounties', 'paid'] as const;
@@ -164,6 +165,9 @@ export class FirebaseSync {
   private streaming = false;
   private skew = 0;
   private frozen = false;
+  private streamGen = 0;
+  private creating: Promise<void> | null = null;
+  private renewTimer: ReturnType<typeof setTimeout> | null = null;
 
   constructor(
     db: string,
@@ -204,6 +208,12 @@ export class FirebaseSync {
 
   private dbUrl(): string | null {
     return this.db ? `${this.db}/v2/rooms/${this.roomKey()}.json` : null;
+  }
+
+  private async authed(u: string): Promise<string> {
+    if (!dbUsesSignIn(this.db)) return u;
+    const token = await getIdToken();
+    return token ? `${u}?auth=${encodeURIComponent(token)}` : u;
   }
 
   private oldUrl(): string | null {
@@ -252,7 +262,7 @@ export class FirebaseSync {
     if (!u) return;
     const t0 = Date.now();
     try {
-      const r = await fetch(u);
+      const r = await fetch(await this.authed(u));
       if (!r.ok) return this.notifyStatus(r.status);
       const d = await r.json();
       if (this.busy || this.touched > t0) return;
@@ -264,12 +274,17 @@ export class FirebaseSync {
     }
   }
 
-  public startStream(): void {
+  public async startStream(): Promise<void> {
     this.stop();
     const u = this.dbUrl();
     if (!u || typeof window === 'undefined' || !window.EventSource) return;
 
-    this.es = new EventSource(u);
+    const gen = ++this.streamGen;
+    const src = await this.authed(u);
+    if (gen !== this.streamGen) return; // stopped or restarted while signing in
+    this.es = new EventSource(src);
+    // Sign-in tokens last an hour: reconnect with a fresh one before it runs out
+    this.renewTimer = setTimeout(() => this.startStream(), 50 * 60 * 1000);
     const onEvt = (e: MessageEvent, isPatch: boolean) => {
       try {
         const { path, data } = JSON.parse(e.data);
@@ -292,7 +307,7 @@ export class FirebaseSync {
     this.es.addEventListener('put', (e) => onEvt(e, false));
     this.es.addEventListener('patch', (e) => onEvt(e, true));
     this.es.addEventListener('cancel', () => this.stop());
-    this.es.addEventListener('auth_revoked', () => this.stop());
+    this.es.addEventListener('auth_revoked', () => this.startStream());
     this.es.onerror = () => {
       this.streaming = false;
       this.notifyStatus(0);
@@ -300,6 +315,9 @@ export class FirebaseSync {
   }
 
   public stop(): void {
+    this.streamGen++;
+    if (this.renewTimer) clearTimeout(this.renewTimer);
+    this.renewTimer = null;
     if (this.es) {
       this.es.close();
       this.es = null;
@@ -307,10 +325,13 @@ export class FirebaseSync {
     this.streaming = false;
   }
 
-  public async push(state: AppState, full = false): Promise<void> {
+  public async push(state: AppState, full = false): Promise<boolean> {
     this.touched = Date.now();
     const u = this.dbUrl();
-    if (!u || this.frozen) return;
+    if (!u || this.frozen) return false;
+
+    // Send changes rather than the whole room: once the room exists, the rules only accept field updates
+    if (!full && !this.serverMirror) await this.pull();
 
     const dbData = toDb(state);
     let method = 'PATCH';
@@ -321,8 +342,11 @@ export class FirebaseSync {
       body = dbData;
       this.serverMirror = clone(dbData);
     } else {
-      body = diff(this.serverMirror, dbData, '', {});
-      if (!Object.keys(body).length) return;
+      // In a room with no squad yet, still add members one by one (squad/<id>): the rules
+      // check each member's owner, so a write of the whole squad list is refused
+      const mirror = this.serverMirror.squad || !dbData.squad ? this.serverMirror : { ...this.serverMirror, squad: {} };
+      body = diff(mirror, dbData, '', {});
+      if (!Object.keys(body).length) return true;
       Object.entries(body).forEach(([p, v]) => {
         this.serverMirror = setPath(this.serverMirror, p.split('/').filter(Boolean), v);
       });
@@ -330,10 +354,13 @@ export class FirebaseSync {
 
     this.busy++;
     try {
-      const r = await fetch(u, { method, body: JSON.stringify(body) });
-      this.notifyStatus(r.ok ? 1 : r.status);
+      const r = await fetch(await this.authed(u), { method, body: JSON.stringify(body) });
+      // A refused room create is handled by createRoom (someone else got there first)
+      if (r.ok || !full) this.notifyStatus(r.ok ? 1 : r.status);
+      return r.ok;
     } catch (e) {
       this.notifyStatus(0);
+      return false;
     } finally {
       this.busy--;
       if (!this.busy) this.applyRemote();
@@ -363,7 +390,13 @@ export class FirebaseSync {
     } catch (e) {}
   }
 
-  private async initRoom() {
+  // Several start-up reads can find the room missing at once: create it only once
+  private initRoom(): Promise<void> {
+    if (!this.creating) this.creating = this.createRoom().finally(() => (this.creating = null));
+    return this.creating;
+  }
+
+  private async createRoom() {
     let old: any = null;
     const oldEndpoint = this.oldUrl();
     if (oldEndpoint) {
@@ -375,6 +408,11 @@ export class FirebaseSync {
 
     const initial = old && old.squad ? upgradeOldFormat(fromDb(old)) : freshRoomState();
     this.onStateChange(initial);
-    await this.push(initial, true);
+    const ok = await this.push(initial, true);
+    // Another phone created the room first: the rules refuse a second create, so load theirs
+    if (!ok) {
+      this.serverMirror = null;
+      await this.pull();
+    }
   }
 }

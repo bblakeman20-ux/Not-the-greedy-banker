@@ -34,7 +34,8 @@ import { fetchPlaces, makeIdeas } from './utils/osm';
 import { getLocalCuratedIdeas } from './utils/localPlaces';
 import { parseWhen, isoLocal } from './utils/dates';
 import { calculateLedger } from './utils/kitty';
-import { paySignature, stampPayChange } from './utils/payDetails';
+import { canEditPay, claimOwner, keepLockedPay, paySignature, stampPayChange } from './utils/payDetails';
+import { dbUsesSignIn, getIdToken, getUid } from './utils/auth';
 
 // Screens most visits never open are loaded on demand to keep the first load small
 const SetupModal = lazy(() => import('./components/SetupModal').then((m) => ({ default: m.SetupModal })));
@@ -92,6 +93,12 @@ export const App: React.FC = () => {
   const [toastMsg, setToastMsg] = useState<string | null>(null);
 
   const [isThemeOpen, setIsThemeOpen] = useState(false);
+
+  // This device's anonymous account; the database only lets it change pay details on profiles it owns
+  const [authUid, setAuthUid] = useState<string | null>(getUid);
+  useEffect(() => {
+    if (dbUsesSignIn(config.db)) getIdToken().then(() => setAuthUid(getUid()));
+  }, [config.db]);
 
   // The palette lives in the room state, so a change by anyone syncs to everyone
   useEffect(() => {
@@ -284,6 +291,13 @@ export const App: React.FC = () => {
   const [showWhoAreYou, setShowWhoAreYou] = useState(false);
   const isWhoAreYouModalVisible = !currentUser || showWhoAreYou;
 
+  // Profiles made before sign-in existed have no owner: the device that already uses one claims it
+  useEffect(() => {
+    if (!authUid || !currentUser || currentUser.owner || currentUser.claimedDeviceId !== getDeviceId()) return;
+    persistState({ ...state, squad: state.squad.map((u) => (u.id === currentUser.id ? claimOwner(u, authUid) : u)) });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [authUid, currentUser?.id, currentUser?.owner]);
+
   // Compute readable room name from saved metadata or humanized slug
   const roomMetaMap = getRoomMetaMap();
   const roomFriendlyName = roomMetaMap[config.rm]?.name || humanizeRoomCode(config.rm);
@@ -300,7 +314,8 @@ export const App: React.FC = () => {
     }
   }, [config.rm, currentEvent?.name, state.squad.length]);
 
-  const handleJoinNewUser = (newUser: User) => {
+  const handleJoinNewUser = (joined: User) => {
+    const newUser = claimOwner(joined, authUid);
     const squad = sanitizeSquad([...state.squad, newUser]);
     persistState({ ...state, squad });
     setClaimedUserForRoom(config.rm, newUser.id);
@@ -312,11 +327,10 @@ export const App: React.FC = () => {
 
   const handleClaimExistingUser = (member: User) => {
     const deviceId = getDeviceId();
-    const updatedMember: User = {
-      ...member,
-      claimedDeviceId: deviceId,
-      claimedAt: Date.now(),
-    };
+    const updatedMember: User = claimOwner(
+      { ...member, claimedDeviceId: deviceId, claimedAt: Date.now() },
+      authUid
+    );
     const squad = state.squad.map((u) => (u.id === member.id ? updatedMember : u));
     persistState({ ...state, squad });
     setClaimedUserForRoom(config.rm, member.id);
@@ -329,13 +343,11 @@ export const App: React.FC = () => {
   const handleJoinWithSavedProfile = (saved: User) => {
     const id = saved.id || ('u' + Date.now());
     const cleanName = /^you$/i.test((saved.name || '').trim()) ? 'Ben' : saved.name;
-    const newUser: User = {
-      ...saved,
-      name: cleanName,
-      id,
-      claimedDeviceId: getDeviceId(),
-      claimedAt: Date.now(),
-    };
+    const { owner: _oldOwner, ...rest } = saved;
+    const newUser: User = claimOwner(
+      { ...rest, name: cleanName, id, claimedDeviceId: getDeviceId(), claimedAt: Date.now() },
+      authUid
+    );
     const squad = sanitizeSquad([...state.squad, newUser]);
     persistState({ ...state, squad });
     setClaimedUserForRoom(config.rm, id);
@@ -369,11 +381,10 @@ export const App: React.FC = () => {
     const target = state.squad.find((u) => u.id === id);
     if (target) {
       const deviceId = getDeviceId();
-      const updatedMember: User = {
-        ...target,
-        claimedDeviceId: deviceId,
-        claimedAt: Date.now(),
-      };
+      const updatedMember: User = claimOwner(
+        { ...target, claimedDeviceId: deviceId, claimedAt: Date.now() },
+        authUid
+      );
       const squad = state.squad.map((u) => (u.id === id ? updatedMember : u));
       persistState({ ...state, squad });
       saveUserProfile(updatedMember);
@@ -388,11 +399,12 @@ export const App: React.FC = () => {
 
     if (isEdit && targetId) {
       const before = state.squad.find((u) => u.id === targetId);
-      const updatedUser = stampPayChange(
+      let updatedUser = stampPayChange(
         before,
         { ...(before || {}), ...data, name: cleanName, id: targetId } as User,
         currentUser?.id
       );
+      if (before && !canEditPay(before, authUid)) updatedUser = keepLockedPay(before, updatedUser, authUid);
       squad = sanitizeSquad(state.squad.map((u) => (u.id === targetId ? updatedUser : u)));
       persistState({ ...state, squad });
       // Only remember it as this device's profile when you edit yourself. (Re-selecting here
@@ -411,6 +423,8 @@ export const App: React.FC = () => {
         claimedDeviceId: getDeviceId(),
         claimedAt: Date.now(),
         ...data,
+        // Your own first profile is yours; a mate you add claims theirs when they join
+        ...(!currentUser && authUid ? { owner: authUid } : {}),
       };
       squad = sanitizeSquad([...state.squad, newUser]);
       persistState({ ...state, squad });
@@ -427,6 +441,10 @@ export const App: React.FC = () => {
       return;
     }
     const removed = state.squad.find((u) => u.id === id);
+    if (removed && !canEditPay(removed, authUid)) {
+      showToast(`🔒 Only ${removed.name} can remove their own profile`);
+      return;
+    }
     const squad = state.squad.filter((u) => u.id !== id);
     persistState({ ...state, squad });
     if (config.u === id || claimedId === id) {
@@ -793,6 +811,7 @@ export const App: React.FC = () => {
         canDelete={state.squad.length > 1}
         onPitchHouse={handlePitchHouse}
         prefillFromDevice={!currentUser}
+        payLocked={Boolean(profileModal.user && !canEditPay(profileModal.user, authUid))}
       />
 
       {/* Collapsible Outing Context Bar & Events Manager */}

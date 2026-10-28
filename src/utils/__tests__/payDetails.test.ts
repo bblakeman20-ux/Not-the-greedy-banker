@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { PAY_WARNING_MS, payChangeNote, recentPayChange, stampPayChange } from '../payDetails';
+import { PAY_WARNING_MS, canEditPay, claimOwner, keepLockedPay, payChangeNote, recentPayChange, stampPayChange } from '../payDetails';
 import { generateRoomCode, humanizeRoomCode, withRandomPart } from '../storage';
 import { User } from '../../types';
 
@@ -60,5 +60,29 @@ describe('room codes', () => {
     expect(humanizeRoomCode('squad-epic-curry-x7k2')).toBe('Epic Curry');
     expect(humanizeRoomCode('squad-epic-curry-x7k2ab9q')).toBe('Epic Curry');
     expect(humanizeRoomCode(withRandomPart('friday-pints'))).toBe('Friday Pints');
+  });
+});
+
+describe('ownership', () => {
+  it('lets anyone edit an unclaimed profile, then only its owner', () => {
+    expect(canEditPay(ben, 'x')).toBe(true);
+    const owned = claimOwner(ben, 'uid-ben');
+    expect(owned.owner).toBe('uid-ben');
+    expect(canEditPay(owned, 'uid-ben')).toBe(true);
+    expect(canEditPay(owned, 'uid-sam')).toBe(false);
+    expect(canEditPay(owned, null)).toBe(false);
+  });
+
+  it('never takes over an owned profile', () => {
+    expect(claimOwner({ ...ben, owner: 'uid-ben' }, 'uid-sam').owner).toBe('uid-ben');
+    expect(claimOwner(ben, null).owner).toBeUndefined();
+  });
+
+  it("keeps someone else's pay details when another device edits their profile", () => {
+    const before = { ...ben, owner: 'uid-ben', sort: '11-11-11', acc: '11111111' };
+    const edited = { ...before, emo: '🎯', sort: '99-99-99', acc: '99999999', owner: 'uid-sam' };
+    const saved = keepLockedPay(before, edited, 'uid-sam');
+    expect(saved).toMatchObject({ emo: '🎯', sort: '11-11-11', acc: '11111111', owner: 'uid-ben' });
+    expect(keepLockedPay(before, edited, 'uid-ben').sort).toBe('99-99-99');
   });
 });
