@@ -14,6 +14,12 @@ describe('sanitizeTheme', () => {
     expect(sanitizeTheme('pintdr')).toBeUndefined();
   });
 
+  it('only accepts the known heading font', () => {
+    const base = { id: 'x', bg: '#000000', surface: '#111111', text: '#ffffff', primary: '#ff0000' };
+    expect(sanitizeTheme({ ...base, font: 'pixel' })?.font).toBe('pixel');
+    expect(sanitizeTheme({ ...base, font: 'Comic Sans' })?.font).toBeUndefined();
+  });
+
   it('keeps the secondary colour optional', () => {
     const t = sanitizeTheme({ id: 'custom', bg: '#000000', surface: '#111111', text: '#FFFFFF', primary: '#FF0000', secondary: 'nope' });
     expect(t).toEqual({ id: 'custom', bg: '#000000', surface: '#111111', text: '#ffffff', primary: '#ff0000' });

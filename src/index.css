@@ -50,6 +50,16 @@
     -webkit-tap-highlight-color: transparent;
   }
 
+  /* Pixel headings (Retro Arcade): the font runs wide, so shrink it to a similar visual size */
+  :root[data-font='pixel'] {
+    --display: 'Press Start 2P', ui-monospace, monospace;
+  }
+  :root[data-font='pixel'] :is(h1, h2, h3, h4, .font-display) {
+    font-size-adjust: 0.47;
+    letter-spacing: 0;
+    line-height: 1.5;
+  }
+
   h1, h2, h3, h4, .font-display {
     font-family: var(--display);
     letter-spacing: -0.02em;

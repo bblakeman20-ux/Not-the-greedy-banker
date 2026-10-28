@@ -169,6 +169,19 @@ export const ThemePicker: React.FC<ThemePickerProps> = ({ isOpen, onClose, theme
                 );
               })}
 
+              <label className="flex items-center justify-between gap-3 text-xs">
+                <span className="text-ink2 font-semibold">Pixel headings</span>
+                <input
+                  type="checkbox"
+                  checked={draft.font === 'pixel'}
+                  onChange={(e) => {
+                    const { font, ...rest } = draft;
+                    preview(e.target.checked ? { ...rest, id: 'custom', font: 'pixel' } : { ...rest, id: 'custom' });
+                  }}
+                  className="w-4 h-4 accent-primary cursor-pointer"
+                />
+              </label>
+
               <p className="text-[11px] text-muted">
                 {colourCount}-colour palette
                 {lowContrast && (

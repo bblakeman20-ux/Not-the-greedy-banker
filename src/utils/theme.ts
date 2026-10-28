@@ -16,7 +16,8 @@ export const THEME_PRESETS: ThemePreset[] = [
   { id: 'neon', name: 'Neon Arcade', bg: '#0d0a14', surface: '#171223', text: '#f5f0ff', primary: '#ff3ea5', secondary: '#3ef0ff' },
   { id: 'racing', name: 'Racing Green', bg: '#0c1410', surface: '#14201a', text: '#f1f5ee', primary: '#e3b23c' },
   { id: 'mono', name: 'Mono', bg: '#0a0a0a', surface: '#161616', text: '#f5f5f5', primary: '#f5f5f5' },
-  { id: 'arcade', name: 'Retro Arcade', bg: '#06061c', surface: '#10103f', text: '#fff6d6', primary: '#ffd400', secondary: '#ff6b9d' },
+  { id: 'arcade', name: 'Retro Arcade', bg: '#06061c', surface: '#10103f', text: '#fff6d6', primary: '#ffd400', secondary: '#ff6b9d', font: 'pixel' },
+  { id: 'miami', name: 'Miami Sunset', bg: '#1c0f2e', surface: '#2a1640', text: '#fff1e8', primary: '#ff9a5c', secondary: '#ff6eb4' },
   { id: 'garden', name: 'Beer Garden', bg: '#f4f1ea', surface: '#ffffff', text: '#1d1b16', primary: '#2f7d4f', secondary: '#ad5e0d' },
   { id: 'seaside', name: 'Seaside', bg: '#edf5f7', surface: '#ffffff', text: '#102a33', primary: '#0f7c90', secondary: '#c8472a' },
   { id: 'lavender', name: 'Lavender Haze', bg: '#eceef6', surface: '#f8f8fc', text: '#2e3047', primary: '#5f5ca6', secondary: '#46719a' },
@@ -74,6 +75,7 @@ export const sanitizeTheme = (t: any): RoomTheme | undefined => {
   const out: RoomTheme = { id: typeof t.id === 'string' ? t.id.slice(0, 32) : 'custom', bg, surface, text, primary };
   const secondary = pick('secondary');
   if (secondary) out.secondary = secondary;
+  if (t.font === 'pixel') out.font = 'pixel';
   if (typeof t.by === 'string') out.by = t.by.slice(0, 40);
   if (typeof t.at === 'number') out.at = t.at;
   return out;
@@ -88,6 +90,16 @@ export const nextPreset = (t?: RoomTheme): ThemePreset => {
 };
 
 let current: RoomTheme = DEFAULT_THEME;
+
+// The pixel heading font is only fetched once a room actually uses it
+const loadPixelFont = () => {
+  if (document.getElementById('pixel-font')) return;
+  const link = document.createElement('link');
+  link.id = 'pixel-font';
+  link.rel = 'stylesheet';
+  link.href = 'https://fonts.googleapis.com/css2?family=Press+Start+2P&display=swap';
+  document.head.appendChild(link);
+};
 
 export const applyRoomTheme = (theme?: RoomTheme): void => {
   if (typeof document === 'undefined') return;
@@ -111,6 +123,9 @@ export const applyRoomTheme = (theme?: RoomTheme): void => {
   root.classList.toggle('light', light);
   root.setAttribute('data-theme', light ? 'light' : 'dark');
   root.style.colorScheme = light ? 'light' : 'dark';
+  if (t.font === 'pixel') loadPixelFont();
+  root.toggleAttribute('data-font', false);
+  if (t.font) root.setAttribute('data-font', t.font);
   document.querySelector('meta[name="theme-color"]')?.setAttribute('content', t.bg);
 };
 

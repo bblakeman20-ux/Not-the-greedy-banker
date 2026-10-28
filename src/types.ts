@@ -128,6 +128,7 @@ export interface RoomTheme {
   text: string;
   primary: string;
   secondary?: string; // optional 5th colour; falls back to primary
+  font?: 'pixel'; // optional heading style
   by?: string; // name of whoever last changed it
   at?: number;
 }
