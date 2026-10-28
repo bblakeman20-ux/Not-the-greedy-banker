@@ -30,7 +30,7 @@ export const WhoAreYouModal: React.FC<WhoAreYouModalProps> = ({
 }) => {
   const [name, setName] = useState('');
   const [emo, setEmo] = useState('🍺');
-  const [loc, setLoc] = useState('Local');
+  const [loc, setLoc] = useState('');
   const [payLink, setPayLink] = useState('');
   const [mode, setMode] = useState('Train');
   const [showDetails, setShowDetails] = useState(false);
@@ -72,7 +72,7 @@ export const WhoAreYouModal: React.FC<WhoAreYouModalProps> = ({
       id: 'u_' + Date.now() + '_' + Math.random().toString(36).slice(2, 6),
       name: cleanName,
       emo: emo || '🍺',
-      loc: loc.trim() || 'Local',
+      loc: loc.trim(),
       mode: mode || 'Train',
       pay: payLink.toLowerCase().includes('paypal') ? 'PayPal' : 'Monzo',
       payLink: payLink.trim() || undefined,

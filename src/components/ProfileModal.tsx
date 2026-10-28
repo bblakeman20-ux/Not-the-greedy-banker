@@ -54,7 +54,7 @@ export const ProfileModal: React.FC<ProfileModalProps> = ({
       const saved = getSavedUserProfile();
       setName(saved?.name && !/^you$/i.test(saved.name.trim()) ? saved.name : (saved?.name ? 'Ben' : ''));
       setEmo(saved?.emo || '🍺');
-      setLoc(saved?.loc || 'Local');
+      setLoc(saved?.loc && !/^local$/i.test(saved.loc) ? saved.loc : '');
       setPay(saved?.pay || 'Monzo');
       setPayLink(saved?.payLink || '');
       setPayMail(saved?.payMail || '');
@@ -87,7 +87,7 @@ export const ProfileModal: React.FC<ProfileModalProps> = ({
       ...(user?.id ? { id: user.id } : {}),
       name: cleanName,
       emo: emo.trim() || '🍺',
-      loc: loc.trim() || 'Local',
+      loc: loc.trim(),
       pay: pay.trim() || 'Monzo',
       payLink: payLink.trim(),
       payMail: payMail.trim(),

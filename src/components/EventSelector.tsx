@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { OutingEvent, User } from '../types';
 import { fmtWhen, whenOf } from '../utils/dates';
+import { realPlace } from '../utils/storage';
 import {
   MapPin,
   Sparkles,
@@ -114,7 +115,7 @@ export const EventSelector: React.FC<EventSelectorProps> = ({
   };
 
   const whenStr = currentEvent ? evWhen(currentEvent) : '';
-  const displayWhere = currentEvent?.where || 'Local';
+  const displayWhere = realPlace(currentEvent?.where) || 'Area not set';
   const displayVibe = currentEvent?.vibe || 'Craft beer & darts';
   const displayWhen = whenStr || currentEvent?.when || 'Sat 7pm';
   const displayBudget = currentEvent?.budget
@@ -179,6 +180,9 @@ export const EventSelector: React.FC<EventSelectorProps> = ({
       }
     }
   };
+
+  // A brand-new room has nothing to pick; the page's own empty state offers "Start New Outing Plan"
+  if (!currentEvent && events.length === 0) return null;
 
   return (
     <div className="space-y-2.5">

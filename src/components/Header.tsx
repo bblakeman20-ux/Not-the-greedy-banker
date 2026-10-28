@@ -2,9 +2,23 @@ import React, { useRef } from 'react';
 import { Settings, Download, QrCode, Share2, Palette } from 'lucide-react';
 import { PintdrLogo } from './PintdrLogo';
 import { setBuilderAdmin } from '../utils/storage';
+import { SyncState } from '../types';
+
+const SYNC_DOT: Record<SyncState, string> = {
+  live: 'bg-secondary animate-pulse',
+  local: 'bg-muted',
+  error: 'bg-red-500',
+};
+
+const SYNC_LABEL: Record<SyncState, string> = {
+  live: 'Live – synced with your squad',
+  local: 'Local only – changes stay on this device',
+  error: 'Not syncing – check your connection',
+};
 
 interface HeaderProps {
   statusText: string;
+  syncState: SyncState;
   isDenied: boolean;
   onOpenSetup: () => void;
   onOpenShare: () => void;
@@ -18,6 +32,7 @@ interface HeaderProps {
 
 export const Header: React.FC<HeaderProps> = ({
   statusText,
+  syncState,
   onOpenSetup,
   onOpenShare,
   onOpenQrCode,
@@ -65,10 +80,10 @@ export const Header: React.FC<HeaderProps> = ({
                 e.stopPropagation();
                 onOpenSetup();
               }}
-              title={`Room: ${roomFriendlyName || statusText} · Tap to switch squad room`}
+              title={`Room: ${roomFriendlyName || statusText} · ${SYNC_LABEL[syncState]} · Tap to switch squad room`}
               className="inline-flex items-center gap-1.5 cursor-pointer text-[10px] sm:text-[11px] font-bold px-2 py-0.5 rounded-lg bg-card2 border border-line hover:border-primary/50 transition text-muted hover:text-ink min-w-0 active:scale-95 shadow-sm"
             >
-              <span className="w-1.5 h-1.5 rounded-full bg-secondary animate-pulse shrink-0" />
+              <span className={`w-1.5 h-1.5 rounded-full shrink-0 ${SYNC_DOT[syncState]}`} />
               <span className="truncate max-w-[150px] sm:max-w-[200px]">
                 {roomFriendlyName || statusText.replace(/^[⚡⚠️🔴🟢⚪]\s*/, '') || 'Live'}
               </span>

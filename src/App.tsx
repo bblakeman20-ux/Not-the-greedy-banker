@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { AppConfig, AppState, OutingEvent, RoomTheme, User, Venue } from './types';
+import { AppConfig, AppState, OutingEvent, RoomTheme, SyncState, User, Venue } from './types';
 import {
   getInitialDemoState,
   freshRoomState,
@@ -18,6 +18,7 @@ import {
   clearClaimedUserForRoom,
   sanitizeSquad,
   getDeviceId,
+  realPlace,
 } from './utils/storage';
 import { applyRoomTheme, presetName, sanitizeTheme } from './utils/theme';
 import { FirebaseSync } from './utils/firebase';
@@ -96,6 +97,12 @@ export const App: React.FC = () => {
       setToastMsg((cur) => (cur === msg ? null : cur));
     }, 3200);
   };
+
+  const syncState: SyncState = !config.db
+    ? 'local'
+    : syncStatus.ok === 1 || syncStatus.ok === true
+      ? 'live'
+      : 'error';
 
   const syncRef = useRef<FirebaseSync | null>(null);
 
@@ -373,7 +380,7 @@ export const App: React.FC = () => {
         id,
         name: cleanName,
         emo: data.emo || '🍺',
-        loc: data.loc || 'Local',
+        loc: realPlace(data.loc),
         mode: 'Train',
         pay: data.pay || 'Monzo',
         claimedDeviceId: getDeviceId(),
@@ -634,6 +641,7 @@ export const App: React.FC = () => {
       <div className="bg-card border border-line rounded-2xl p-3.5 sm:p-5 shadow-xl space-y-3">
         <Header
           statusText={syncStatus.text}
+          syncState={syncState}
           isDenied={syncStatus.ok === 401 || syncStatus.ok === 403}
           onOpenSetup={() => setIsSetupOpen(!isSetupOpen)}
           onOpenShare={() => setIsShareOpen(true)}
@@ -724,6 +732,7 @@ export const App: React.FC = () => {
         currentPlanName={currentEvent?.name}
         squadCount={state.squad.length}
         onShowToast={showToast}
+        syncState={syncState}
       />
 
       {/* Summary Accordion */}
@@ -795,7 +804,7 @@ export const App: React.FC = () => {
                 onClick={() =>
                   handleNewEvent({
                     name: "Friday Outing",
-                    where: currentUser?.loc || '',
+                    where: realPlace(currentUser?.loc),
                     vibe: '',
                     when: 'Friday 7:00 PM',
                     rollFree: false,

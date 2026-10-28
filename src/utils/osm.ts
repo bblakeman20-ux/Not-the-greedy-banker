@@ -1,5 +1,5 @@
 import { Venue, OutingEvent, User, Midpoint, BanItem, VenueStop } from '../types';
-import { getStorage, setStorage, isBanned, normName, safeUrl } from './storage';
+import { getStorage, setStorage, isBanned, normName, realPlace, safeUrl } from './storage';
 import { parseWhen } from './dates';
 import { getLocalCuratedIdeas } from './localPlaces';
 
@@ -272,7 +272,14 @@ export interface PlacesPool {
  * Searches Nominatim directly for genuine OpenStreetMap POIs in the area.
  * Extremely fast, returns 100% verified venues with exact street addresses and GPS coords.
  */
-async function searchNominatimPois(area: string, queries: string[]): Promise<any[]> {
+async function searchNominatimPois(
+  area: string,
+  queries: string[],
+  center: { lat: number; lon: number }
+): Promise<any[]> {
+  // Keep results in the UK and within ~10 miles of the search centre
+  const d = 0.15;
+  const box = `&countrycodes=gb&bounded=1&viewbox=${center.lon - d},${center.lat + d},${center.lon + d},${center.lat - d}`;
   const results: any[] = [];
   const seenIds = new Set<string>();
 
@@ -281,7 +288,7 @@ async function searchNominatimPois(area: string, queries: string[]): Promise<any
       const fullQuery = `${q} in ${area}`;
       const url = `https://nominatim.openstreetmap.org/search?format=jsonv2&q=${encodeURIComponent(
         fullQuery
-      )}&limit=8&addressdetails=1`;
+      )}&limit=8&addressdetails=1${box}`;
       const items = await osmFetch(url, 3500);
 
       if (Array.isArray(items)) {
@@ -343,11 +350,12 @@ async function searchNominatimPois(area: string, queries: string[]): Promise<any
  * NEVER fabricates fake/mock places.
  */
 export async function fetchPlaces(
-  where: string,
+  whereRaw: string,
   vibe: string,
   banList: BanItem[],
   onProgress?: (msg: string) => void
 ): Promise<PlacesPool> {
+  const where = realPlace(whereRaw);
   let cs = await centresFor(where);
   if (!cs.length) {
     cs = [{ lat: 51.3633, lon: 0.6083, name: where || 'Rainham, Kent' }];
@@ -393,7 +401,7 @@ export async function fetchPlaces(
   const places: any[] = [];
 
   // Step 1: Rapid Nominatim POI search
-  const nominatimResults = await searchNominatimPois(areaClean, poiQueries);
+  const nominatimResults = await searchNominatimPois(areaClean, poiQueries, center);
   nominatimResults.forEach((p) => {
     if (!isBanned(p.name, banList) && !seen.has(normName(p.name))) {
       seen.add(normName(p.name));

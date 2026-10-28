@@ -141,6 +141,9 @@ export interface AppState {
   theme?: RoomTheme;
 }
 
+// local: no database configured · live: synced · error: database unreachable or refused
+export type SyncState = 'local' | 'live' | 'error';
+
 export interface AppConfig {
   u: string;
   db: string;

@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { AppConfig } from '../types';
+import { AppConfig, SyncState } from '../types';
 import {
   clearRecentRooms,
   copyStr,
@@ -41,6 +41,7 @@ interface SetupModalProps {
   currentPlanName?: string;
   squadCount?: number;
   onShowToast?: (msg: string) => void;
+  syncState?: SyncState;
 }
 
 export const SetupModal: React.FC<SetupModalProps> = ({
@@ -51,6 +52,7 @@ export const SetupModal: React.FC<SetupModalProps> = ({
   currentPlanName,
   squadCount,
   onShowToast,
+  syncState = 'live',
 }) => {
   const [db, setDb] = useState(config.db || DEFAULT_FIREBASE_DB);
   const [rm, setRm] = useState(config.rm);
@@ -268,8 +270,16 @@ export const SetupModal: React.FC<SetupModalProps> = ({
           <div>
             <h2 className="text-sm font-display font-black text-ink tracking-wide flex items-center gap-1.5">
               <span>Squad Rooms</span>
-              <span className="text-[10px] font-bold px-1.5 py-0.5 rounded-full bg-[color-mix(in_oklab,var(--good)_15%,transparent)] text-secondary border border-secondary/30 font-mono">
-                Live Sync
+              <span
+                className={`text-[10px] font-bold px-1.5 py-0.5 rounded-full border font-mono ${
+                  syncState === 'live'
+                    ? 'bg-secondary/15 text-secondary border-secondary/30'
+                    : syncState === 'error'
+                      ? 'bg-red-500/15 text-red-400 border-red-500/30'
+                      : 'bg-card2 text-muted border-line'
+                }`}
+              >
+                {syncState === 'live' ? 'Live Sync' : syncState === 'error' ? 'Not syncing' : 'Local only'}
               </span>
             </h2>
             <p className="text-[11px] text-muted">1-tap room switcher & device memory</p>
@@ -354,7 +364,7 @@ export const SetupModal: React.FC<SetupModalProps> = ({
                 <span className="text-muted">{rm}</span>
                 {squadCount ? (
                   <span className="text-secondary font-sans flex items-center gap-1">
-                    • <Users className="w-3 h-3" /> {squadCount} mates
+                    • <Users className="w-3 h-3" /> {squadCount} {squadCount === 1 ? 'mate' : 'mates'}
                   </span>
                 ) : null}
                 {currentPlanName ? (
@@ -567,7 +577,7 @@ export const SetupModal: React.FC<SetupModalProps> = ({
                             <span className="truncate">{r.code}</span>
                             {r.memberCount ? (
                               <span className="font-sans text-muted shrink-0">
-                                • {r.memberCount} mates
+                                • {r.memberCount} {r.memberCount === 1 ? 'mate' : 'mates'}
                               </span>
                             ) : null}
                             {r.planName ? (

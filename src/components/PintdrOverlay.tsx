@@ -3,7 +3,7 @@ import { AppConfig, BanItem, OutingEvent, User, Venue } from '../types';
 import { fetchPlaces, makeIdeas, miles } from '../utils/osm';
 import { askGergAI, friendlyAiError, MODES } from '../utils/gemini';
 import { getLocalCuratedIdeas } from '../utils/localPlaces';
-import { isBanned, normName, safeUrl } from '../utils/storage';
+import { isBanned, normName, realPlace, safeUrl } from '../utils/storage';
 import { FlickeringFlameLoader } from './FlickeringFlameLoader';
 import {
   Flame,
@@ -75,7 +75,7 @@ export const PintdrOverlay: React.FC<PintdrOverlayProps> = ({
 }) => {
   // Filters & Parameters
   const [area, setArea] = useState(
-    event.where || (event.mid && event.mid.name) || currentUser?.loc || 'Rochester'
+    realPlace(event.where) || (event.mid && event.mid.name) || realPlace(currentUser?.loc) || 'Rochester'
   );
   const [vibe, setVibe] = useState(event.vibe || '');
   const [sourceFilter, setSourceFilter] = useState<SourceFilter>('mixed');

@@ -332,6 +332,12 @@ export const loadInitialConfig = (): AppConfig => {
   return { u, db, rm, md, key, ev };
 };
 
+// "Local" is a display placeholder, not a place – never feed it to a map search.
+export const realPlace = (s?: string | null): string => {
+  const t = String(s || '').trim();
+  return /^local$/i.test(t) ? '' : t;
+};
+
 export const gbp = (n: number | string): string => '£' + (+n || 0).toFixed(2);
 
 export const normName = (n: string): string =>
