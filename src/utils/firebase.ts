@@ -1,5 +1,6 @@
 import { AppState, OutingEvent } from '../types';
 import { APP_VER, getStorage, setStorage, freshRoomState } from './storage';
+import { sanitizeTheme } from './theme';
 
 const EV_LISTS = ['venues', 'slots', 'exp', 'bounties', 'paid'] as const;
 
@@ -93,6 +94,7 @@ export const normState = (d: any): AppState => ({
   ban: (d.ban || []).filter((b: any) => !/greedy\s*banker/i.test(b?.name || '')),
   board: d.board || {},
   events: d.events || [],
+  theme: sanitizeTheme(d.theme),
 });
 
 export function upgradeOldFormat(d: any): AppState {

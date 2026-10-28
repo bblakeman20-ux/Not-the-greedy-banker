@@ -1,5 +1,5 @@
-import React, { useState, useEffect, useRef } from 'react';
-import { AppConfig, AppState, OutingEvent, User, Venue } from './types';
+import React, { useState, useEffect, useRef, lazy, Suspense } from 'react';
+import { AppConfig, AppState, OutingEvent, RoomTheme, SyncState, User, Venue } from './types';
 import {
   getInitialDemoState,
   freshRoomState,
@@ -18,28 +18,36 @@ import {
   clearClaimedUserForRoom,
   sanitizeSquad,
   getDeviceId,
+  realPlace,
 } from './utils/storage';
-import { applyThemeClass } from './utils/theme';
+import { applyRoomTheme, presetName, sanitizeTheme } from './utils/theme';
 import { FirebaseSync } from './utils/firebase';
 import { Header } from './components/Header';
-import { SetupModal } from './components/SetupModal';
 import { WhoAreYouModal } from './components/WhoAreYouModal';
-import { SummaryModal } from './components/SummaryModal';
 import { ProfileBar } from './components/ProfileBar';
 import { ProfileModal } from './components/ProfileModal';
 import { EventSelector } from './components/EventSelector';
 import { ActivitiesTab } from './components/Tabs/ActivitiesTab';
-import { DatesTab } from './components/Tabs/DatesTab';
-import { TravelTab } from './components/Tabs/TravelTab';
-import { KittyTab } from './components/Tabs/KittyTab';
-import { QrCodeModal } from './components/QrCodeModal';
-import { ShareDrawer } from './components/ShareDrawer';
 import { BottomNav, TabType } from './components/BottomNav';
 import { Sparkles, Plus } from 'lucide-react';
 import { fetchPlaces, makeIdeas } from './utils/osm';
 import { getLocalCuratedIdeas } from './utils/localPlaces';
 import { parseWhen, isoLocal } from './utils/dates';
 import { calculateLedger } from './utils/kitty';
+
+// Screens most visits never open are loaded on demand to keep the first load small
+const SetupModal = lazy(() => import('./components/SetupModal').then((m) => ({ default: m.SetupModal })));
+const SummaryModal = lazy(() => import('./components/SummaryModal').then((m) => ({ default: m.SummaryModal })));
+const QrCodeModal = lazy(() => import('./components/QrCodeModal').then((m) => ({ default: m.QrCodeModal })));
+const ShareDrawer = lazy(() => import('./components/ShareDrawer').then((m) => ({ default: m.ShareDrawer })));
+const ThemePicker = lazy(() => import('./components/ThemePicker').then((m) => ({ default: m.ThemePicker })));
+const DatesTab = lazy(() => import('./components/Tabs/DatesTab').then((m) => ({ default: m.DatesTab })));
+const TravelTab = lazy(() => import('./components/Tabs/TravelTab').then((m) => ({ default: m.TravelTab })));
+const KittyTab = lazy(() => import('./components/Tabs/KittyTab').then((m) => ({ default: m.KittyTab })));
+
+const TabLoading = () => (
+  <div className="bg-card border border-line rounded-2xl p-6 text-center text-xs text-muted animate-pulse">Loading…</div>
+);
 
 export const App: React.FC = () => {
   const [config, setConfig] = useState<AppConfig>(loadInitialConfig);
@@ -82,9 +90,12 @@ export const App: React.FC = () => {
   const [now, setNow] = useState(Date.now());
   const [toastMsg, setToastMsg] = useState<string | null>(null);
 
+  const [isThemeOpen, setIsThemeOpen] = useState(false);
+
+  // The palette lives in the room state, so a change by anyone syncs to everyone
   useEffect(() => {
-    applyThemeClass();
-  }, []);
+    applyRoomTheme(state.theme);
+  }, [state.theme]);
 
   const showToast = (msg: string) => {
     setToastMsg(msg);
@@ -92,6 +103,12 @@ export const App: React.FC = () => {
       setToastMsg((cur) => (cur === msg ? null : cur));
     }, 3200);
   };
+
+  const syncState: SyncState = !config.db
+    ? 'local'
+    : syncStatus.ok === 1 || syncStatus.ok === true
+      ? 'live'
+      : 'error';
 
   const syncRef = useRef<FirebaseSync | null>(null);
 
@@ -319,6 +336,13 @@ export const App: React.FC = () => {
     } catch (e) {}
   };
 
+  const handleSetTheme = (picked: RoomTheme) => {
+    const theme = sanitizeTheme({ ...picked, by: currentUser?.name, at: Date.now() });
+    if (!theme) return;
+    persistState({ ...state, theme });
+    showToast(`🎨 Room theme: ${presetName(theme)}`);
+  };
+
   const handleSelectUser = (id: string) => {
     setClaimedUserForRoom(config.rm, id);
     const updated = { ...config, u: id };
@@ -362,7 +386,7 @@ export const App: React.FC = () => {
         id,
         name: cleanName,
         emo: data.emo || '🍺',
-        loc: data.loc || 'Local',
+        loc: realPlace(data.loc),
         mode: 'Train',
         pay: data.pay || 'Monzo',
         claimedDeviceId: getDeviceId(),
@@ -620,13 +644,15 @@ export const App: React.FC = () => {
   return (
     <div className="max-w-6xl mx-auto px-3 sm:px-6 lg:px-8 py-4 pb-28 space-y-4">
       {/* Top Header Card & Squad Profile Strip */}
-      <div className="bg-[#17171a] border border-[#2b2b2f] rounded-2xl p-3.5 sm:p-5 shadow-xl space-y-3">
+      <div className="bg-card border border-line rounded-2xl p-3.5 sm:p-5 shadow-xl space-y-3">
         <Header
           statusText={syncStatus.text}
+          syncState={syncState}
           isDenied={syncStatus.ok === 401 || syncStatus.ok === 403}
           onOpenSetup={() => setIsSetupOpen(!isSetupOpen)}
           onOpenShare={() => setIsShareOpen(true)}
           onOpenQrCode={() => setIsQrOpen(true)}
+          onOpenTheme={() => setIsThemeOpen(true)}
           showInstall={Boolean(installPrompt)}
           onInstall={handleInstallClick}
           roomFriendlyName={roomFriendlyName}
@@ -669,7 +695,9 @@ export const App: React.FC = () => {
         onClose={() => setShowWhoAreYou(false)}
       />
 
+      <Suspense fallback={null}>
       {/* Share Drawer (WhatsApp / Messenger / Copy Link / QR / Outing Summary) */}
+      {isShareOpen && (
       <ShareDrawer
         isOpen={isShareOpen}
         onClose={() => setIsShareOpen(false)}
@@ -686,8 +714,19 @@ export const App: React.FC = () => {
         }}
         onShowToast={showToast}
       />
+      )}
+
+      {isThemeOpen && (
+      <ThemePicker
+        isOpen={isThemeOpen}
+        onClose={() => setIsThemeOpen(false)}
+        theme={state.theme}
+        onApply={handleSetTheme}
+      />
+      )}
 
       {/* QR Code Modal for Camera Onboarding */}
+      {isQrOpen && (
       <QrCodeModal
         isOpen={isQrOpen}
         onClose={() => setIsQrOpen(false)}
@@ -695,8 +734,10 @@ export const App: React.FC = () => {
         dbUrl={config.db}
         eventId={currentEvent?.id}
       />
+      )}
 
       {/* Setup Accordion */}
+      {isSetupOpen && (
       <SetupModal
         isOpen={isSetupOpen}
         onClose={() => setIsSetupOpen(false)}
@@ -705,7 +746,9 @@ export const App: React.FC = () => {
         currentPlanName={currentEvent?.name}
         squadCount={state.squad.length}
         onShowToast={showToast}
+        syncState={syncState}
       />
+      )}
 
       {/* Summary Accordion */}
       {isSummaryOpen && currentEvent && (
@@ -719,6 +762,7 @@ export const App: React.FC = () => {
           onShowToast={showToast}
         />
       )}
+      </Suspense>
 
       {/* Profile Edit/Create Modal */}
       <ProfileModal
@@ -750,14 +794,14 @@ export const App: React.FC = () => {
 
       {/* Blank Canvas Empty State */}
       {!currentEvent && (
-        <div className="bg-[#17171a] border border-[#2b2b2f] rounded-2xl p-6 sm:p-8 text-center space-y-3">
-          <div className="w-12 h-12 rounded-2xl bg-[#ff6b57]/15 border border-[#ff6b57]/30 flex items-center justify-center mx-auto text-[#ff6b57]">
+        <div className="bg-card border border-line rounded-2xl p-6 sm:p-8 text-center space-y-3">
+          <div className="w-12 h-12 rounded-2xl bg-primary/15 border border-primary/30 flex items-center justify-center mx-auto text-primary">
             <Sparkles className="w-6 h-6" />
           </div>
-          <div className="text-base sm:text-lg font-bold text-[#ffffff] font-display">
+          <div className="text-base sm:text-lg font-bold text-ink font-display">
             Blank Canvas · Ready for Your Squad Outing
           </div>
-          <p className="text-xs sm:text-sm text-[#8d8d94] max-w-md mx-auto">
+          <p className="text-xs sm:text-sm text-muted max-w-md mx-auto">
             This room is clean with no pre-made events. Create your first outing plan to start pitching spots, swiping in Pintdr mode, and coordinating dates.
           </p>
           <div className="pt-2 flex flex-wrap items-center justify-center gap-2.5">
@@ -765,7 +809,7 @@ export const App: React.FC = () => {
               <button
                 type="button"
                 onClick={() => setProfileModal({ isOpen: true, user: null })}
-                className="cursor-pointer bg-[#ff6b57] text-[#1a0703] font-bold text-xs sm:text-sm px-5 py-2.5 rounded-xl hover:brightness-105 active:scale-95 transition shadow-[0_0_16px_rgba(255,107,87,0.25)] flex items-center gap-1.5"
+                className="cursor-pointer bg-primary text-primary-ink font-bold text-xs sm:text-sm px-5 py-2.5 rounded-xl hover:brightness-105 active:scale-95 transition shadow-[0_0_16px_color-mix(in_oklab,var(--accent)_25%,transparent)] flex items-center gap-1.5"
               >
                 <Plus className="w-4 h-4" />
                 <span>Create Your Profile First</span>
@@ -776,13 +820,13 @@ export const App: React.FC = () => {
                 onClick={() =>
                   handleNewEvent({
                     name: "Friday Outing",
-                    where: currentUser?.loc || '',
+                    where: realPlace(currentUser?.loc),
                     vibe: '',
                     when: 'Friday 7:00 PM',
                     rollFree: false,
                   })
                 }
-                className="cursor-pointer bg-[#ff6b57] text-[#1a0703] font-bold text-xs sm:text-sm px-5 py-2.5 rounded-xl hover:brightness-105 active:scale-95 transition shadow-[0_0_16px_rgba(255,107,87,0.25)] flex items-center gap-1.5"
+                className="cursor-pointer bg-primary text-primary-ink font-bold text-xs sm:text-sm px-5 py-2.5 rounded-xl hover:brightness-105 active:scale-95 transition shadow-[0_0_16px_color-mix(in_oklab,var(--accent)_25%,transparent)] flex items-center gap-1.5"
               >
                 <Plus className="w-4 h-4" />
                 <span>Start New Outing Plan</span>
@@ -814,6 +858,7 @@ export const App: React.FC = () => {
             />
           )}
 
+          <Suspense fallback={<TabLoading />}>
           {activeTab === 'dat' && (
             <DatesTab
               event={currentEvent}
@@ -845,6 +890,7 @@ export const App: React.FC = () => {
               onShowToast={showToast}
             />
           )}
+          </Suspense>
         </div>
       )}
 
@@ -864,7 +910,7 @@ export const App: React.FC = () => {
 
       {/* Floating In-App Toast Notification */}
       {toastMsg && (
-        <div className="fixed bottom-20 left-1/2 -translate-x-1/2 z-50 bg-[#212124] border border-[#ff6b57] text-[#f4f4f5] px-4 py-2.5 rounded-2xl shadow-2xl text-xs font-semibold flex items-center gap-2 max-w-[90vw] transition-all animate-in fade-in slide-in-from-bottom-2">
+        <div className="fixed bottom-20 left-1/2 -translate-x-1/2 z-50 bg-card2 border border-primary text-ink px-4 py-2.5 rounded-2xl shadow-2xl text-xs font-semibold flex items-center gap-2 max-w-[90vw] transition-all animate-in fade-in slide-in-from-bottom-2">
           <span>{toastMsg}</span>
         </div>
       )}

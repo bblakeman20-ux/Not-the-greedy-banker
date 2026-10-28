@@ -94,41 +94,41 @@ export const ShareDrawer: React.FC<ShareDrawerProps> = ({
   return (
     <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center p-0 sm:p-4 bg-black/75 backdrop-blur-sm animate-in fade-in duration-200">
       <div
-        className="w-full sm:max-w-md bg-[#17171a] border-t sm:border border-[#2b2b2f] rounded-t-3xl sm:rounded-3xl p-5 sm:p-6 shadow-2xl space-y-4 max-h-[90vh] overflow-y-auto"
+        className="w-full sm:max-w-md bg-card border-t sm:border border-line rounded-t-3xl sm:rounded-3xl p-5 sm:p-6 shadow-2xl space-y-4 max-h-[90vh] overflow-y-auto"
         onClick={(e) => e.stopPropagation()}
       >
-        <div className="flex items-center justify-between pb-3 border-b border-[#2b2b2f]">
+        <div className="flex items-center justify-between pb-3 border-b border-line">
           <div className="flex items-center gap-2">
-            <div className="w-8 h-8 rounded-xl bg-[#ff6b57]/20 border border-[#ff6b57]/40 flex items-center justify-center text-[#ff6b57]">
+            <div className="w-8 h-8 rounded-xl bg-primary/20 border border-primary/40 flex items-center justify-center text-primary">
               <Share2 className="w-4 h-4" />
             </div>
             <div>
-              <h3 className="text-base font-bold text-[#ffffff] font-display">
+              <h3 className="text-base font-bold text-ink font-display">
                 Share & Summary
               </h3>
-              <p className="text-xs text-[#8d8d94]">
-                Room: <strong className="text-[#ff6b57]">{configRm || 'default'}</strong>
+              <p className="text-xs text-muted">
+                Room: <strong className="text-primary">{configRm || 'default'}</strong>
               </p>
             </div>
           </div>
           <button
             type="button"
             onClick={onClose}
-            className="w-8 h-8 rounded-xl bg-[#212124] border border-[#2b2b2f] text-[#8d8d94] hover:text-[#f4f4f5] flex items-center justify-center cursor-pointer transition"
+            className="w-8 h-8 rounded-xl bg-card2 border border-line text-muted hover:text-ink flex items-center justify-center cursor-pointer transition"
           >
             <X className="w-4 h-4" />
           </button>
         </div>
 
         {event && (
-          <div className="bg-[#212124] border border-[#2b2b2f] rounded-2xl p-3.5 space-y-1">
-            <div className="text-xs font-semibold text-[#8d8d94] uppercase tracking-wider">
+          <div className="bg-card2 border border-line rounded-2xl p-3.5 space-y-1">
+            <div className="text-xs font-semibold text-muted uppercase tracking-wider">
               Active Outing Plan
             </div>
-            <div className="font-bold text-sm text-[#ffffff] flex items-center justify-between">
+            <div className="font-bold text-sm text-ink flex items-center justify-between">
               <span>{event.name}</span>
               {event.where && (
-                <span className="text-xs font-normal text-[#a1a1aa]">📍 {event.where}</span>
+                <span className="text-xs font-normal text-muted">📍 {event.where}</span>
               )}
             </div>
           </div>
@@ -160,8 +160,8 @@ export const ShareDrawer: React.FC<ShareDrawerProps> = ({
             onClick={handleCopyLink}
             className={`cursor-pointer font-bold text-xs sm:text-sm h-12 px-3.5 rounded-xl transition flex items-center justify-center gap-2 whitespace-nowrap active:scale-95 col-span-2 ${
               copied
-                ? 'bg-[#c6ff3d] text-[#141a03] shadow-[0_0_16px_rgba(198,255,61,0.25)]'
-                : 'border border-[#2b2b2f] bg-[#212124] text-[#f4f4f5] hover:border-[#ff6b57]/50'
+                ? 'bg-secondary text-secondary-ink shadow-[0_0_16px_color-mix(in_oklab,var(--good)_25%,transparent)]'
+                : 'border border-line bg-card2 text-ink hover:border-primary/50'
             }`}
           >
             {copied ? (
@@ -171,23 +171,23 @@ export const ShareDrawer: React.FC<ShareDrawerProps> = ({
               </>
             ) : (
               <>
-                <Copy className="w-4 h-4 text-[#ff6b57]" />
+                <Copy className="w-4 h-4 text-primary" />
                 <span>Copy Invite Link</span>
               </>
             )}
           </button>
         </div>
 
-        <div className="pt-2 border-t border-[#2b2b2f]/80 grid grid-cols-2 gap-2.5">
+        <div className="pt-2 border-t border-line/80 grid grid-cols-2 gap-2.5">
           <button
             type="button"
             onClick={() => {
               onClose();
               onOpenQrCode();
             }}
-            className="cursor-pointer border border-[#2b2b2f] bg-[#212124] hover:bg-[#27272c] text-[#f4f4f5] font-bold text-xs sm:text-sm h-11 px-3 rounded-xl transition flex items-center justify-center gap-1.5 whitespace-nowrap active:scale-95"
+            className="cursor-pointer border border-line bg-card2 hover:bg-card2 text-ink font-bold text-xs sm:text-sm h-11 px-3 rounded-xl transition flex items-center justify-center gap-1.5 whitespace-nowrap active:scale-95"
           >
-            <QrCode className="w-4 h-4 text-[#ff6b57]" />
+            <QrCode className="w-4 h-4 text-primary" />
             <span>Show QR Code</span>
           </button>
 
@@ -197,7 +197,7 @@ export const ShareDrawer: React.FC<ShareDrawerProps> = ({
               onClose();
               onOpenSummary();
             }}
-            className="cursor-pointer border border-[#c6ff3d]/40 bg-[rgba(198,255,61,0.12)] hover:bg-[rgba(198,255,61,0.2)] text-[#c6ff3d] font-bold text-xs sm:text-sm h-11 px-3 rounded-xl transition flex items-center justify-center gap-1.5 whitespace-nowrap active:scale-95 shadow-[0_0_12px_rgba(198,255,61,0.12)]"
+            className="cursor-pointer border border-secondary/40 bg-[color-mix(in_oklab,var(--good)_12%,transparent)] hover:bg-[color-mix(in_oklab,var(--good)_20%,transparent)] text-secondary font-bold text-xs sm:text-sm h-11 px-3 rounded-xl transition flex items-center justify-center gap-1.5 whitespace-nowrap active:scale-95 shadow-[0_0_12px_color-mix(in_oklab,var(--good)_12%,transparent)]"
           >
             <FileText className="w-4 h-4" />
             <span>View Summary</span>
@@ -208,7 +208,7 @@ export const ShareDrawer: React.FC<ShareDrawerProps> = ({
           <button
             type="button"
             onClick={handleNativeShare}
-            className="w-full cursor-pointer text-xs font-semibold text-[#8d8d94] hover:text-[#f4f4f5] py-1 text-center transition flex items-center justify-center gap-1"
+            className="w-full cursor-pointer text-xs font-semibold text-muted hover:text-ink py-1 text-center transition flex items-center justify-center gap-1"
           >
             <ExternalLink className="w-3 h-3" />
             <span>More device sharing options</span>

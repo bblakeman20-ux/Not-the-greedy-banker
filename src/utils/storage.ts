@@ -133,10 +133,8 @@ export const getInitialDemoState = (): AppState => {
 export const DEFAULT_FIREBASE_DB =
   'https://not-the-greedy-banker-default-rtdb.europe-west1.firebasedatabase.app';
 
-export const DEFAULT_GEMINI_KEY =
-  typeof import.meta !== 'undefined' && import.meta.env
-    ? (import.meta.env.VITE_DEFAULT_GEMINI_KEY || '')
-    : '';
+// The Gemini key lives on the server (GEMINI_API_KEY). Never bake one into the browser bundle.
+export const DEFAULT_GEMINI_KEY = '';
 
 export const generateRoomCode = (): string => {
   const adjectives = [
@@ -317,7 +315,7 @@ export const loadInitialConfig = (): AppConfig => {
 
   let md = getStorage('md', 'gemini-flash-latest');
   // Auto-upgrade and purge legacy models from browser storage
-  if (!md || /^gemini-(?:1\.5|2\.0|2\.5)/.test(md)) {
+  if (!md || /^gemini-(?:1\.5|2\.0|2\.5|3\.1-flash-lite|3\.8-flash|4-argon)/.test(md)) {
     md = 'gemini-flash-latest';
     setStorage('md', md);
   }
@@ -332,6 +330,12 @@ export const loadInitialConfig = (): AppConfig => {
   if (p.get('ev')) setStorage(evKey, ev);
 
   return { u, db, rm, md, key, ev };
+};
+
+// "Local" is a display placeholder, not a place – never feed it to a map search.
+export const realPlace = (s?: string | null): string => {
+  const t = String(s || '').trim();
+  return /^local$/i.test(t) ? '' : t;
 };
 
 export const gbp = (n: number | string): string => '£' + (+n || 0).toFixed(2);

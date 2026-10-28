@@ -303,15 +303,15 @@ export const VenueExplorer: React.FC<VenueExplorerProps> = ({
   };
 
   return (
-    <div className="bg-[#17171a] border border-[#2b2b2f] rounded-2xl p-4 my-3 text-left">
+    <div className="bg-card border border-line rounded-2xl p-4 my-3 text-left">
       {/* Header with Title & Mode Switcher */}
       <div className="flex flex-wrap items-center justify-between gap-2 mb-3">
         <div>
-          <div className="flex items-center gap-1.5 font-display font-extrabold text-sm text-[#f4f4f5]">
-            <Compass className="w-4 h-4 text-[#ff6b57]" />
+          <div className="flex items-center gap-1.5 font-display font-extrabold text-sm text-ink">
+            <Compass className="w-4 h-4 text-primary" />
             <span>Map Venue Discovery & Swiper</span>
           </div>
-          <div className="text-[11px] text-[#8d8d94]">
+          <div className="text-[11px] text-muted">
             Search real pubs, activities & combos directly from OpenStreetMap
           </div>
         </div>
@@ -322,21 +322,21 @@ export const VenueExplorer: React.FC<VenueExplorerProps> = ({
             <button
               type="button"
               onClick={onOpenPintdr}
-              className="px-2.5 py-1.5 rounded-xl font-bold flex items-center gap-1 cursor-pointer bg-gradient-to-r from-[#ff6b57] to-[#ff8f7d] text-[#1a0703] hover:brightness-110 active:scale-95 transition text-xs shadow-md shadow-[#ff6b57]/20"
+              className="px-2.5 py-1.5 rounded-xl font-bold flex items-center gap-1 cursor-pointer bg-gradient-to-r from-primary to-primary-hi text-primary-ink hover:brightness-110 active:scale-95 transition text-xs shadow-md shadow-primary/20"
             >
               <Flame className="w-3.5 h-3.5 fill-current" />
               <span>PINTDR™ Swiper</span>
             </button>
           )}
 
-          <div className="flex items-center bg-[#212124] border border-[#2b2b2f] p-0.5 rounded-xl text-xs">
+          <div className="flex items-center bg-card2 border border-line p-0.5 rounded-xl text-xs">
             <button
               type="button"
               onClick={() => setViewMode('swipe')}
               className={`px-2.5 py-1 rounded-lg font-semibold flex items-center gap-1 cursor-pointer transition ${
                 viewMode === 'swipe'
-                  ? 'bg-[#ff6b57] text-[#1a0703] shadow'
-                  : 'text-[#8d8d94] hover:text-[#f4f4f5]'
+                  ? 'bg-primary text-primary-ink shadow'
+                  : 'text-muted hover:text-ink'
               }`}
             >
               <Flame className="w-3.5 h-3.5" />
@@ -347,8 +347,8 @@ export const VenueExplorer: React.FC<VenueExplorerProps> = ({
               onClick={() => setViewMode('grid')}
               className={`px-2.5 py-1 rounded-lg font-semibold flex items-center gap-1 cursor-pointer transition ${
                 viewMode === 'grid'
-                  ? 'bg-[#ff6b57] text-[#1a0703] shadow'
-                  : 'text-[#8d8d94] hover:text-[#f4f4f5]'
+                  ? 'bg-primary text-primary-ink shadow'
+                  : 'text-muted hover:text-ink'
               }`}
             >
               <List className="w-3.5 h-3.5" />
@@ -359,8 +359,8 @@ export const VenueExplorer: React.FC<VenueExplorerProps> = ({
               onClick={() => setViewMode('map')}
               className={`px-2.5 py-1 rounded-lg font-semibold flex items-center gap-1 cursor-pointer transition ${
                 viewMode === 'map'
-                  ? 'bg-[#ff6b57] text-[#1a0703] shadow'
-                  : 'text-[#8d8d94] hover:text-[#f4f4f5]'
+                  ? 'bg-primary text-primary-ink shadow'
+                  : 'text-muted hover:text-ink'
               }`}
             >
               <MapIcon className="w-3.5 h-3.5" />
@@ -375,23 +375,23 @@ export const VenueExplorer: React.FC<VenueExplorerProps> = ({
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
           {/* Area Input */}
           <div className="relative">
-            <MapPin className="w-3.5 h-3.5 text-[#ff6b57] absolute left-3 top-3 pointer-events-none" />
+            <MapPin className="w-3.5 h-3.5 text-primary absolute left-3 top-3 pointer-events-none" />
             <input
               value={areaInput}
               onChange={(e) => setAreaInput(e.target.value)}
               placeholder="Area or town (e.g. Rochester, Soho)"
-              className="w-full bg-[#212124] border border-transparent focus:border-[#ff6b57] text-[#f4f4f5] pl-8 pr-3 py-2 rounded-xl text-xs outline-none transition"
+              className="w-full bg-card2 border border-transparent focus:border-primary text-ink pl-8 pr-3 py-2 rounded-xl text-xs outline-none transition"
             />
           </div>
 
           {/* Keyword / Vibe Search */}
           <div className="relative">
-            <Search className="w-3.5 h-3.5 text-[#8d8d94] absolute left-3 top-3 pointer-events-none" />
+            <Search className="w-3.5 h-3.5 text-muted absolute left-3 top-3 pointer-events-none" />
             <input
               value={queryInput}
               onChange={(e) => setQueryInput(e.target.value)}
               placeholder="Search activity, food or pub (e.g. Axe, Curry, Taproom)"
-              className="w-full bg-[#212124] border border-transparent focus:border-[#ff6b57] text-[#f4f4f5] pl-8 pr-3 py-2 rounded-xl text-xs outline-none transition"
+              className="w-full bg-card2 border border-transparent focus:border-primary text-ink pl-8 pr-3 py-2 rounded-xl text-xs outline-none transition"
             />
           </div>
         </div>
@@ -405,8 +405,8 @@ export const VenueExplorer: React.FC<VenueExplorerProps> = ({
               onClick={() => handleSelectChip(chip)}
               className={`shrink-0 px-2.5 py-1 rounded-lg border transition cursor-pointer flex items-center gap-1 ${
                 selectedChip === chip.label
-                  ? 'border-[#ff6b57] bg-[rgba(255,107,87,0.15)] text-[#f4f4f5] font-semibold'
-                  : 'border-[#2b2b2f] bg-[#212124] text-[#8d8d94] hover:text-[#f4f4f5]'
+                  ? 'border-primary bg-[color-mix(in_oklab,var(--accent)_15%,transparent)] text-ink font-semibold'
+                  : 'border-line bg-card2 text-muted hover:text-ink'
               }`}
             >
               <span>{chip.label}</span>
@@ -419,7 +419,7 @@ export const VenueExplorer: React.FC<VenueExplorerProps> = ({
           <button
             type="submit"
             disabled={loading}
-            className="flex-1 cursor-pointer bg-[#ff6b57] hover:brightness-105 active:scale-98 text-[#1a0703] font-bold text-xs py-2 px-4 rounded-xl transition flex items-center justify-center gap-1.5 disabled:opacity-50"
+            className="flex-1 cursor-pointer bg-primary hover:brightness-105 active:scale-98 text-primary-ink font-bold text-xs py-2 px-4 rounded-xl transition flex items-center justify-center gap-1.5 disabled:opacity-50"
           >
             {loading ? (
               <>
@@ -438,10 +438,10 @@ export const VenueExplorer: React.FC<VenueExplorerProps> = ({
 
       {/* Progress Feedback */}
       {progressMsg && (
-        <div className="text-[11px] text-[#cfcfd4] mb-3 bg-[#212124] px-3 py-1.5 rounded-lg border border-[#2b2b2f] flex items-center justify-between">
+        <div className="text-[11px] text-ink2 mb-3 bg-card2 px-3 py-1.5 rounded-lg border border-line flex items-center justify-between">
           <span>{progressMsg}</span>
           {cards.length > 0 && (
-            <span className="text-[#8d8d94] font-mono">
+            <span className="text-muted font-mono">
               Card {Math.min(cardIndex + 1, cards.length)}/{cards.length}
             </span>
           )}
@@ -465,9 +465,9 @@ export const VenueExplorer: React.FC<VenueExplorerProps> = ({
               >
                 {/* Background Next Card Preview */}
                 {cards[cardIndex + 1] && (
-                  <div className="absolute inset-0 bg-[#212124] border border-[#2b2b2f] rounded-2xl p-4 scale-95 translate-y-3 opacity-60 pointer-events-none shadow-lg">
-                    <div className="text-xs text-[#8d8d94]">Up Next:</div>
-                    <div className="font-bold text-sm text-[#f4f4f5] truncate mt-1">
+                  <div className="absolute inset-0 bg-card2 border border-line rounded-2xl p-4 scale-95 translate-y-3 opacity-60 pointer-events-none shadow-lg">
+                    <div className="text-xs text-muted">Up Next:</div>
+                    <div className="font-bold text-sm text-ink truncate mt-1">
                       {cards[cardIndex + 1].name}
                     </div>
                   </div>
@@ -481,18 +481,18 @@ export const VenueExplorer: React.FC<VenueExplorerProps> = ({
                     transition: isDragging ? 'none' : 'transform 0.25s ease, opacity 0.25s ease',
                     cursor: isDragging ? 'grabbing' : 'grab',
                   }}
-                  className="absolute inset-0 bg-gradient-to-b from-[#212124] to-[#1a1a1d] border-2 border-[#3b3b40] rounded-2xl p-5 shadow-2xl flex flex-col justify-between overflow-hidden"
+                  className="absolute inset-0 bg-gradient-to-b from-card2 to-card border-2 border-line2 rounded-2xl p-5 shadow-2xl flex flex-col justify-between overflow-hidden"
                 >
                   {/* Swipe Feedback Badges */}
                   <div
                     style={{ opacity: likeOpacity }}
-                    className="absolute top-4 right-4 border-2 border-[#c6ff3d] text-[#c6ff3d] font-display font-black text-xs px-2.5 py-1 rounded-lg rotate-12 bg-black/40 backdrop-blur-sm pointer-events-none tracking-wider"
+                    className="absolute top-4 right-4 border-2 border-secondary text-secondary font-display font-black text-xs px-2.5 py-1 rounded-lg rotate-12 bg-black/40 backdrop-blur-sm pointer-events-none tracking-wider"
                   >
                     PITCH (KEEN)
                   </div>
                   <div
                     style={{ opacity: passOpacity }}
-                    className="absolute top-4 left-4 border-2 border-[#ff6b57] text-[#ff6b57] font-display font-black text-xs px-2.5 py-1 rounded-lg -rotate-12 bg-black/40 backdrop-blur-sm pointer-events-none tracking-wider"
+                    className="absolute top-4 left-4 border-2 border-primary text-primary font-display font-black text-xs px-2.5 py-1 rounded-lg -rotate-12 bg-black/40 backdrop-blur-sm pointer-events-none tracking-wider"
                   >
                     PASS
                   </div>
@@ -500,36 +500,36 @@ export const VenueExplorer: React.FC<VenueExplorerProps> = ({
                   {/* Card Content Top */}
                   <div>
                     <div className="flex items-center justify-between gap-2 mb-1.5">
-                      <span className="text-[11px] font-bold px-2 py-0.5 rounded-full bg-[#17171a] border border-[#2b2b2f] text-[#ff6b57] flex items-center gap-1">
-                        <MapPin className="w-3 h-3 text-[#ff6b57]" />
+                      <span className="text-[11px] font-bold px-2 py-0.5 rounded-full bg-card border border-line text-primary flex items-center gap-1">
+                        <MapPin className="w-3 h-3 text-primary" />
                         <span>{currentCard.category || 'Spot'}</span>
                       </span>
                       {currentCard.distMiles != null && (
-                        <span className="text-[10px] font-mono text-[#8d8d94]">
+                        <span className="text-[10px] font-mono text-muted">
                           {currentCard.distMiles.toFixed(1)} miles away
                         </span>
                       )}
                     </div>
 
-                    <h3 className="font-display font-black text-lg text-[#f4f4f5] leading-snug line-clamp-2 mt-1">
+                    <h3 className="font-display font-black text-lg text-ink leading-snug line-clamp-2 mt-1">
                       {currentCard.name}
                     </h3>
-                    <div className="text-xs text-[#8d8d94] mt-1 flex items-center gap-1">
-                      <MapPin className="w-3 h-3 text-[#ff6b57] shrink-0" />
+                    <div className="text-xs text-muted mt-1 flex items-center gap-1">
+                      <MapPin className="w-3 h-3 text-primary shrink-0" />
                       <span className="truncate">{currentCard.loc}</span>
                     </div>
 
-                    <p className="text-xs text-[#cfcfd4] mt-2 line-clamp-3 leading-relaxed">
+                    <p className="text-xs text-ink2 mt-2 line-clamp-3 leading-relaxed">
                       {currentCard.desc}
                     </p>
 
                     {/* Multi-step combo preview */}
                     {currentCard.steps && currentCard.steps.length > 0 && (
-                      <div className="mt-2.5 bg-[#17171a] p-2.5 rounded-xl border border-[#2b2b2f]">
-                        <span className="text-[10px] font-bold text-[#c6ff3d] block mb-1">
+                      <div className="mt-2.5 bg-card p-2.5 rounded-xl border border-line">
+                        <span className="text-[10px] font-bold text-secondary block mb-1">
                           COMBO ROUTE:
                         </span>
-                        <ul className="text-[11px] text-[#cfcfd4] space-y-1">
+                        <ul className="text-[11px] text-ink2 space-y-1">
                           {currentCard.steps.slice(0, 3).map((s, idx) => (
                             <li key={idx} className="truncate">
                               • {s}
@@ -541,13 +541,13 @@ export const VenueExplorer: React.FC<VenueExplorerProps> = ({
                   </div>
 
                   {/* Card Bottom Meta */}
-                  <div className="pt-2 border-t border-[#2b2b2f] flex items-center justify-between text-[11px]">
+                  <div className="pt-2 border-t border-line flex items-center justify-between text-[11px]">
                     {currentCard.url ? (
                       <a
                         href={currentCard.url}
                         target="_blank"
                         rel="noopener noreferrer"
-                        className="text-[#c6ff3d] hover:underline flex items-center gap-1 cursor-pointer"
+                        className="text-secondary hover:underline flex items-center gap-1 cursor-pointer"
                         onClick={(e) => e.stopPropagation()}
                       >
                         <ExternalLink className="w-3 h-3" />
@@ -560,14 +560,14 @@ export const VenueExplorer: React.FC<VenueExplorerProps> = ({
                         )}`}
                         target="_blank"
                         rel="noopener noreferrer"
-                        className="text-[#8d8d94] hover:text-[#f4f4f5] flex items-center gap-1"
+                        className="text-muted hover:text-ink flex items-center gap-1"
                         onClick={(e) => e.stopPropagation()}
                       >
                         <MapIcon className="w-3 h-3" />
                         <span>Google Maps</span>
                       </a>
                     )}
-                    <span className="text-[#8d8d94] text-[10px]">
+                    <span className="text-muted text-[10px]">
                       Swipe Right to Pitch
                     </span>
                   </div>
@@ -580,7 +580,7 @@ export const VenueExplorer: React.FC<VenueExplorerProps> = ({
                   type="button"
                   onClick={() => handleBanCard(currentCard)}
                   title="Ban this venue permanently"
-                  className="cursor-pointer p-3 rounded-full bg-[#212124] border border-[#2b2b2f] text-[#8d8d94] hover:text-[#ff6b57] hover:border-[#ff6b57] transition active:scale-95 shadow"
+                  className="cursor-pointer p-3 rounded-full bg-card2 border border-line text-muted hover:text-primary hover:border-primary transition active:scale-95 shadow"
                 >
                   <Ban className="w-4 h-4" />
                 </button>
@@ -588,22 +588,22 @@ export const VenueExplorer: React.FC<VenueExplorerProps> = ({
                   type="button"
                   onClick={() => handlePassCard(currentCard)}
                   title="Pass to next idea"
-                  className="cursor-pointer p-3.5 rounded-full bg-[#212124] border border-[#2b2b2f] text-[#cfcfd4] hover:text-[#ff6b57] hover:border-[#ff6b57] transition active:scale-95 shadow"
+                  className="cursor-pointer p-3.5 rounded-full bg-card2 border border-line text-ink2 hover:text-primary hover:border-primary transition active:scale-95 shadow"
                 >
-                  <ThumbsDown className="w-5 h-5 text-[#ff6b57]" />
+                  <ThumbsDown className="w-5 h-5 text-primary" />
                 </button>
                 <button
                   type="button"
                   onClick={() => handlePitchCard(currentCard)}
                   title="Pitch to squad & add to list"
-                  className="cursor-pointer p-3.5 rounded-full bg-[#ff6b57] hover:brightness-110 text-[#1a0703] font-bold transition active:scale-95 shadow-xl flex items-center justify-center"
+                  className="cursor-pointer p-3.5 rounded-full bg-primary hover:brightness-110 text-primary-ink font-bold transition active:scale-95 shadow-xl flex items-center justify-center"
                 >
                   <ThumbsUp className="w-5 h-5" />
                 </button>
               </div>
             </div>
           ) : loading ? (
-            <div className="text-center py-8 px-4 bg-[#212124] rounded-2xl border border-[#2b2b2f]">
+            <div className="text-center py-8 px-4 bg-card2 rounded-2xl border border-line">
               <FlickeringFlameLoader
                 statusText={`🗺️ Searching "${queryInput || 'venues'}" in ${areaInput}...`}
                 subText="Filtering real OpenStreetMap pins matching your vibe"
@@ -612,19 +612,19 @@ export const VenueExplorer: React.FC<VenueExplorerProps> = ({
             </div>
           ) : (
             /* Empty Deck State */
-            <div className="text-center py-8 px-4 bg-[#212124] rounded-2xl border border-[#2b2b2f]">
-              <Sparkles className="w-6 h-6 text-[#ff6b57] mx-auto mb-1.5" />
-              <h4 className="font-bold text-sm text-[#f4f4f5]">
+            <div className="text-center py-8 px-4 bg-card2 rounded-2xl border border-line">
+              <Sparkles className="w-6 h-6 text-primary mx-auto mb-1.5" />
+              <h4 className="font-bold text-sm text-ink">
                 You've swiped all nearby ideas!
               </h4>
-              <p className="text-xs text-[#8d8d94] mt-1 mb-4 max-w-xs mx-auto">
+              <p className="text-xs text-muted mt-1 mb-4 max-w-xs mx-auto">
                 Search a neighbouring town or tap below to shuffle fresh ideas from the map.
               </p>
               <div className="flex flex-wrap justify-center gap-2">
                 <button
                   type="button"
                   onClick={() => setCardIndex(0)}
-                  className="cursor-pointer text-xs font-semibold px-3 py-2 rounded-xl bg-[#ff6b57] text-[#1a0703] hover:brightness-105 transition flex items-center gap-1.5"
+                  className="cursor-pointer text-xs font-semibold px-3 py-2 rounded-xl bg-primary text-primary-ink hover:brightness-105 transition flex items-center gap-1.5"
                 >
                   <RotateCw className="w-3.5 h-3.5" />
                   <span>Re-swipe Deck</span>
@@ -632,7 +632,7 @@ export const VenueExplorer: React.FC<VenueExplorerProps> = ({
                 <button
                   type="button"
                   onClick={() => executeSearch(areaInput, queryInput)}
-                  className="cursor-pointer text-xs font-semibold px-3 py-2 rounded-xl border border-[#2b2b2f] bg-[#17171a] text-[#f4f4f5] hover:border-[#3b3b40] transition flex items-center gap-1.5"
+                  className="cursor-pointer text-xs font-semibold px-3 py-2 rounded-xl border border-line bg-card text-ink hover:border-line2 transition flex items-center gap-1.5"
                 >
                   <Search className="w-3.5 h-3.5" />
                   <span>Roll Wider Map Search</span>
@@ -654,23 +654,23 @@ export const VenueExplorer: React.FC<VenueExplorerProps> = ({
             return (
               <div
                 key={card.id}
-                className="bg-[#212124] border border-[#2b2b2f] rounded-xl p-3 flex items-start justify-between gap-2 hover:border-[#3b3b40] transition"
+                className="bg-card2 border border-line rounded-xl p-3 flex items-start justify-between gap-2 hover:border-line2 transition"
               >
                 <div className="flex-1 min-w-0">
-                  <div className="flex items-center gap-1.5 font-bold text-xs text-[#f4f4f5] truncate">
-                    <MapPin className="w-3.5 h-3.5 text-[#ff6b57] shrink-0" />
+                  <div className="flex items-center gap-1.5 font-bold text-xs text-ink truncate">
+                    <MapPin className="w-3.5 h-3.5 text-primary shrink-0" />
                     <span className="truncate">{card.name}</span>
                     {card.distMiles != null && (
-                      <span className="text-[10px] font-normal text-[#8d8d94]">
+                      <span className="text-[10px] font-normal text-muted">
                         • {card.distMiles.toFixed(1)} mi
                       </span>
                     )}
                   </div>
-                  <div className="text-[11px] text-[#8d8d94] truncate mt-0.5 flex items-center gap-1">
-                    <MapPin className="w-3 h-3 text-[#a1a1aa] shrink-0" />
+                  <div className="text-[11px] text-muted truncate mt-0.5 flex items-center gap-1">
+                    <MapPin className="w-3 h-3 text-muted shrink-0" />
                     <span>{card.loc}</span>
                   </div>
-                  <div className="text-[11px] text-[#cfcfd4] mt-1 line-clamp-2">
+                  <div className="text-[11px] text-ink2 mt-1 line-clamp-2">
                     {card.desc}
                   </div>
                 </div>
@@ -682,8 +682,8 @@ export const VenueExplorer: React.FC<VenueExplorerProps> = ({
                     onClick={() => handlePitchCard(card)}
                     className={`cursor-pointer px-2.5 py-1.5 rounded-lg text-xs font-bold transition flex items-center gap-1 ${
                       isAlreadyOnList
-                        ? 'bg-[#17171a] text-[#8d8d94] border border-[#2b2b2f] cursor-default'
-                        : 'bg-[#ff6b57] text-[#1a0703] hover:brightness-105 active:scale-95'
+                        ? 'bg-card text-muted border border-line cursor-default'
+                        : 'bg-primary text-primary-ink hover:brightness-105 active:scale-95'
                     }`}
                   >
                     <span>{isAlreadyOnList ? 'On List' : 'Pitch'}</span>
@@ -693,7 +693,7 @@ export const VenueExplorer: React.FC<VenueExplorerProps> = ({
                       href={card.url}
                       target="_blank"
                       rel="noopener noreferrer"
-                      className="text-[10px] text-[#c6ff3d] hover:underline flex items-center gap-0.5"
+                      className="text-[10px] text-secondary hover:underline flex items-center gap-0.5"
                     >
                       <ExternalLink className="w-2.5 h-2.5" />
                       <span>Link</span>
@@ -732,7 +732,7 @@ export const VenueExplorer: React.FC<VenueExplorerProps> = ({
               }}
             />
           ) : (
-            <div className="text-center py-8 text-xs text-[#8d8d94]">
+            <div className="text-center py-8 text-xs text-muted">
               Search an area above to view pinned places on the interactive map.
             </div>
           )}

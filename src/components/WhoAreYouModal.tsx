@@ -30,7 +30,7 @@ export const WhoAreYouModal: React.FC<WhoAreYouModalProps> = ({
 }) => {
   const [name, setName] = useState('');
   const [emo, setEmo] = useState('🍺');
-  const [loc, setLoc] = useState('Local');
+  const [loc, setLoc] = useState('');
   const [payLink, setPayLink] = useState('');
   const [mode, setMode] = useState('Train');
   const [showDetails, setShowDetails] = useState(false);
@@ -72,7 +72,7 @@ export const WhoAreYouModal: React.FC<WhoAreYouModalProps> = ({
       id: 'u_' + Date.now() + '_' + Math.random().toString(36).slice(2, 6),
       name: cleanName,
       emo: emo || '🍺',
-      loc: loc.trim() || 'Local',
+      loc: loc.trim(),
       mode: mode || 'Train',
       pay: payLink.toLowerCase().includes('paypal') ? 'PayPal' : 'Monzo',
       payLink: payLink.trim() || undefined,
@@ -104,19 +104,19 @@ export const WhoAreYouModal: React.FC<WhoAreYouModalProps> = ({
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-4 bg-black/85 backdrop-blur-md animate-fade-in overflow-y-auto">
-      <div className="relative w-full max-w-lg bg-[#17171a] border border-[#2b2b2f] rounded-2xl shadow-2xl p-5 sm:p-7 text-white space-y-6 my-auto">
+      <div className="relative w-full max-w-lg bg-card border border-line rounded-2xl shadow-2xl p-5 sm:p-7 text-ink space-y-6 my-auto">
         {/* Top Header */}
         <div className="text-center space-y-1.5">
-          <div className="w-12 h-12 rounded-2xl bg-[#ff6b57]/15 border border-[#ff6b57]/30 flex items-center justify-center mx-auto text-[#ff6b57] shadow-[0_0_20px_rgba(255,107,87,0.25)]">
+          <div className="w-12 h-12 rounded-2xl bg-primary/15 border border-primary/30 flex items-center justify-center mx-auto text-primary shadow-[0_0_20px_color-mix(in_oklab,var(--accent)_25%,transparent)]">
             <span className="text-2xl select-none leading-none">👋</span>
           </div>
-          <h2 className="text-xl sm:text-2xl font-black font-display tracking-tight text-[#ffffff]">
+          <h2 className="text-xl sm:text-2xl font-black font-display tracking-tight text-ink">
             Who are you?
           </h2>
-          <p className="text-xs sm:text-sm text-[#8d8d94] max-w-xs sm:max-w-sm mx-auto">
+          <p className="text-xs sm:text-sm text-muted max-w-xs sm:max-w-sm mx-auto">
             Choose your squad profile or create one so your votes, vetos, and suggestions sync with the lads.
           </p>
-          <div className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-[#212124] border border-[#2b2b2f] text-[11px] text-[#ff6b57] font-mono font-medium">
+          <div className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-card2 border border-line text-[11px] text-primary font-mono font-medium">
             <span>🏠 Room: #{roomCode}</span>
           </div>
         </div>
@@ -141,14 +141,14 @@ export const WhoAreYouModal: React.FC<WhoAreYouModalProps> = ({
               <button
                 type="button"
                 onClick={() => setPendingConfirmUser(null)}
-                className="px-3 py-1.5 rounded-lg border border-[#3b3b40] bg-[#212124] text-xs font-semibold text-[#8d8d94] hover:text-white transition cursor-pointer"
+                className="px-3 py-1.5 rounded-lg border border-line2 bg-card2 text-xs font-semibold text-muted hover:text-ink transition cursor-pointer"
               >
                 Cancel
               </button>
               <button
                 type="button"
                 onClick={handleConfirmClaimOther}
-                className="px-4 py-1.5 rounded-lg bg-amber-500 hover:bg-amber-400 text-black font-bold text-xs transition cursor-pointer flex items-center gap-1.5 shadow-[0_0_12px_rgba(245,158,11,0.3)]"
+                className="px-4 py-1.5 rounded-lg bg-amber-500 hover:bg-amber-400 text-black font-bold text-xs transition cursor-pointer flex items-center gap-1.5 shadow-[0_0_12px_color-mix(in_oklab,var(--good)_30%,transparent)]"
               >
                 <span>Yes, I am {pendingConfirmUser.name}</span>
               </button>
@@ -157,10 +157,10 @@ export const WhoAreYouModal: React.FC<WhoAreYouModalProps> = ({
         )}
 
         {/* SECTION 1: New Member Form */}
-        <form onSubmit={handleCreateAndJoin} className="bg-[#212124] border border-[#2b2b2f] rounded-xl p-4 sm:p-5 space-y-4">
-          <div className="flex items-center justify-between pb-2 border-b border-[#2b2b2f]">
-            <div className="flex items-center gap-2 text-xs font-bold uppercase tracking-wider text-[#ff6b57]">
-              <UserPlus className="w-4 h-4 text-[#ff6b57]" />
+        <form onSubmit={handleCreateAndJoin} className="bg-card2 border border-line rounded-xl p-4 sm:p-5 space-y-4">
+          <div className="flex items-center justify-between pb-2 border-b border-line">
+            <div className="flex items-center gap-2 text-xs font-bold uppercase tracking-wider text-primary">
+              <UserPlus className="w-4 h-4 text-primary" />
               <span>Section 1: Join as New Squad Member</span>
             </div>
           </div>
@@ -173,8 +173,8 @@ export const WhoAreYouModal: React.FC<WhoAreYouModalProps> = ({
 
           <div className="space-y-3">
             <div>
-              <label className="text-xs font-medium text-[#8d8d94] block mb-1">
-                Your Name <span className="text-[#ff6b57]">*</span>
+              <label className="text-xs font-medium text-muted block mb-1">
+                Your Name <span className="text-primary">*</span>
               </label>
               <div className="flex gap-2">
                 <input
@@ -185,11 +185,11 @@ export const WhoAreYouModal: React.FC<WhoAreYouModalProps> = ({
                     if (errorMsg) setErrorMsg('');
                   }}
                   placeholder="e.g. Ben, Dan, Sarah, Jamie"
-                  className="w-full bg-[#17171a] border border-[#2b2b2f] focus:border-[#ff6b57] text-[#ffffff] px-3.5 py-2.5 rounded-xl text-sm font-medium outline-none placeholder:text-[#55555c] transition"
+                  className="w-full bg-card border border-line focus:border-primary text-ink px-3.5 py-2.5 rounded-xl text-sm font-medium outline-none placeholder:text-muted transition"
                   autoFocus
                 />
                 <div
-                  className="w-11 h-11 rounded-xl bg-[#17171a] border border-[#ff6b57]/40 flex items-center justify-center text-xl shrink-0 select-none shadow-inner"
+                  className="w-11 h-11 rounded-xl bg-card border border-primary/40 flex items-center justify-center text-xl shrink-0 select-none shadow-inner"
                   title="Your chosen emoji"
                 >
                   {emo}
@@ -199,7 +199,7 @@ export const WhoAreYouModal: React.FC<WhoAreYouModalProps> = ({
 
             {/* Quick Emoji Picker */}
             <div className="space-y-1.5">
-              <label className="text-[11px] font-medium text-[#8d8d94] block">
+              <label className="text-[11px] font-medium text-muted block">
                 Pick Your Squad Emoji:
               </label>
               <div className="flex flex-wrap gap-1.5">
@@ -210,8 +210,8 @@ export const WhoAreYouModal: React.FC<WhoAreYouModalProps> = ({
                     onClick={() => setEmo(icon)}
                     className={`w-8 h-8 rounded-lg flex items-center justify-center text-base transition cursor-pointer select-none ${
                       emo === icon
-                        ? 'bg-[#ff6b57]/30 border-2 border-[#ff6b57] scale-110 shadow-[0_0_10px_rgba(255,107,87,0.4)]'
-                        : 'bg-[#17171a] border border-[#2b2b2f] hover:border-[#ff6b57]/50 hover:bg-[#252529]'
+                        ? 'bg-primary/30 border-2 border-primary scale-110 shadow-[0_0_10px_color-mix(in_oklab,var(--accent)_40%,transparent)]'
+                        : 'bg-card border border-line hover:border-primary/50 hover:bg-card2'
                     }`}
                   >
                     {icon}
@@ -225,16 +225,16 @@ export const WhoAreYouModal: React.FC<WhoAreYouModalProps> = ({
               <button
                 type="button"
                 onClick={() => setShowDetails(!showDetails)}
-                className="text-xs text-[#8d8d94] hover:text-[#f4f4f5] flex items-center gap-1.5 font-medium transition cursor-pointer"
+                className="text-xs text-muted hover:text-ink flex items-center gap-1.5 font-medium transition cursor-pointer"
               >
                 <span>{showDetails ? 'Hide' : '+ Add'} Station & Payment Link (Optional)</span>
                 {showDetails ? <ChevronUp className="w-3.5 h-3.5" /> : <ChevronDown className="w-3.5 h-3.5" />}
               </button>
 
               {showDetails && (
-                <div className="mt-2.5 p-3 rounded-xl bg-[#17171a] border border-[#2b2b2f] space-y-2.5 animate-fade-in text-xs">
+                <div className="mt-2.5 p-3 rounded-xl bg-card border border-line space-y-2.5 animate-fade-in text-xs">
                   <div>
-                    <label className="text-[11px] text-[#8d8d94] block mb-1">
+                    <label className="text-[11px] text-muted block mb-1">
                       Starting Station / Town
                     </label>
                     <input
@@ -242,18 +242,18 @@ export const WhoAreYouModal: React.FC<WhoAreYouModalProps> = ({
                       value={loc}
                       onChange={(e) => setLoc(e.target.value)}
                       placeholder="e.g. Chatham, Rainham, Rochester"
-                      className="w-full bg-[#212124] border border-[#2b2b2f] focus:border-[#ff6b57] text-[#ffffff] px-2.5 py-1.5 rounded-lg text-xs outline-none"
+                      className="w-full bg-card2 border border-line focus:border-primary text-ink px-2.5 py-1.5 rounded-lg text-xs outline-none"
                     />
                   </div>
                   <div className="grid grid-cols-2 gap-2">
                     <div>
-                      <label className="text-[11px] text-[#8d8d94] block mb-1">
+                      <label className="text-[11px] text-muted block mb-1">
                         Transport Preference
                       </label>
                       <select
                         value={mode}
                         onChange={(e) => setMode(e.target.value)}
-                        className="w-full bg-[#212124] border border-[#2b2b2f] text-[#ffffff] px-2.5 py-1.5 rounded-lg text-xs outline-none"
+                        className="w-full bg-card2 border border-line text-ink px-2.5 py-1.5 rounded-lg text-xs outline-none"
                       >
                         <option value="Train">🚆 Train</option>
                         <option value="Uber Split">🚕 Uber Split</option>
@@ -262,7 +262,7 @@ export const WhoAreYouModal: React.FC<WhoAreYouModalProps> = ({
                       </select>
                     </div>
                     <div>
-                      <label className="text-[11px] text-[#8d8d94] block mb-1">
+                      <label className="text-[11px] text-muted block mb-1">
                         Payment Link (Monzo/PayPal)
                       </label>
                       <input
@@ -270,7 +270,7 @@ export const WhoAreYouModal: React.FC<WhoAreYouModalProps> = ({
                         value={payLink}
                         onChange={(e) => setPayLink(e.target.value)}
                         placeholder="monzo.me/name"
-                        className="w-full bg-[#212124] border border-[#2b2b2f] focus:border-[#ff6b57] text-[#ffffff] px-2.5 py-1.5 rounded-lg text-xs outline-none"
+                        className="w-full bg-card2 border border-line focus:border-primary text-ink px-2.5 py-1.5 rounded-lg text-xs outline-none"
                       />
                     </div>
                   </div>
@@ -280,7 +280,7 @@ export const WhoAreYouModal: React.FC<WhoAreYouModalProps> = ({
 
             <button
               type="submit"
-              className="w-full mt-2 cursor-pointer bg-[#ff6b57] hover:bg-[#ff7d6b] text-[#1a0703] font-black text-sm py-3 px-4 rounded-xl transition shadow-[0_0_20px_rgba(255,107,87,0.35)] flex items-center justify-center gap-2 active:scale-98"
+              className="w-full mt-2 cursor-pointer bg-primary hover:bg-primary-hi text-primary-ink font-black text-sm py-3 px-4 rounded-xl transition shadow-[0_0_20px_color-mix(in_oklab,var(--accent)_35%,transparent)] flex items-center justify-center gap-2 active:scale-98"
             >
               <span>🍻 Join Squad & Claim Profile</span>
             </button>
@@ -292,14 +292,14 @@ export const WhoAreYouModal: React.FC<WhoAreYouModalProps> = ({
           <div className="space-y-3">
             <div className="relative flex items-center justify-center">
               <div className="absolute inset-0 flex items-center">
-                <div className="w-full border-t border-[#2b2b2f]"></div>
+                <div className="w-full border-t border-line"></div>
               </div>
-              <span className="relative bg-[#17171a] px-3 text-[11px] font-bold uppercase tracking-wider text-[#8d8d94]">
+              <span className="relative bg-card px-3 text-[11px] font-bold uppercase tracking-wider text-muted">
                 Section 2: Already in this room?
               </span>
             </div>
 
-            <p className="text-xs text-[#8d8d94] text-center">
+            <p className="text-xs text-muted text-center">
               Tap your name below to claim and switch to your profile:
             </p>
 
@@ -313,17 +313,17 @@ export const WhoAreYouModal: React.FC<WhoAreYouModalProps> = ({
                     key={member.id}
                     type="button"
                     onClick={() => handleSelectExisting(member)}
-                    className="cursor-pointer border border-[#2b2b2f] bg-[#212124] hover:border-[#ff6b57]/60 hover:bg-[#27272c] text-left p-2.5 rounded-xl transition active:scale-98 flex items-center justify-between gap-2 group"
+                    className="cursor-pointer border border-line bg-card2 hover:border-primary/60 hover:bg-card2 text-left p-2.5 rounded-xl transition active:scale-98 flex items-center justify-between gap-2 group"
                   >
                     <div className="flex items-center gap-2.5 min-w-0">
-                      <span className="w-8 h-8 rounded-lg bg-[#17171a] border border-[#2b2b2f] flex items-center justify-center text-lg leading-none shrink-0 group-hover:scale-105 transition">
+                      <span className="w-8 h-8 rounded-lg bg-card border border-line flex items-center justify-center text-lg leading-none shrink-0 group-hover:scale-105 transition">
                         {member.emo || '🍺'}
                       </span>
                       <div className="min-w-0">
-                        <div className="text-xs font-bold text-white truncate group-hover:text-[#ff6b57] transition">
+                        <div className="text-xs font-bold text-ink truncate group-hover:text-primary transition">
                           {member.name}
                         </div>
-                        <div className="text-[10px] text-[#8d8d94] truncate">
+                        <div className="text-[10px] text-muted truncate">
                           {member.loc || 'Local'} • {member.mode || 'Train'}
                         </div>
                       </div>
@@ -336,7 +336,7 @@ export const WhoAreYouModal: React.FC<WhoAreYouModalProps> = ({
                           <span>Claimed</span>
                         </span>
                       ) : (
-                        <span className="text-[11px] text-[#8d8d94] group-hover:text-white font-medium">
+                        <span className="text-[11px] text-muted group-hover:text-ink font-medium">
                           Tap to claim →
                         </span>
                       )}
@@ -354,7 +354,7 @@ export const WhoAreYouModal: React.FC<WhoAreYouModalProps> = ({
             <button
               type="button"
               onClick={onClose}
-              className="text-xs text-[#8d8d94] hover:text-[#f4f4f5] cursor-pointer underline"
+              className="text-xs text-muted hover:text-ink cursor-pointer underline"
             >
               Cancel and return to outing
             </button>

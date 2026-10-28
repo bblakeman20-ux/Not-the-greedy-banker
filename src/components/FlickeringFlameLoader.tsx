@@ -13,9 +13,9 @@ export const FlickeringFlameLoader: React.FC<FlickeringFlameLoaderProps> = ({
   size = 'md',
 }) => {
   const badgeSizes = {
-    sm: 'w-14 h-14 rounded-2xl shadow-lg shadow-[#ff6b57]/25',
-    md: 'w-20 h-20 rounded-3xl shadow-xl shadow-[#ff6b57]/30',
-    lg: 'w-24 h-24 rounded-3xl shadow-2xl shadow-[#ff6b57]/35',
+    sm: 'w-14 h-14 rounded-2xl shadow-lg shadow-primary/25',
+    md: 'w-20 h-20 rounded-3xl shadow-xl shadow-primary/30',
+    lg: 'w-24 h-24 rounded-3xl shadow-2xl shadow-primary/35',
   };
 
   const iconSizes = {
@@ -36,12 +36,12 @@ export const FlickeringFlameLoader: React.FC<FlickeringFlameLoaderProps> = ({
       <div className="relative flex items-center justify-center my-2">
         {/* Soft Ambient Radiance Aura */}
         <div
-          className={`absolute ${auraSizes[size]} rounded-full bg-gradient-to-tr from-[#ff6b57]/30 to-[#ff8f7d]/20 blur-2xl animate-pulse pointer-events-none`}
+          className={`absolute ${auraSizes[size]} rounded-full bg-gradient-to-tr from-primary/30 to-primary-hi/20 blur-2xl animate-pulse pointer-events-none`}
         />
 
         {/* Hot Coral Badge with Charcoal Cutout Flame */}
         <div
-          className={`relative ${badgeSizes[size]} bg-gradient-to-tr from-[#ff6b57] via-[#ff6b57] to-[#ff8f7d] flex items-center justify-center text-[#1a0703] border border-white/20 select-none z-10 animate-[flamePulse_1.5s_ease-in-out_infinite_alternate]`}
+          className={`relative ${badgeSizes[size]} bg-gradient-to-tr from-primary via-primary to-primary-hi flex items-center justify-center text-primary-ink border border-ink/20 select-none z-10 animate-[flamePulse_1.5s_ease-in-out_infinite_alternate]`}
         >
           <Flame className={`${iconSizes[size]} fill-current drop-shadow-sm`} />
         </div>
@@ -49,11 +49,11 @@ export const FlickeringFlameLoader: React.FC<FlickeringFlameLoaderProps> = ({
 
       {/* Dynamic Status Text */}
       <div className="mt-5 space-y-1.5 max-w-sm">
-        <h4 className="font-display font-black text-sm sm:text-base text-[#ffffff] tracking-wide leading-snug">
+        <h4 className="font-display font-black text-sm sm:text-base text-ink tracking-wide leading-snug">
           {statusText}
         </h4>
         {Boolean(subText) && (
-          <p className="text-xs text-[#a1a1aa] leading-relaxed">
+          <p className="text-xs text-muted leading-relaxed">
             {subText}
           </p>
         )}
@@ -64,15 +64,15 @@ export const FlickeringFlameLoader: React.FC<FlickeringFlameLoaderProps> = ({
         @keyframes flamePulse {
           0% {
             transform: scale(0.94);
-            box-shadow: 0 0 20px rgba(255, 107, 87, 0.3);
+            box-shadow: 0 0 20px color-mix(in oklab,var(--accent) 30%,transparent);
           }
           50% {
             transform: scale(1.05);
-            box-shadow: 0 0 38px rgba(255, 107, 87, 0.6);
+            box-shadow: 0 0 38px color-mix(in oklab,var(--accent) 60%,transparent);
           }
           100% {
             transform: scale(0.98);
-            box-shadow: 0 0 25px rgba(255, 107, 87, 0.4);
+            box-shadow: 0 0 25px color-mix(in oklab,var(--accent) 40%,transparent);
           }
         }
       `}</style>

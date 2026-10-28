@@ -121,13 +121,29 @@ export interface OutingEvent {
   planVetoes?: Record<string, number>;
 }
 
+export interface RoomTheme {
+  id: string; // preset id, or 'custom'
+  bg: string;
+  surface: string;
+  text: string;
+  primary: string;
+  secondary?: string; // optional 5th colour; falls back to primary
+  font?: 'pixel'; // optional heading style
+  by?: string; // name of whoever last changed it
+  at?: number;
+}
+
 export interface AppState {
   ver: number;
   squad: User[];
   ban: BanItem[];
   board: Record<string, { r: number; m: number }>;
   events: OutingEvent[];
+  theme?: RoomTheme;
 }
+
+// local: no database configured · live: synced · error: database unreachable or refused
+export type SyncState = 'local' | 'live' | 'error';
 
 export interface AppConfig {
   u: string;

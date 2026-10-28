@@ -1,5 +1,6 @@
 import { AppConfig, Slot, User } from '../types';
 import { fmtWhen, pad } from './dates';
+import { aiHeaders, friendlyAiError } from './gemini';
 
 export interface CalendarDay {
   dateStr: string; // 'YYYY-MM-DD'
@@ -138,13 +139,13 @@ Rules:
   const model = cfg.md || 'gemini-flash-latest';
   const res = await fetch('/api/gemini/dates', {
     method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
+    headers: aiHeaders(cfg),
     body: JSON.stringify({ prompt, model }),
   });
 
   if (!res.ok) {
     const err = await res.json().catch(() => ({}));
-    throw new Error(err.error || `HTTP ${res.status}`);
+    throw new Error(friendlyAiError(new Error(err.error || `HTTP ${res.status}`)));
   }
 
   const json = await res.json();
