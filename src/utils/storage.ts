@@ -145,9 +145,21 @@ export const generateRoomCode = (): string => {
   ];
   const adj = adjectives[Math.floor(Math.random() * adjectives.length)];
   const noun = nouns[Math.floor(Math.random() * nouns.length)];
-  const rand = Math.random().toString(36).slice(2, 6);
-  return `squad-${adj}-${noun}-${rand}`;
+  return `squad-${adj}-${noun}-${secureSuffix()}`;
 };
+
+// 8 random characters (~41 bits) from the browser's secure generator, so room
+// codes – which are the only key to a room's data – can't practically be guessed.
+export const secureSuffix = (len = 8): string => {
+  const abc = 'abcdefghijklmnopqrstuvwxyz0123456789';
+  const bytes = new Uint8Array(len);
+  crypto.getRandomValues(bytes);
+  return Array.from(bytes, (b) => abc[b % abc.length]).join('');
+};
+
+// Custom room names get a random tail so "friday-pints" can't be guessed.
+export const withRandomPart = (code: string): string =>
+  /-[a-z0-9]{8}$/.test(code) ? code : `${code}-${secureSuffix()}`;
 
 export interface RoomMeta {
   code: string;
@@ -159,7 +171,7 @@ export interface RoomMeta {
 
 export const humanizeRoomCode = (code: string): string => {
   if (!code) return 'Squad Room';
-  const clean = code.replace(/^squad-/, '').replace(/-[a-z0-9]{4}$/i, '');
+  const clean = code.replace(/^squad-/, '').replace(/-(?:[a-z0-9]{4}|[a-z0-9]{8})$/i, '');
   const parts = clean.split('-').filter(Boolean);
   if (!parts.length) return code;
   return parts.map((w) => w.charAt(0).toUpperCase() + w.slice(1)).join(' ');

@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { User } from '../types';
-import { mailOk, payUrl, getSavedUserProfile } from '../utils/storage';
+import { mailOk, payUrl, getSavedUserProfile, realPlace } from '../utils/storage';
 
 interface ProfileModalProps {
   isOpen: boolean;
@@ -10,6 +10,7 @@ interface ProfileModalProps {
   onDelete: (id: string) => void;
   canDelete: boolean;
   onPitchHouse?: (user: User) => void;
+  prefillFromDevice?: boolean; // creating your own first profile, not adding a mate
 }
 
 export const ProfileModal: React.FC<ProfileModalProps> = ({
@@ -20,6 +21,7 @@ export const ProfileModal: React.FC<ProfileModalProps> = ({
   onDelete,
   canDelete,
   onPitchHouse,
+  prefillFromDevice = false,
 }) => {
   const isEdit = Boolean(user);
   const [name, setName] = useState('');
@@ -31,6 +33,7 @@ export const ProfileModal: React.FC<ProfileModalProps> = ({
   const [acn, setAcn] = useState('');
   const [sort, setSort] = useState('');
   const [acc, setAcc] = useState('');
+  const [showBankFields, setShowBankFields] = useState(false);
   const [tx, setTx] = useState('');
   const [offersHouse, setOffersHouse] = useState(false);
   const [houseNote, setHouseNote] = useState('');
@@ -38,10 +41,11 @@ export const ProfileModal: React.FC<ProfileModalProps> = ({
   const [confirmDelete, setConfirmDelete] = useState(false);
 
   useEffect(() => {
+    setShowBankFields(false);
     if (user) {
       setName(user.name || '');
       setEmo(user.emo || '🍺');
-      setLoc(user.loc || 'Medway');
+      setLoc(realPlace(user.loc));
       setPay(user.pay || 'Monzo');
       setPayLink(user.payLink || '');
       setPayMail(user.payMail || '');
@@ -51,7 +55,9 @@ export const ProfileModal: React.FC<ProfileModalProps> = ({
       setTx(user.tx || '');
       setOffersHouse(Boolean(user.offersHouse));
       setHouseNote(user.houseNote || '');
-      const saved = getSavedUserProfile();
+    } else {
+      // Your own new profile starts from what this device last saved; a mate you add starts blank
+      const saved = prefillFromDevice ? getSavedUserProfile() : null;
       setName(saved?.name && !/^you$/i.test(saved.name.trim()) ? saved.name : (saved?.name ? 'Ben' : ''));
       setEmo(saved?.emo || '🍺');
       setLoc(saved?.loc && !/^local$/i.test(saved.loc) ? saved.loc : '');
@@ -67,7 +73,7 @@ export const ProfileModal: React.FC<ProfileModalProps> = ({
     }
     setMsg('');
     setConfirmDelete(false);
-  }, [user, isOpen]);
+  }, [user, isOpen, prefillFromDevice]);
 
   const handleSave = () => {
     let cleanName = name.trim();
@@ -295,55 +301,77 @@ export const ProfileModal: React.FC<ProfileModalProps> = ({
           <div className="text-xs font-semibold text-primary mb-1">
             💳 How to pay you (all optional)
           </div>
+          <label className="text-[11px] text-muted block mb-1">
+            Pay link <span className="text-secondary font-semibold">· recommended</span>
+          </label>
           <input
             value={payLink}
             onChange={(e) => setPayLink(e.target.value)}
-            placeholder="Pay link (monzo.me/you, paypal.me/you, revolut.me/you)"
+            placeholder="monzo.me/you, paypal.me/you or revolut.me/you"
+            className="w-full bg-card border border-line focus:border-primary text-ink px-3 py-2 rounded-xl text-xs outline-none"
+          />
+          <p className="text-[10px] text-muted mt-1">
+            Pay links are made to be shared and fill in the amount for your mates. Safer than bank details.
+          </p>
+        </div>
+
+        <div>
+          <label className="text-[11px] text-muted block mb-1">PayPal Email</label>
+          <input
+            type="email"
+            value={payMail}
+            onChange={(e) => setPayMail(e.target.value)}
+            placeholder="Payment email"
             className="w-full bg-card border border-line focus:border-primary text-ink px-3 py-2 rounded-xl text-xs outline-none"
           />
         </div>
 
-        <div className="grid grid-cols-2 sm:grid-cols-4 gap-2.5">
-          <div>
-            <label className="text-[11px] text-muted block mb-1">PayPal Email</label>
-            <input
-              type="email"
-              value={payMail}
-              onChange={(e) => setPayMail(e.target.value)}
-              placeholder="Payment email"
-              className="w-full bg-card border border-line focus:border-primary text-ink px-3 py-2 rounded-xl text-xs outline-none"
-            />
+        {showBankFields || sort || acc || acn ? (
+          <div className="space-y-2">
+            <div className="text-[11px] font-semibold text-amber-500 bg-amber-500/10 border border-amber-500/30 rounded-lg px-2.5 py-1.5">
+              ⚠️ Anyone with this room's link can see bank details, and the squad is told if they change.
+            </div>
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-2.5">
+              <div>
+                <label className="text-[11px] text-muted block mb-1">Account Name</label>
+                <input
+                  value={acn}
+                  onChange={(e) => setAcn(e.target.value)}
+                  placeholder="Account name"
+                  className="w-full bg-card border border-line focus:border-primary text-ink px-3 py-2 rounded-xl text-xs outline-none"
+                />
+              </div>
+              <div>
+                <label className="text-[11px] text-muted block mb-1">Sort Code</label>
+                <input
+                  inputMode="numeric"
+                  value={sort}
+                  onChange={(e) => setSort(e.target.value)}
+                  placeholder="12-34-56"
+                  className="w-full bg-card border border-line focus:border-primary text-ink px-3 py-2 rounded-xl text-xs outline-none"
+                />
+              </div>
+              <div>
+                <label className="text-[11px] text-muted block mb-1">Account No.</label>
+                <input
+                  inputMode="numeric"
+                  value={acc}
+                  onChange={(e) => setAcc(e.target.value)}
+                  placeholder="8 digits"
+                  className="w-full bg-card border border-line focus:border-primary text-ink px-3 py-2 rounded-xl text-xs outline-none"
+                />
+              </div>
+            </div>
           </div>
-          <div>
-            <label className="text-[11px] text-muted block mb-1">Account Name</label>
-            <input
-              value={acn}
-              onChange={(e) => setAcn(e.target.value)}
-              placeholder="Account name"
-              className="w-full bg-card border border-line focus:border-primary text-ink px-3 py-2 rounded-xl text-xs outline-none"
-            />
-          </div>
-          <div>
-            <label className="text-[11px] text-muted block mb-1">Sort Code</label>
-            <input
-              inputMode="numeric"
-              value={sort}
-              onChange={(e) => setSort(e.target.value)}
-              placeholder="12-34-56"
-              className="w-full bg-card border border-line focus:border-primary text-ink px-3 py-2 rounded-xl text-xs outline-none"
-            />
-          </div>
-          <div>
-            <label className="text-[11px] text-muted block mb-1">Account No.</label>
-            <input
-              inputMode="numeric"
-              value={acc}
-              onChange={(e) => setAcc(e.target.value)}
-              placeholder="8 digits"
-              className="w-full bg-card border border-line focus:border-primary text-ink px-3 py-2 rounded-xl text-xs outline-none"
-            />
-          </div>
-        </div>
+        ) : (
+          <button
+            type="button"
+            onClick={() => setShowBankFields(true)}
+            className="text-[11px] font-semibold text-muted hover:text-ink underline cursor-pointer"
+          >
+            Add bank details instead (visible to anyone with the room link)
+          </button>
+        )}
 
         <div>
           <label className="text-[11px] text-muted block mb-1">
@@ -355,10 +383,6 @@ export const ProfileModal: React.FC<ProfileModalProps> = ({
             placeholder="e.g. Still owes for 2019 Uber"
             className="w-full bg-card border border-line focus:border-primary text-ink px-3 py-2 rounded-xl text-xs outline-none"
           />
-        </div>
-
-        <div className="text-[11px] text-primary">
-          ⚠️ Anyone with the group link can see these. A pay link is safer than account numbers.
         </div>
 
         {msg && <div className="text-xs text-primary">{msg}</div>}

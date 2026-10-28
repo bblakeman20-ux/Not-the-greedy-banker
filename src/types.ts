@@ -11,6 +11,8 @@ export interface User {
   sort?: string;
   acc?: string;
   tx?: string;
+  payAt?: number; // when pay details last changed (see utils/payDetails)
+  payBy?: string; // who changed them
   offersHouse?: boolean;
   houseNote?: string;
   isTraitor?: boolean;

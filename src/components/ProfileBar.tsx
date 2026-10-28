@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { User, OutingEvent, Venue } from '../types';
 import { MAX_VETOES, getSavedUserProfile, payUrl, copyStr } from '../utils/storage';
 import { Plus, Home, Pencil, ExternalLink, Copy, Check, ThumbsUp, ThumbsDown, UserCheck, ShieldAlert, X } from 'lucide-react';
+import { PayChangeWarning } from './PayChangeWarning';
 
 interface ProfileBarProps {
   squad: User[];
@@ -312,6 +313,7 @@ export const ProfileBar: React.FC<ProfileBarProps> = ({
               <span className="text-[11px] font-bold uppercase tracking-wider text-muted block">
                 💳 Payment Info
               </span>
+              <PayChangeWarning user={inspectedMember} squad={squad} />
               {payUrl(inspectedMember) ? (
                 <div className="flex items-center justify-between">
                   <span className="text-ink font-medium">{inspectedMember.pay || 'Pay Link'}</span>

@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { Expense, OutingEvent, User } from '../../types';
 import { copyStr, gbp, hasBank, mailOk, payUrl } from '../../utils/storage';
 import { calculateLedger, calculateSettlement, who } from '../../utils/kitty';
+import { PayChangeWarning } from '../PayChangeWarning';
 
 interface KittyTabProps {
   event: OutingEvent;
@@ -160,7 +161,7 @@ export const KittyTab: React.FC<KittyTabProps> = ({
         {showBank && (
           <div className="bg-card2 border border-line rounded-xl p-4 space-y-3">
             <div className="text-xs text-primary font-medium">
-              ⚠️ Real pay details — anyone with the group room link can view these.
+              ⚠️ Real pay details — anyone with the group room link can view these. Pay links (Monzo, PayPal, Revolut) are the safest way to get paid.
             </div>
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
               {squad.map((u) => {
@@ -173,6 +174,7 @@ export const KittyTab: React.FC<KittyTabProps> = ({
                     <div className="font-bold text-ink">
                       {u.emo} {u.name} <span className="text-muted font-normal">· {u.pay}</span>
                     </div>
+                    <PayChangeWarning user={u} squad={squad} />
 
                     {link && (
                       <div className="truncate">
@@ -407,6 +409,7 @@ export const KittyTab: React.FC<KittyTabProps> = ({
                     </span>
                     <b className="text-primary text-sm">{gbp(t.amt)}</b>
                   </div>
+                  <PayChangeWarning user={c} squad={squad} />
 
                   <div className="flex flex-wrap items-center gap-2">
                     {link && (
