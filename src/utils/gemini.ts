@@ -17,25 +17,25 @@ export const MODES: Record<string, AiModeConfig> = {
     lbl: 'Hidden gems',
     sub: 'Unusual local spots – not the obvious default',
     search: false,
-    ask: '3 specific, real, bookable venues or activities in or near the area that a group would never default to: independent, unusual, newly opened or under-the-radar. Skip anything generic.',
+    ask: 'Specific, real, bookable venues or activities in or near the area that a group would never default to: independent, unusual, newly opened or under-the-radar. Skip anything generic.',
   },
   events: {
     lbl: "What's on",
     sub: 'Real, dated events checked on live Google Search',
     search: true,
-    ask: '3 real events happening on or close to the date, in or within easy train reach of the area: gigs, comedy, festivals, markets, live sport, pop-ups, quizzes, tastings, club nights, screenings. Use Google Search to confirm each is really on, give its date and time, and an official or ticket link.',
+    ask: 'Real events happening on or close to the date, in or within easy train reach of the area: gigs, comedy, festivals, markets, live sport, pop-ups, quizzes, tastings, club nights, screenings. Use Google Search to confirm each is really on, give its date and time, and an official or ticket link.',
   },
   combo: {
     lbl: 'Combo night',
     sub: 'Creative multi-stop plans that chain activities together',
     search: false,
-    ask: '3 creative combo plans that chain 2-4 different activities into one outing with a theme (e.g. competitive thing, then food, then a late spot; or a daytime challenge into a night out). Use real venues close to each other, rough times, and make each plan feel distinct.',
+    ask: 'Creative combo plans that chain 2-4 different activities into one outing with a theme (e.g. competitive thing, then food, then a late spot; or a daytime challenge into a night out). Use real venues close to each other, rough times, and make each plan feel distinct.',
   },
   wild: {
     lbl: 'Surprise me',
-    sub: 'One event, one combo, one total wildcard',
+    sub: 'Events, combos and total wildcards',
     search: true,
-    ask: '3 wildcard ideas: one real dated event (confirm with Google Search), one creative multi-stop combo, and one unusual one-off experience (workshop, challenge, themed night, day trip by train, something they would never think of).',
+    ask: 'A wildcard mix: at least one real dated event (confirm with Google Search), at least one creative multi-stop combo, and the rest unusual one-off experiences (workshop, challenge, themed night, day trip by train, something they would never think of).',
   },
 };
 
@@ -178,7 +178,22 @@ export interface GergAiResult {
   sources: Array<{ title: string; uri: string }>;
   searchAttempted: boolean;
   searchSuccess: boolean;
+  fallbackReason?: string; // set when Gemini failed and these came from the curated list
 }
+
+// A different angle each ask nudges the model off its usual first picks
+const ANGLES = [
+  'Lean towards places that opened in the last couple of years.',
+  'Favour activities with a competitive or game element.',
+  'Include at least one daytime or early-evening option.',
+  'Favour independent, family-run or volunteer-run places.',
+  'Include something a short train ride away, not just the town centre.',
+  'Favour food-led ideas: street food, supper clubs, markets.',
+  'Favour live entertainment: music, comedy, quizzes, performances.',
+  'Include something hands-on: a class, workshop or challenge.',
+  'Favour places with outdoor space or something seasonal.',
+  'Include at least one late-night option.',
+];
 
 export async function askGergAI(
   cfg: AppConfig,
@@ -193,7 +208,8 @@ export async function askGergAI(
   onStatus: (msg: string) => void,
   onStreamIdea?: (idea: Partial<Venue>, index: number) => void,
   fastMode: boolean = true,
-  count: number = 3
+  count: number = 6,
+  avoid: string[] = [] // ideas already shown on this device for this plan
 ): Promise<GergAiResult> {
   const mode = MODES[modeKey] || MODES.gems;
   const t0 = Date.now();
@@ -213,6 +229,12 @@ export async function askGergAI(
     ? `CRITICAL THEME / VIBE MANDATE: Every single suggestion MUST strictly match the requested theme/vibe: "${customVib.trim()}". For example, if the vibe is "Wine", suggest real wine bars, vineyards, cellars, tasting rooms, or wine bistros. If "Axe throwing", suggest axe throwing / target sport venues. If "Taproom", suggest microbreweries and craft beer houses. NEVER fall back to generic high street pubs unless the vibe explicitly requests it.`
     : '';
 
+  const angle = ANGLES[Math.floor(Math.random() * ANGLES.length)];
+  const recent = avoid.slice(-40);
+  const avoidLine = recent.length
+    ? `\nThe group has already seen these, so do NOT suggest them again or close variants of them: ${recent.join('; ')}.`
+    : '';
+
   const prompt = `You are Gerg AI, the anti-default outing planner for a UK group of mates who always end up in the same pub.\n${squadBrief(
     squad,
     event,
@@ -221,9 +243,9 @@ export async function askGergAI(
     customVib,
     customWhen,
     customBud
-  )}\n\n${vibeInstruction}\nTask: suggest ${count} distinct ideas matching "${customVib.trim() || 'anti-default fun'}". ${mode.ask}\nMake the ideas fit the group: easy to reach from their stations, in budget, and genuinely more fun than the default.\nReturn ONLY a JSON array of ${count} objects, no other text. ${shape}`;
+  )}\n\n${vibeInstruction}\nTask: suggest ${count} distinct ideas matching "${customVib.trim() || 'anti-default fun'}". ${mode.ask}\nMake the ideas fit the group: easy to reach from their stations, in budget, and genuinely more fun than the default.\n${angle}${avoidLine}\nReturn ONLY a JSON array of ${count} objects, no other text. ${shape}`;
 
-  const have = new Set(event.venues.map((v) => normName(v.name)));
+  const have = new Set([...event.venues.map((v) => v.name), ...avoid].map(normName));
   const streamedIdeas: Partial<Venue>[] = [];
   const streamedNames = new Set<string>();
   let emittedCount = 0;
@@ -373,14 +395,12 @@ export async function askGergAI(
     if (isCreditOrKeyIssue || failure) {
       const fallbackTargetLoc = customLoc || event.where || 'Rochester';
       const fallbackTargetVib = customVib || event.vibe || '';
-      const existingNames = new Set(event.venues.map((v) => normName(v.name)));
-      const curated = getLocalCuratedIdeas(fallbackTargetLoc, fallbackTargetVib, banList, existingNames, count);
+      // Skip anything already shown, so repeat asks work through the list instead of repeating it
+      const curated = getLocalCuratedIdeas(fallbackTargetLoc, fallbackTargetVib, banList, have, count);
 
       if (curated.length > 0) {
-        curated.forEach((c, idx) => {
-          streamedIdeas.push(c);
-          if (onStreamIdea) onStreamIdea(c, idx);
-        });
+        // Not streamed as AI ideas: callers get them in the result, flagged by fallbackReason
+        streamedIdeas.push(...curated);
         if (onStatus) {
           onStatus(
             `⚡ Served ${curated.length} verified anti-default spots for ${fallbackTargetLoc} (curated engine active)`
@@ -393,6 +413,7 @@ export async function askGergAI(
           sources: [],
           searchAttempted: false,
           searchSuccess: false,
+          fallbackReason: friendlyAiError(failure),
         };
       }
     }
