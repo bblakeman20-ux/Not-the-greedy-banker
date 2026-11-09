@@ -3,6 +3,7 @@ import { AppConfig, BanItem, OutingEvent, User, Venue } from '../types';
 import { fetchPlaces, makeIdeas, miles } from '../utils/osm';
 import { askGergAI, friendlyAiError, MODES } from '../utils/gemini';
 import { getLocalCuratedIdeas } from '../utils/localPlaces';
+import { rememberIdeas, seenIdeas } from '../utils/ideaMemory';
 import { isBanned, normName, realPlace, safeUrl } from '../utils/storage';
 import { FlickeringFlameLoader } from './FlickeringFlameLoader';
 import {
@@ -292,8 +293,14 @@ export const PintdrOverlay: React.FC<PintdrOverlayProps> = ({
               (msg) => setStatusMessage(msg),
               handleStreamIdea,
               true, // fastMode: zero delay
-              8 // 8 tailored cards for a rich swipe deck
+              8, // 8 tailored cards for a rich swipe deck
+              seenIdeas(event.id) // don't re-deal what this phone has already seen for this plan
             );
+            rememberIdeas(event.id, aiResult.ideas.map((i) => i.name));
+            if (aiResult.fallbackReason) {
+              aiError = aiResult.fallbackReason;
+              setAiNotice(aiError);
+            }
 
             aiResult.ideas.forEach((idea, i) => {
               if (idea.name && !seenIdsRef.current.has(normName(idea.name))) {
@@ -309,9 +316,10 @@ export const PintdrOverlay: React.FC<PintdrOverlayProps> = ({
                   url: idea.url,
                   steps: idea.steps,
                   live: idea.live,
-                  source: 'ai',
+                  // Curated fallback spots are real places, not AI picks: label them that way
+                  source: aiResult.fallbackReason ? 'osm' : 'ai',
                   emoji: idea.kind === 'combo' ? '🔀' : idea.live ? '🎟️' : targetVibe.toLowerCase().includes('wine') ? '🍷' : '🤖',
-                  category: idea.kind === 'combo' ? 'AI Combo' : 'AI Wildcard',
+                  category: aiResult.fallbackReason ? 'Curated Spot' : idea.kind === 'combo' ? 'AI Combo' : 'AI Wildcard',
                 });
               }
             });

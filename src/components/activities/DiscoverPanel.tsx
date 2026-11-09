@@ -4,6 +4,7 @@ import { AppConfig, BanItem, OutingEvent, User, Venue } from '../../types';
 import { normName, realPlace } from '../../utils/storage';
 import { askGergAI, MODES } from '../../utils/gemini';
 import { rollMapSpots } from '../../utils/mapRoll';
+import { rememberIdeas, seenIdeas } from '../../utils/ideaMemory';
 import { themeConfetti } from '../../utils/theme';
 import { FlickeringFlameLoader } from '../FlickeringFlameLoader';
 import { Dices, Flame, Gem, Home, MapPin, Plus, Route, Search, Sparkles, Ticket, X, Zap, Map as MapIcon } from 'lucide-react';
@@ -26,6 +27,9 @@ interface DiscoverPanelProps {
 
 // The explorer pulls in the Leaflet map library, so it only loads when the map tool is opened
 const VenueExplorer = lazy(() => import('../VenueExplorer').then((m) => ({ default: m.VenueExplorer })));
+
+const IDEAS_PER_ASK = 6;
+const MAX_STAGED = 18;
 
 const NEED_PROFILE = '👆 Tap your profile first in the squad bar above (or + New Profile)';
 
@@ -131,10 +135,13 @@ export const DiscoverPanel: React.FC<DiscoverPanelProps> = ({
         aiBud,
         (msg) => setAiMsg(msg),
         handleStreamIdea,
-        fastMode
+        fastMode,
+        IDEAS_PER_ASK,
+        // Skip what this phone has already been shown for this plan, plus what's on screen now
+        [...seenIdeas(event.id), ...stagedIdeas.map((i) => i.name)]
       );
-      setStagedIdeas(
-        res.ideas.map((x, i) => ({
+      rememberIdeas(event.id, res.ideas.map((i) => i.name));
+      const fresh: Venue[] = res.ideas.map((x, i) => ({
           id: 'v_staged_' + Date.now() + '_' + i,
           name: x.name || 'Venue',
           loc: x.loc || aiLoc || '',
@@ -146,13 +153,14 @@ export const DiscoverPanel: React.FC<DiscoverPanelProps> = ({
           steps: x.steps,
           live: x.live,
           votes: {},
-        }))
-      );
+        }));
+      // New ideas go on top; earlier ones stay until shortlisted or discarded
+      setStagedIdeas((prev) => [...fresh, ...prev].slice(0, MAX_STAGED));
       setAiSources(res.sources);
       setAiMsg(
-        `⚡ Gerg AI delivered ${res.ideas.length} ideas in ${res.duration.toFixed(
-          1
-        )}s! Review them below in "Fresh Gerg AI Rolls" and tap "➕ Shortlist This" to add to the squad list.`
+        res.fallbackReason
+          ? `⚠️ ${res.fallbackReason} Showing ${res.ideas.length} hand-picked real spots instead.`
+          : `⚡ Gerg AI delivered ${res.ideas.length} new ideas in ${res.duration.toFixed(1)}s – tap "More ideas" for another batch.`
       );
     } catch (e: any) {
       setAiMsg(`⚠️ ${e.message} The Interactive Map still finds real spots nearby.`);
@@ -382,7 +390,7 @@ export const DiscoverPanel: React.FC<DiscoverPanelProps> = ({
                 <div className="flex items-center justify-between text-xs font-bold text-primary">
                   <span className="flex items-center gap-1.5">
                     <Zap className="w-3.5 h-3.5 text-primary" />
-                    <span>Incoming ideas ({streamingIdeas.length} of 3)</span>
+                    <span>Incoming ideas ({streamingIdeas.length} of {IDEAS_PER_ASK})</span>
                   </span>
                 </div>
                 <div className="grid grid-cols-1 sm:grid-cols-3 gap-2.5">
@@ -450,15 +458,25 @@ export const DiscoverPanel: React.FC<DiscoverPanelProps> = ({
                       Staged ideas · tap <strong>➕ Shortlist This</strong> to promote any idea to the squad shortlist.
                     </div>
                   </div>
-                  <button
-                    type="button"
-                    onClick={() => {
-                      handleShortlist(stagedIdeas);
-                    }}
-                    className="cursor-pointer text-xs font-bold text-secondary hover:underline bg-[color-mix(in_oklab,var(--good)_10%,transparent)] px-2.5 py-1 rounded-lg border border-secondary/30"
-                  >
-                    ➕ Shortlist All
-                  </button>
+                  <div className="flex items-center gap-2">
+                    <button
+                      type="button"
+                      onClick={handleAskGergAI}
+                      disabled={isAiStreaming}
+                      className="cursor-pointer text-xs font-bold text-primary hover:underline bg-primary/10 px-2.5 py-1 rounded-lg border border-primary/30 disabled:opacity-50 disabled:cursor-wait"
+                    >
+                      ✨ More ideas
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        handleShortlist(stagedIdeas);
+                      }}
+                      className="cursor-pointer text-xs font-bold text-secondary hover:underline bg-[color-mix(in_oklab,var(--good)_10%,transparent)] px-2.5 py-1 rounded-lg border border-secondary/30"
+                    >
+                      ➕ Shortlist All
+                    </button>
+                  </div>
                 </div>
 
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
